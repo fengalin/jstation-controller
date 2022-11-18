@@ -1,0 +1,33 @@
+[package]
+name = "jstation-controller"
+version = "0.1.0"
+authors = ["François Laignel <fengalin@free.fr>"]
+categories = ["Multimedia"]
+keywords = ["guitar", "jstation"]
+description = "Controller for the J-Station guitar & bass amp emulator and multi-effects unit"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/fengalin/jstation-controller"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+bitflags = "1.3.2"
+chrono = "0.4.19"
+env_logger = "0.9"
+flume = "0.10.13"
+iced = { version = "0.5.2", features = [ "default_system_font", "smol" ] }
+iced_audio = { git = "https://github.com/fengalin/iced_audio", branch = "pure-widgets" }
+iced_lazy = "0.2.0"
+iced_native = "0.6.1"
+image = "0.24"
+log = "0.4"
+midir = "0.8"
+nom = "7.1.1"
+once_cell = "1.0"
+smallvec = { version = "1.10", features = [ "union" ] }
+thiserror = "1.0"
+timer = "0.2.0"
+
+[profile.release]
+lto = true

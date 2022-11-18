@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  hygiene:
+    name: Hygiene
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        override: true
+    - name: Install deps
+      run: |
+        sudo apt update
+        sudo apt upgrade
+        sudo apt install libwayland-dev libasound2-dev
+    - name: fmt
+      run: cargo fmt -- --check
+    - name: clippy
+      run: cargo clippy --tests
+
+  build:
+    name: "Build & Test"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        override: true
+    - name: Install deps
+      run: |
+        sudo apt update
+        sudo apt upgrade
+        sudo apt install libwayland-dev libasound2-dev
+    - name: Test default features
+      run: cargo test --verbose
