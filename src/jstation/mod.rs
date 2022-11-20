@@ -1,5 +1,7 @@
+use nom::{branch::alt, IResult};
+
 mod interface;
-pub use interface::{Error, Interface, Message};
+pub use interface::{Error, Interface};
 
 mod sysex;
 pub use sysex::{
@@ -9,6 +11,40 @@ pub use sysex::{
 
 pub mod procedure;
 pub use procedure::{Procedure, ProcedureBuilder};
+
+use std::sync::Arc;
+
+use crate::midi;
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    ChannelVoice(midi::ChannelVoice),
+    SysEx(Arc<sysex::Message>),
+}
+
+impl From<midi::ChannelVoice> for Message {
+    fn from(cv: midi::ChannelVoice) -> Self {
+        Message::ChannelVoice(cv)
+    }
+}
+
+impl From<sysex::Message> for Message {
+    fn from(msg: sysex::Message) -> Self {
+        Message::SysEx(msg.into())
+    }
+}
+
+fn parse_midi_channel_voice(i: &[u8]) -> IResult<&[u8], Message> {
+    midi::channel_voice::parse(i).map(|(i, msg)| (i, msg.into()))
+}
+
+fn parse_sysex(i: &[u8]) -> IResult<&[u8], Message> {
+    sysex::parse(i).map(|(i, msg)| (i, msg.into()))
+}
+
+pub fn parse_raw_midi_msg(i: &[u8]) -> IResult<&[u8], Message> {
+    alt((parse_sysex, parse_midi_channel_voice))(i)
+}
 
 pub mod split_bytes {
     use crate::midi::Channel;

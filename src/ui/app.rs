@@ -170,18 +170,12 @@ impl Application for App {
                 }
             }
             JStation(res) => match res {
-                Ok(jstation::Message::Procedure(proc)) => {
-                    // FIXME move this in a dedicate function
+                // FIXME move this in a dedicate function
+                Ok(jstation::Message::SysEx(sysex)) => {
                     use jstation::Procedure::*;
-                    match proc.as_ref() {
+                    match &sysex.as_ref().proc {
                         WhoAmIResp(resp) => {
-                            let res = self.jstation.set_channels(
-                                // FIXME check that this is the right channel to send cc
-                                resp.receive_chan,
-                                resp.sysex_chan,
-                            );
-
-                            if let Err(err) = res {
+                            if let Err(err) = self.jstation.have_who_am_i_resp(resp) {
                                 self.handle_error(&err);
                             } else {
                                 self.output_text = "Found J-Station".to_string();
@@ -191,6 +185,9 @@ impl Application for App {
                             log::debug!("Unhandled {other:?}");
                         }
                     }
+                }
+                Ok(jstation::Message::ChannelVoice(cv)) => {
+                    log::debug!("Unhandled {:?}", cv.msg);
                 }
                 Err(err) => {
                     self.handle_error(&err);
