@@ -87,10 +87,10 @@ pub fn parse(i: &[u8]) -> IResult<&[u8], Message> {
         MANUFACTURER_ID[2],
     ])(i)?;
 
-    let (i, chan) = take(1usize)(i)?;
+    let (i, tag_chan) = take(1usize)(i)?;
     let (i, _) = tag([PRODUCT_ID])(i)?;
 
-    let mut checksum = CHECKSUM_INIT ^ chan[0] ^ PRODUCT_ID;
+    let mut checksum = CHECKSUM_INIT ^ tag_chan[0] ^ PRODUCT_ID;
 
     let (i, proc) = procedure::parse(i, &mut checksum)?;
 
@@ -105,10 +105,12 @@ pub fn parse(i: &[u8]) -> IResult<&[u8], Message> {
 
     let (i, _) = tag([midi::sysex::END_TAG])(i)?;
 
+    let tag_chan = midi::TagChannel::from(tag_chan[0]);
+
     Ok((
         i,
         Message {
-            chan: chan[0].into(),
+            chan: tag_chan.chan,
             proc,
         },
     ))
@@ -129,7 +131,7 @@ pub fn take_split_bytes_u8<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u
 }
 
 pub fn take_split_bytes_chan<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], Channel> {
-    take_split_bytes_u8(i, checksum).map(|(i, chan)| (i, chan.into()))
+    take_split_bytes_u8(i, checksum).map(|(i, tag_chan)| (i, midi::TagChannel::from(tag_chan).chan))
 }
 
 pub fn take_split_bytes_u16<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], u16> {

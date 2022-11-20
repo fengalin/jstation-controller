@@ -7,12 +7,12 @@ use crate::{
 
 #[derive(Debug)]
 pub struct WhoAmIReq {
-    pub resp_on_chan: bool,
+    pub resp_on_all_chans: bool,
 }
 
 impl Default for WhoAmIReq {
     fn default() -> Self {
-        WhoAmIReq { resp_on_chan: true }
+        WhoAmIReq { resp_on_all_chans: true }
     }
 }
 
@@ -21,15 +21,15 @@ impl ProcedureBuilder for WhoAmIReq {
     const VERSION: u8 = 1;
 
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
-        buffer.push_fixed_size_data(std::iter::once(self.resp_on_chan.into()));
+        buffer.push_fixed_size_data(std::iter::once(self.resp_on_all_chans.into()));
     }
 }
 
 impl WhoAmIReq {
     pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], WhoAmIReq> {
-        let (i, resp_on_chan) = take_split_bytes_bool(i, checksum)?;
+        let (i, resp_on_all_chans) = take_split_bytes_bool(i, checksum)?;
 
-        Ok((i, WhoAmIReq { resp_on_chan }))
+        Ok((i, WhoAmIReq { resp_on_all_chans }))
     }
 }
 

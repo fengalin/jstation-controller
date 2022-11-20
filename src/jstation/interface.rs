@@ -4,7 +4,7 @@ use iced_native::subscription;
 use std::{cell::Cell, sync::Arc};
 
 use crate::{
-    jstation::{procedure, sysex, Procedure, ProcedureBuilder},
+    jstation::{parse_raw_midi_msg, procedure, Message, Procedure, ProcedureBuilder},
     midi,
 };
 
@@ -20,11 +20,6 @@ pub enum Error {
     MidiSend,
     #[error("Broken MIDI connection")]
     BokenConnection,
-}
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    Procedure(Arc<Procedure>),
 }
 
 #[derive(Default)]
@@ -66,13 +61,10 @@ impl Interface {
         Ok(())
     }
 
-    pub fn set_channels(
-        &mut self,
-        cc_chan: midi::Channel,
-        sysex_chan: midi::Channel,
-    ) -> Result<(), Error> {
-        self.cc_chan = cc_chan;
-        self.sysex_chan = sysex_chan;
+    pub fn have_who_am_i_resp(&mut self, resp: &procedure::WhoAmIResp) -> Result<(), Error> {
+        // FIXME check that this is the right channel to send cc
+        self.cc_chan = resp.receive_chan;
+        self.sysex_chan = resp.sysex_chan;
 
         log::debug!("Sending UtilitySettingsReq");
         let res = self.send_sysex(procedure::UtilitySettingsReq);
@@ -127,26 +119,26 @@ impl Interface {
                 self.stage.set(Device);
                 // FIXME start with a dedicate subscription that purges any
                 // pending messages and which is able to timeout on whoamiresp
-                subscription::unfold(DEVICE_SUBSCRIPTION, Some(iface), iface_subscription)
+                subscription::unfold(DEVICE_SUBSCRIPTION, Some(iface), iface_listen_subscription)
             }
             Device => {
                 // Keep going with the subscription started in the Midi(_) stage
                 self.stage.set(Device);
-                subscription::unfold(DEVICE_SUBSCRIPTION, None, iface_subscription)
+                subscription::unfold(DEVICE_SUBSCRIPTION, None, iface_listen_subscription)
             }
         }
     }
 }
 
-async fn iface_subscription(
+async fn iface_listen_subscription(
     mut iface: Option<AsyncInterface>,
 ) -> (Option<Result<Message, Error>>, Option<AsyncInterface>) {
-    let res = {
-        let iface = iface.as_mut().expect("Wrong state");
-        iface.listen().await
-    };
-
-    (Some(res), iface)
+    if let Some(iface_mut) = iface.as_mut() {
+        let res = iface_mut.listen().await;
+        (Some(res), iface)
+    } else {
+        (None, None)
+    }
 }
 
 struct AsyncInterface {
@@ -158,51 +150,58 @@ struct AsyncInterface {
 
 impl AsyncInterface {
     async fn listen(&mut self) -> Result<Message, Error> {
+        use Message::*;
+
         loop {
-            let sysex_msg = self.receive().await?;
+            let msg = self.receive().await?;
+            match &msg {
+                ChannelVoice(cv) => {
+                    if cv.chan == self.cc_chan {
+                        log::debug!("Received {:?}", cv.msg);
 
-            if let Procedure::WhoAmIResp(resp) = sysex_msg.proc {
-                // FIXME is this the one to listen to?
-                self.cc_chan = resp.transmit_chan;
-                self.sysex_chan = resp.sysex_chan;
+                        return Ok(msg);
+                    }
 
-                log::debug!(
-                    "Found device. Using cc rx {:?} tx {:?} & sysex {:?}",
-                    resp.receive_chan,
-                    resp.transmit_chan,
-                    resp.sysex_chan,
-                );
+                    log::debug!("Ignoring channel voice on {:?}: {:?}", cv.chan, cv.msg);
+                }
+                SysEx(sysex) => {
+                    if let Procedure::WhoAmIResp(resp) = sysex.proc {
+                        // FIXME is this the one to listen to?
+                        self.cc_chan = resp.transmit_chan;
+                        self.sysex_chan = resp.sysex_chan;
 
-                return Ok(Message::Procedure(sysex_msg.proc.into()));
-            }
+                        log::debug!(
+                            "Found device. Using cc rx {:?} tx {:?} & sysex {:?}",
+                            resp.receive_chan,
+                            resp.transmit_chan,
+                            resp.sysex_chan,
+                        );
 
-            if sysex_msg.chan == self.sysex_chan {
-                log::debug!("Received {:?}", sysex_msg.proc);
+                        return Ok(msg);
+                    }
 
-                return Ok(Message::Procedure(sysex_msg.proc.into()));
-            } else {
-                log::debug!(
-                    "Ignoring sysex on {:?}:  {:?}",
-                    sysex_msg.chan,
-                    sysex_msg.proc
-                );
+                    if sysex.chan == self.sysex_chan {
+                        log::debug!("Received {:?}", sysex.proc);
+
+                        return Ok(msg);
+                    }
+
+                    log::debug!("Ignoring sysex on {:?}: {:?}", sysex.chan, sysex.proc);
+                }
             }
         }
     }
 
-    // FIXME also receive CC
-    async fn receive(&mut self) -> Result<sysex::Message, Error> {
-        // FIXME need to timeout if we decide to scan ports for device
+    async fn receive(&mut self) -> Result<Message, Error> {
         let midi_msg = self
             .msg_rx
             .recv_async()
             .await
             .map_err(|_| Error::BokenConnection)?;
 
-        sysex::parse(&midi_msg)
+        parse_raw_midi_msg(&midi_msg)
             .map(|(_, proc)| proc)
             .map_err(|err| {
-                // FIXME could distinguish between unknow Proc and parsing error
                 log::error!("{}", err.to_string());
 
                 Error::Parse
