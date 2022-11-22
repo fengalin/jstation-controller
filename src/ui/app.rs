@@ -11,7 +11,7 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 pub static APP_NAME: Lazy<Arc<str>> = Lazy::new(|| "J-Station Controller".into());
 
-use crate::{jstation, ui};
+use crate::{jstation, midi, ui};
 
 // The message when a parameter widget is moved by the user
 #[derive(Debug, Clone)]
@@ -29,9 +29,9 @@ pub enum Subscription {
 }
 
 pub struct App {
-    jstation: jstation::Interface,
+    jstation: ui::jstation::Interface,
     ports: Rc<RefCell<ui::port::Ports>>,
-    scanner_ctx: Option<jstation::ScannerContext>,
+    scanner_ctx: Option<midi::scanner::Context>,
 
     db_range: LogDBRange,
     freq_range: FreqRange,
@@ -65,11 +65,11 @@ impl Application for App {
     fn new(_flags: ()) -> (App, Command<Message>) {
         let mut output_text = " ".to_string();
 
-        let mut jstation = jstation::Interface::new(APP_NAME.clone());
+        let mut jstation = ui::jstation::Interface::new();
         let mut ports = ui::port::Ports::default();
 
         match jstation.refresh() {
-            Ok(()) => ports.update_from(&jstation),
+            Ok(()) => ports.update_from(jstation.iface()),
             Err(err) => {
                 // FIXME set a flag to indicate the application can't be used as is
                 let msg = format!("Midi ports not found: {err}");
@@ -173,6 +173,7 @@ impl Application for App {
                 self.output_text = format!("KnobFreq: {:.2}", value);
             }
             Ports(ui::port::Selection { port_in, port_out }) => {
+                use midi::Scannable;
                 if let Err(err) = self.jstation.connect(port_in, port_out) {
                     self.jstation.clear();
                     self.ports.borrow_mut().set_disconnected();

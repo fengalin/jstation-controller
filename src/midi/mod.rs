@@ -7,6 +7,9 @@ pub use error::Error;
 pub mod port;
 pub use port::{DirectionalPorts, PortsIn, PortsOut};
 
+pub mod scanner;
+pub use scanner::Scannable;
+
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag(u8);
 

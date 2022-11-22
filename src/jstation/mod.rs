@@ -1,7 +1,7 @@
 use nom::{branch::alt, IResult};
 
 mod interface;
-pub use interface::{Error, Interface, ScannerContext};
+pub use interface::{Error, Interface, Listener};
 
 mod sysex;
 pub use sysex::{

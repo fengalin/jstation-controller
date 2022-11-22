@@ -115,7 +115,7 @@ impl PortsIn {
                 Error::PortConnection
             })?;
 
-        log::info!("Connected for Input to {}", port_name);
+        log::debug!("Connected for Input to {}", port_name);
         self.cur = Some(port_name);
 
         Ok(midi_conn)
@@ -154,7 +154,7 @@ impl PortsOut {
                 Error::PortConnection
             })?;
 
-        log::info!("Connected for Output to {}", port_name);
+        log::debug!("Connected for Output to {}", port_name);
         self.cur = Some(port_name);
 
         Ok(midi_conn)
