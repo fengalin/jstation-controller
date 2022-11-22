@@ -16,6 +16,7 @@ bitflags = "1.3.2"
 chrono = "0.4.19"
 env_logger = "0.9"
 flume = "0.10.13"
+futures = "0.3.25"
 iced = { version = "0.5.2", features = [ "default_system_font", "smol" ] }
 iced_audio = { git = "https://github.com/fengalin/iced_audio", branch = "pure-widgets" }
 iced_lazy = "0.2.0"
@@ -26,8 +27,15 @@ midir = "0.8"
 nom = "7.1.1"
 once_cell = "1.0"
 smallvec = { version = "1.10", features = [ "union" ] }
+smol = "1.2.5"
 thiserror = "1.0"
 timer = "0.2.0"
 
 [profile.release]
 lto = true
+
+[patch.crates-io]
+iced = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
+iced_graphics = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
+iced_native = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
+iced_lazy = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }

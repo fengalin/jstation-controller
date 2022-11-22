@@ -9,7 +9,10 @@ use once_cell::sync::Lazy;
 
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-use crate::midi::{self, port::Direction};
+use crate::{
+    jstation,
+    midi::{self, port::Direction},
+};
 
 static DISCONNECTED: Lazy<Arc<str>> = Lazy::new(|| "Disconnected".into());
 
@@ -61,9 +64,19 @@ pub struct Ports {
 }
 
 impl Ports {
-    pub fn update_from(&mut self, ins: &midi::PortsIn, outs: &midi::PortsOut) {
-        self.ins.update_from(ins);
-        self.outs.update_from(outs);
+    pub fn update_from(&mut self, jstation: &jstation::Interface) {
+        self.ins.update_from(&jstation.ins);
+        self.outs.update_from(&jstation.outs);
+    }
+
+    pub fn set_ports(&mut self, port_in: Arc<str>, port_out: Arc<str>) {
+        self.ins.cur = port_in;
+        self.outs.cur = port_out;
+    }
+
+    pub fn set_disconnected(&mut self) {
+        self.ins.cur = DISCONNECTED.clone();
+        self.outs.cur = DISCONNECTED.clone();
     }
 }
 

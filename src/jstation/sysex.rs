@@ -87,10 +87,10 @@ pub fn parse(i: &[u8]) -> IResult<&[u8], Message> {
         MANUFACTURER_ID[2],
     ])(i)?;
 
-    let (i, tag_chan) = take(1usize)(i)?;
+    let (i, chan) = take(1usize)(i)?;
     let (i, _) = tag([PRODUCT_ID])(i)?;
 
-    let mut checksum = CHECKSUM_INIT ^ tag_chan[0] ^ PRODUCT_ID;
+    let mut checksum = CHECKSUM_INIT ^ chan[0] ^ PRODUCT_ID;
 
     let (i, proc) = procedure::parse(i, &mut checksum)?;
 
@@ -105,12 +105,10 @@ pub fn parse(i: &[u8]) -> IResult<&[u8], Message> {
 
     let (i, _) = tag([midi::sysex::END_TAG])(i)?;
 
-    let tag_chan = midi::TagChannel::from(tag_chan[0]);
-
     Ok((
         i,
         Message {
-            chan: tag_chan.chan,
+            chan: midi::Channel::from(chan[0]),
             proc,
         },
     ))
