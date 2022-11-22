@@ -1,7 +1,7 @@
 # jstation-controller ![CI](https://github.com/fengalin/jstation-controller/workflows/CI/badge.svg)
 
 `jstation-controller` aims to be a cross-platform interface to control the J-Station
-guitare and bass modeling and effect processing system.
+guitar and bass modeling and effect processing system.
 
 Note that this application is in early development. See [gstation-edit](https://github.com/fengalin/gstation-edit) for a working Linux alternative.
 
