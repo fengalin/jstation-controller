@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error)]
 pub enum Error {
     #[error("MIDI initialization failed")]
     Init(#[from] midir::InitError),

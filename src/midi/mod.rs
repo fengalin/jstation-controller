@@ -27,6 +27,12 @@ impl Channel {
     }
 }
 
+impl From<u8> for Channel {
+    fn from(chan: u8) -> Channel {
+        Channel(chan)
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct TagChannel {
     pub tag: Tag,

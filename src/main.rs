@@ -3,7 +3,7 @@ mod midi;
 mod jstation;
 
 mod ui;
-pub use ui::APP_NAME;
+pub use ui::{app, APP_NAME};
 
 pub fn main() -> iced::Result {
     use iced::Application;

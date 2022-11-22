@@ -1,6 +1,6 @@
 use iced::{
-    widget::{column, container, row, text},
-    Alignment, Application, Command, Element, Length, Subscription, Theme,
+    widget::{button, column, container, row, text},
+    Alignment, Application, Command, Element, Length, Theme,
 };
 use iced_audio::{
     text_marks, tick_marks, FreqRange, Knob, LogDBRange, Normal, NormalParam, VSlider,
@@ -19,12 +19,19 @@ pub enum Message {
     VSliderDB(Normal),
     KnobFreq(Normal),
     Ports(ui::port::Selection),
+    StartScan,
     JStation(Result<jstation::Message, jstation::Error>),
+}
+
+#[derive(Debug, Copy, Clone, Hash)]
+pub enum Subscription {
+    JStation(usize),
 }
 
 pub struct App {
     jstation: jstation::Interface,
     ports: Rc<RefCell<ui::port::Ports>>,
+    scanner_ctx: Option<jstation::ScannerContext>,
 
     db_range: LogDBRange,
     freq_range: FreqRange,
@@ -62,7 +69,7 @@ impl Application for App {
         let mut ports = ui::port::Ports::default();
 
         match jstation.refresh() {
-            Ok(()) => ports.update_from(&jstation.ins, &jstation.outs),
+            Ok(()) => ports.update_from(&jstation),
             Err(err) => {
                 // FIXME set a flag to indicate the application can't be used as is
                 let msg = format!("Midi ports not found: {err}");
@@ -77,6 +84,7 @@ impl Application for App {
         let app = App {
             jstation,
             ports: RefCell::new(ports).into(),
+            scanner_ctx: None,
 
             db_range,
             freq_range,
@@ -166,7 +174,9 @@ impl Application for App {
             }
             Ports(ui::port::Selection { port_in, port_out }) => {
                 if let Err(err) = self.jstation.connect(port_in, port_out) {
-                    self.handle_error(err.as_ref());
+                    self.jstation.clear();
+                    self.ports.borrow_mut().set_disconnected();
+                    self.handle_error(&err);
                 }
             }
             JStation(res) => match res {
@@ -176,9 +186,15 @@ impl Application for App {
                     match &sysex.as_ref().proc {
                         WhoAmIResp(resp) => {
                             if let Err(err) = self.jstation.have_who_am_i_resp(resp) {
+                                self.jstation.clear();
+                                self.ports.borrow_mut().set_disconnected();
                                 self.handle_error(&err);
                             } else {
                                 self.output_text = "Found J-Station".to_string();
+
+                                let (port_in, port_out) =
+                                    self.jstation.connected_ports().expect("Not connected");
+                                self.ports.borrow_mut().set_ports(port_in, port_out);
                             }
                         }
                         other => {
@@ -189,21 +205,40 @@ impl Application for App {
                 Ok(jstation::Message::ChannelVoice(cv)) => {
                     log::debug!("Unhandled {:?}", cv.msg);
                 }
+                Err(err) if err.is_handshake_timeout() => {
+                    if let Some(scanner_ctx) = self.scanner_ctx.take() {
+                        self.scanner_ctx = self.jstation.scan_next(scanner_ctx);
+                    }
+
+                    if self.scanner_ctx.is_none() {
+                        self.jstation.clear();
+                        self.ports.borrow_mut().set_disconnected();
+                        self.output_text = "Couldn't find J-Station".to_string();
+                    }
+                }
                 Err(err) => {
                     self.handle_error(&err);
                 }
             },
+            StartScan => {
+                log::debug!("Scanning Midi ports for J-Station");
+                self.scanner_ctx = self.jstation.start_scan();
+
+                if self.scanner_ctx.is_none() {
+                    self.output_text = "Couldn't scan for J-Station".to_string();
+                }
+            }
         }
 
         Command::none()
     }
 
-    fn subscription(&self) -> Subscription<Message> {
+    fn subscription(&self) -> iced::Subscription<Message> {
         self.jstation.subscription().map(Message::JStation)
     }
 
     fn view(&self) -> Element<Message> {
-        //let scan_btn = button(text("Scan")).on_press(Message::Scan);
+        let scan_btn = button(text("Scan")).on_press(Message::StartScan);
         let content = row![
             column![
                 Knob::new(self.freq_param, Message::KnobFreq, || None, || None)
@@ -212,7 +247,7 @@ impl Application for App {
                     .text_marks(&self.freq_text_marks),
                 ui::port::Panel::new(self.ports.clone(), Message::Ports),
                 text(&self.output_text).width(Length::Fill),
-                //scan_btn,
+                scan_btn,
             ]
             .max_width(900)
             .spacing(20)
