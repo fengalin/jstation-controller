@@ -20,7 +20,7 @@ impl UtilitySettingsReq {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct UtilitySettingsResp {
     pub stereo_mono: bool,
     pub dry_track: bool,

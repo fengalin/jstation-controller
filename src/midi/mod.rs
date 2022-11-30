@@ -36,6 +36,14 @@ impl From<u8> for Channel {
     }
 }
 
+use std::fmt;
+
+impl fmt::Display for Channel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&(self.0 + 1), f)
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct TagChannel {
     pub tag: Tag,

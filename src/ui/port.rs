@@ -157,13 +157,11 @@ where
         let in_label = text("In:").width(label_width);
         let out_label = text("Out:").width(label_width);
 
-        let content: Element<_, Renderer> = column![
-            text("Midi Connection").size(30),
-            column![row![in_label, in_pick_list], row![out_label, out_pick_list]].spacing(10),
-        ]
-        .align_items(Alignment::Fill)
-        .spacing(10)
-        .into();
+        let content: Element<_, Renderer> =
+            column![row![in_label, in_pick_list], row![out_label, out_pick_list]]
+                .align_items(Alignment::Fill)
+                .spacing(10)
+                .into();
 
         // Uncomment to debug layout
         //content.explain(iced::Color::BLACK)
