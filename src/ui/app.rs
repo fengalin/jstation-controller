@@ -1,9 +1,6 @@
 use iced::{
-    widget::{button, column, container, row, text},
-    Alignment, Application, Command, Element, Length, Theme,
-};
-use iced_audio::{
-    text_marks, tick_marks, FreqRange, Knob, LogDBRange, Normal, NormalParam, VSlider,
+    widget::{button, checkbox, column, container, row, text},
+    Application, Command, Element, Length, Theme,
 };
 use once_cell::sync::Lazy;
 
@@ -13,14 +10,20 @@ pub static APP_NAME: Lazy<Arc<str>> = Lazy::new(|| "J-Station Controller".into()
 
 use crate::{jstation, midi, ui};
 
-// The message when a parameter widget is moved by the user
 #[derive(Debug, Clone)]
 pub enum Message {
-    VSliderDB(Normal),
-    KnobFreq(Normal),
     Ports(ui::port::Selection),
     StartScan,
+    ShowUtilitySettings(bool),
+    ShowMidiPanel(bool),
     JStation(Result<jstation::Message, jstation::Error>),
+    UtilitySettings(ui::utility_settings::Event),
+}
+
+impl From<ui::utility_settings::Event> for Message {
+    fn from(evt: ui::utility_settings::Event) -> Self {
+        Message::UtilitySettings(evt)
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash)]
@@ -30,21 +33,11 @@ pub enum Subscription {
 
 pub struct App {
     jstation: ui::jstation::Interface,
+    show_midi_panel: bool,
     ports: Rc<RefCell<ui::port::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
-
-    db_range: LogDBRange,
-    freq_range: FreqRange,
-
-    db_param: NormalParam,
-    freq_param: NormalParam,
-
-    db_tick_marks: tick_marks::Group,
-    db_text_marks: text_marks::Group,
-
-    freq_tick_marks: tick_marks::Group,
-    freq_text_marks: text_marks::Group,
-
+    show_utility_settings: bool,
+    utility_settings: jstation::procedure::UtilitySettingsResp,
     output_text: String,
 }
 
@@ -78,74 +71,15 @@ impl Application for App {
             }
         }
 
-        let db_range = LogDBRange::new(-60.0, 6.0, 0.8.into());
-        let freq_range = FreqRange::default();
-
         let app = App {
             jstation,
+
+            show_midi_panel: false,
             ports: RefCell::new(ports).into(),
             scanner_ctx: None,
 
-            db_range,
-            freq_range,
-
-            db_param: db_range.default_normal_param(),
-            freq_param: freq_range.normal_param(1000.0, 1000.0),
-
-            db_tick_marks: vec![
-                (db_range.map_to_normal(6.0), tick_marks::Tier::Two),
-                (db_range.map_to_normal(5.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(4.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(3.0), tick_marks::Tier::Two),
-                (db_range.map_to_normal(2.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(1.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(0.0), tick_marks::Tier::One),
-                (db_range.map_to_normal(-1.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(-2.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(-3.0), tick_marks::Tier::Two),
-                (db_range.map_to_normal(-5.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(-6.0), tick_marks::Tier::Two),
-                (db_range.map_to_normal(-7.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(-8.0), tick_marks::Tier::Three),
-                (db_range.map_to_normal(-9.0), tick_marks::Tier::Two),
-                (db_range.map_to_normal(-10.0), tick_marks::Tier::Two),
-                (db_range.map_to_normal(-20.0), tick_marks::Tier::Two),
-                (db_range.map_to_normal(-40.0), tick_marks::Tier::Two),
-            ]
-            .into(),
-
-            db_text_marks: vec![
-                (db_range.map_to_normal(6.0), "+6"),
-                (db_range.map_to_normal(3.0), "+3"),
-                (db_range.map_to_normal(0.0), "0"),
-                (db_range.map_to_normal(-3.0), "-3"),
-                (db_range.map_to_normal(-6.0), "-6"),
-                (db_range.map_to_normal(-10.0), "-10"),
-                (db_range.map_to_normal(-20.0), "-20"),
-                (db_range.map_to_normal(-40.0), "-40"),
-            ]
-            .into(),
-
-            freq_tick_marks: vec![
-                (freq_range.map_to_normal(20.0), tick_marks::Tier::Two),
-                (freq_range.map_to_normal(50.0), tick_marks::Tier::Two),
-                (freq_range.map_to_normal(100.0), tick_marks::Tier::One),
-                (freq_range.map_to_normal(200.0), tick_marks::Tier::Two),
-                (freq_range.map_to_normal(400.0), tick_marks::Tier::Two),
-                (freq_range.map_to_normal(1000.0), tick_marks::Tier::One),
-                (freq_range.map_to_normal(2000.0), tick_marks::Tier::Two),
-                (freq_range.map_to_normal(5000.0), tick_marks::Tier::Two),
-                (freq_range.map_to_normal(10000.0), tick_marks::Tier::One),
-                (freq_range.map_to_normal(20000.0), tick_marks::Tier::Two),
-            ]
-            .into(),
-
-            freq_text_marks: vec![
-                (freq_range.map_to_normal(100.0), "100"),
-                (freq_range.map_to_normal(1000.0), "1k"),
-                (freq_range.map_to_normal(10000.0), "10k"),
-            ]
-            .into(),
+            show_utility_settings: false,
+            utility_settings: Default::default(),
 
             output_text,
         };
@@ -157,29 +91,13 @@ impl Application for App {
         APP_NAME.to_string()
     }
 
+    fn theme(&self) -> Self::Theme {
+        Theme::Dark
+    }
+
     fn update(&mut self, event: Message) -> Command<Message> {
         use Message::*;
         match event {
-            VSliderDB(normal) => {
-                self.db_param.update(normal);
-
-                let value = self.db_range.unmap_to_value(normal);
-                self.output_text = format!("VSliderDB: {:.3}", value);
-            }
-            KnobFreq(normal) => {
-                self.freq_param.update(normal);
-
-                let value = self.freq_range.unmap_to_value(normal);
-                self.output_text = format!("KnobFreq: {:.2}", value);
-            }
-            Ports(ui::port::Selection { port_in, port_out }) => {
-                use midi::Scannable;
-                if let Err(err) = self.jstation.connect(port_in, port_out) {
-                    self.jstation.clear();
-                    self.ports.borrow_mut().set_disconnected();
-                    self.handle_error(&err);
-                }
-            }
             JStation(res) => match res {
                 // FIXME move this in a dedicate function
                 Ok(jstation::Message::SysEx(sysex)) => {
@@ -198,6 +116,7 @@ impl Application for App {
                                 self.ports.borrow_mut().set_ports(port_in, port_out);
                             }
                         }
+                        UtilitySettingsResp(resp) => self.utility_settings = *resp,
                         other => {
                             log::debug!("Unhandled {other:?}");
                         }
@@ -221,12 +140,32 @@ impl Application for App {
                     self.handle_error(&err);
                 }
             },
+            ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
+            Ports(ui::port::Selection { port_in, port_out }) => {
+                use midi::Scannable;
+                if let Err(err) = self.jstation.connect(port_in, port_out) {
+                    self.jstation.clear();
+                    self.ports.borrow_mut().set_disconnected();
+                    self.handle_error(&err);
+                }
+            }
             StartScan => {
                 log::debug!("Scanning Midi ports for J-Station");
                 self.scanner_ctx = self.jstation.start_scan();
 
                 if self.scanner_ctx.is_none() {
                     self.output_text = "Couldn't scan for J-Station".to_string();
+                }
+            }
+            ShowUtilitySettings(must_show) => self.show_utility_settings = must_show,
+            UtilitySettings(event) => {
+                use ui::utility_settings::Event::*;
+                dbg!(&event);
+                match event {
+                    UtilitySettings(settings) => self.utility_settings = settings,
+                    DigitalOutLevel(val) => {
+                        self.utility_settings.digital_out_level = val;
+                    }
                 }
             }
         }
@@ -239,36 +178,48 @@ impl Application for App {
     }
 
     fn view(&self) -> Element<Message> {
-        let scan_btn = button(text("Scan")).on_press(Message::StartScan);
-        let content = row![
-            column![
-                Knob::new(self.freq_param, Message::KnobFreq, || None, || None)
-                    .size(Length::Units(50))
-                    .tick_marks(&self.freq_tick_marks)
-                    .text_marks(&self.freq_text_marks),
-                ui::port::Panel::new(self.ports.clone(), Message::Ports),
-                text(&self.output_text).width(Length::Fill),
-                scan_btn,
-            ]
-            .max_width(900)
-            .spacing(20)
-            .padding(20)
-            .align_items(Alignment::Center),
-            container(
-                VSlider::new(self.db_param, Message::VSliderDB)
-                    .tick_marks(&self.db_tick_marks)
-                    .text_marks(&self.db_text_marks)
-            )
-            .height(Length::Fill)
-            .max_height(300),
-        ]
-        .spacing(40);
+        use Message::*;
+
+        let mut midi_panel = column![checkbox(
+            "Midi Connection",
+            self.show_midi_panel,
+            ShowMidiPanel
+        )];
+        if self.show_midi_panel {
+            midi_panel = midi_panel.push(
+                column![
+                    ui::port::Panel::new(self.ports.clone(), Ports),
+                    row![
+                        button(text("Scan")).on_press(StartScan),
+                        text(&self.output_text).width(Length::Fill),
+                    ]
+                    .spacing(20),
+                ]
+                .spacing(10)
+                .padding(5),
+            );
+        }
+
+        let mut utility_settings = column![checkbox(
+            "Utility Settings",
+            self.show_utility_settings,
+            ShowUtilitySettings
+        ),];
+        if self.show_utility_settings {
+            utility_settings = utility_settings.push(
+                container(ui::utility_settings::Panel::new(
+                    self.utility_settings,
+                    UtilitySettings,
+                ))
+                .padding(5),
+            );
+        }
+
+        let content = row![utility_settings, midi_panel].spacing(20).padding(20);
 
         container(content)
             .width(Length::Fill)
             .height(Length::Fill)
-            .center_x()
-            .center_y()
             .into()
     }
 }

@@ -34,6 +34,9 @@ timer = "0.2.0"
 [profile.release]
 lto = true
 
+#[patch.'https://github.com/fengalin/iced_audio']
+#iced_audio = { path = "../iced_audio" }
+
 [patch.crates-io]
 iced = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
 iced_graphics = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
