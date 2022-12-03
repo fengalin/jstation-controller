@@ -1,6 +1,5 @@
 use iced::{
-    overlay,
-    widget::{self, column, pick_list, row, text},
+    widget::{column, pick_list, row, text},
     Alignment, Element, Length,
 };
 use iced_lazy::{self, Component};
@@ -97,17 +96,7 @@ impl<'a, Message> Panel<'a, Message> {
     }
 }
 
-impl<'a, Message, Renderer> Component<Message, Renderer> for Panel<'a, Message>
-where
-    Renderer: 'a + iced_native::text::Renderer,
-    Renderer::Theme: widget::pick_list::StyleSheet
-        + widget::text::StyleSheet
-        + widget::scrollable::StyleSheet
-        + widget::container::StyleSheet
-        + overlay::menu::StyleSheet,
-    <Renderer::Theme as overlay::menu::StyleSheet>::Style:
-        From<<Renderer::Theme as widget::pick_list::StyleSheet>::Style>,
-{
+impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
     type State = ();
     type Event = Event;
 
@@ -134,7 +123,7 @@ where
         None
     }
 
-    fn view(&self, _state: &Self::State) -> Element<Event, Renderer> {
+    fn view(&self, _state: &Self::State) -> Element<Event, iced::Renderer> {
         use Direction::*;
 
         let ports = self.ports.borrow();
@@ -157,30 +146,22 @@ where
         let in_label = text("In:").width(label_width);
         let out_label = text("Out:").width(label_width);
 
-        let content: Element<_, Renderer> =
+        let content: Element<_> =
             column![row![in_label, in_pick_list], row![out_label, out_pick_list]]
                 .align_items(Alignment::Fill)
                 .spacing(10)
                 .into();
 
-        // Uncomment to debug layout
-        //content.explain(iced::Color::BLACK)
-        content
+        // Set to true to debug layout
+        if false {
+            content.explain(iced::Color::WHITE)
+        } else {
+            content
+        }
     }
 }
 
-impl<'a, Message, Renderer> From<Panel<'a, Message>> for Element<'a, Message, Renderer>
-where
-    Message: 'a,
-    Renderer: 'a + iced_native::text::Renderer,
-    Renderer::Theme: widget::pick_list::StyleSheet
-        + widget::text::StyleSheet
-        + widget::scrollable::StyleSheet
-        + widget::container::StyleSheet
-        + overlay::menu::StyleSheet,
-    <Renderer::Theme as overlay::menu::StyleSheet>::Style:
-        From<<Renderer::Theme as widget::pick_list::StyleSheet>::Style>,
-{
+impl<'a, Message: 'a> From<Panel<'a, Message>> for Element<'a, Message, iced::Renderer> {
     fn from(panel: Panel<'a, Message>) -> Self {
         iced_lazy::component(panel)
     }

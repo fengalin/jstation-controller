@@ -195,9 +195,12 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         .align_items(Alignment::Fill)
         .into();
 
-        // Uncomment to debug layout
-        //content.explain(iced::Color::BLACK)
-        content
+        // Set to true to debug layout
+        if false {
+            content.explain(iced::Color::WHITE)
+        } else {
+            content
+        }
     }
 }
 
