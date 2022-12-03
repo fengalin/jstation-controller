@@ -1,10 +1,12 @@
 use iced::{
-    widget::{button, checkbox, column, container, row, text},
+    widget::{button, checkbox, column, container, row, text, vertical_space},
     Application, Command, Element, Length, Theme,
 };
+use iced_native::command::Action;
 use once_cell::sync::Lazy;
+use smol::future::FutureExt;
 
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, future, rc::Rc, sync::Arc};
 
 pub static APP_NAME: Lazy<Arc<str>> = Lazy::new(|| "J-Station Controller".into());
 
@@ -31,6 +33,14 @@ pub enum Subscription {
     JStation(usize),
 }
 
+#[derive(Clone, Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Couldn't find J-Station")]
+    JStationNotFound,
+    #[error("J-Station error: {}", .0)]
+    JStation(#[from] jstation::Error),
+}
+
 pub struct App {
     jstation: ui::jstation::Interface,
     show_midi_panel: bool,
@@ -42,10 +52,71 @@ pub struct App {
 }
 
 impl App {
-    fn handle_error(&mut self, err: &dyn std::error::Error) {
+    fn show_error(&mut self, err: &dyn std::error::Error) {
         log::error!("{err}");
         self.output_text = err.to_string();
-        // FIXME probably need to refresh UI
+    }
+
+    fn handle_jstation_event(
+        &mut self,
+        res: Result<jstation::Message, jstation::Error>,
+    ) -> Result<(), Error> {
+        use jstation::Message::*;
+        match res {
+            Ok(SysEx(sysex)) => {
+                use jstation::Procedure::*;
+                match &sysex.as_ref().proc {
+                    WhoAmIResp(resp) => {
+                        self.jstation.have_who_am_i_resp(resp).map_err(|err| {
+                            self.jstation.clear();
+                            self.ports.borrow_mut().set_disconnected();
+
+                            err
+                        })?;
+
+                        self.output_text = "Found J-Station".to_string();
+
+                        let (port_in, port_out) =
+                            self.jstation.connected_ports().expect("Not connected");
+                        self.ports.borrow_mut().set_ports(port_in, port_out);
+                    }
+                    UtilitySettingsResp(resp) => {
+                        self.utility_settings = *resp;
+
+                        // FIXME handle ui consequence of the error
+                        self.jstation.bank_dump()?;
+                    }
+                    OneProgramResp(resp) => {
+                        log::debug!("{:?}", resp.prog);
+                    }
+                    EndBankDumpResp(_) => {
+                        log::debug!("EndBankDumpResp");
+                    }
+                    other => {
+                        log::debug!("Unhandled {other:?}");
+                    }
+                }
+            }
+            Ok(ChannelVoice(cv)) => {
+                log::info!("Unhandled {:?}", cv.msg);
+            }
+            Err(err) if err.is_handshake_timeout() => {
+                if let Some(scanner_ctx) = self.scanner_ctx.take() {
+                    self.scanner_ctx = self.jstation.scan_next(scanner_ctx);
+                }
+
+                if self.scanner_ctx.is_none() {
+                    self.jstation.clear();
+                    self.ports.borrow_mut().set_disconnected();
+                    self.show_midi_panel = true;
+
+                    return Err(Error::JStationNotFound);
+                }
+            }
+            Err(err) => Err(err)?,
+        }
+
+        Ok(())
     }
 }
 
@@ -84,7 +155,10 @@ impl Application for App {
             output_text,
         };
 
-        (app, Command::none())
+        (
+            app,
+            Command::single(Action::Future(future::ready(Message::StartScan).boxed())),
+        )
     }
 
     fn title(&self) -> String {
@@ -98,55 +172,18 @@ impl Application for App {
     fn update(&mut self, event: Message) -> Command<Message> {
         use Message::*;
         match event {
-            JStation(res) => match res {
-                // FIXME move this in a dedicate function
-                Ok(jstation::Message::SysEx(sysex)) => {
-                    use jstation::Procedure::*;
-                    match &sysex.as_ref().proc {
-                        WhoAmIResp(resp) => {
-                            if let Err(err) = self.jstation.have_who_am_i_resp(resp) {
-                                self.jstation.clear();
-                                self.ports.borrow_mut().set_disconnected();
-                                self.handle_error(&err);
-                            } else {
-                                self.output_text = "Found J-Station".to_string();
-
-                                let (port_in, port_out) =
-                                    self.jstation.connected_ports().expect("Not connected");
-                                self.ports.borrow_mut().set_ports(port_in, port_out);
-                            }
-                        }
-                        UtilitySettingsResp(resp) => self.utility_settings = *resp,
-                        other => {
-                            log::debug!("Unhandled {other:?}");
-                        }
-                    }
+            JStation(res) => {
+                if let Err(err) = self.handle_jstation_event(res) {
+                    self.show_error(&err);
                 }
-                Ok(jstation::Message::ChannelVoice(cv)) => {
-                    log::debug!("Unhandled {:?}", cv.msg);
-                }
-                Err(err) if err.is_handshake_timeout() => {
-                    if let Some(scanner_ctx) = self.scanner_ctx.take() {
-                        self.scanner_ctx = self.jstation.scan_next(scanner_ctx);
-                    }
-
-                    if self.scanner_ctx.is_none() {
-                        self.jstation.clear();
-                        self.ports.borrow_mut().set_disconnected();
-                        self.output_text = "Couldn't find J-Station".to_string();
-                    }
-                }
-                Err(err) => {
-                    self.handle_error(&err);
-                }
-            },
+            }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
             Ports(ui::port::Selection { port_in, port_out }) => {
                 use midi::Scannable;
                 if let Err(err) = self.jstation.connect(port_in, port_out) {
                     self.jstation.clear();
                     self.ports.borrow_mut().set_disconnected();
-                    self.handle_error(&err);
+                    self.show_error(&err);
                 }
             }
             StartScan => {
@@ -189,11 +226,7 @@ impl Application for App {
             midi_panel = midi_panel.push(
                 column![
                     ui::port::Panel::new(self.ports.clone(), Ports),
-                    row![
-                        button(text("Scan")).on_press(StartScan),
-                        text(&self.output_text).width(Length::Fill),
-                    ]
-                    .spacing(20),
+                    button(text("Scan")).on_press(StartScan),
                 ]
                 .spacing(10)
                 .padding(5),
@@ -215,9 +248,16 @@ impl Application for App {
             );
         }
 
-        let content = row![utility_settings, midi_panel].spacing(20).padding(20);
+        let content = column![
+            row![utility_settings, midi_panel]
+                .spacing(20)
+                .width(Length::Fill),
+            vertical_space(Length::Fill),
+            text(&self.output_text),
+        ];
 
         container(content)
+            .padding(10)
             .width(Length::Fill)
             .height(Length::Fill)
             .into()

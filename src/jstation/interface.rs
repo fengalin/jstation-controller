@@ -21,9 +21,25 @@ pub enum Error {
     MidiSend,
     #[error("Device handshake timed out")]
     HandshakeTimeout,
+    #[error("{}: {}", ctx, source)]
+    WithContext {
+        ctx: Arc<str>,
+        source: Arc<dyn std::error::Error + Send + Sync>,
+    },
 }
 
 impl Error {
+    // FIXME there must be a better way...
+    pub fn with_context<E>(ctx: &'static str, source: E) -> Self
+    where
+        E: 'static + std::error::Error + Send + Sync,
+    {
+        Error::WithContext {
+            ctx: Arc::from(ctx),
+            source: Arc::new(source),
+        }
+    }
+
     pub fn is_handshake_timeout(&self) -> bool {
         matches!(self, Error::HandshakeTimeout)
     }
@@ -71,12 +87,13 @@ impl Interface {
         self.sysex_chan = resp.sysex_chan;
 
         log::debug!("Sending UtilitySettingsReq");
-        let res = self.send_sysex(procedure::UtilitySettingsReq);
-        if res.is_err() {
-            // FIXME should probably assume connection is broken
-        }
+        self.send_sysex(procedure::UtilitySettingsReq)
+            .map_err(|err| Error::with_context("Utility Settings req.", err))
+    }
 
-        res
+    pub fn bank_dump(&mut self) -> Result<(), Error> {
+        self.send_sysex(procedure::BankDumpReq)
+            .map_err(|err| Error::with_context("Bank Dump req.", err))
     }
 
     fn send_sysex(&mut self, proc: impl ProcedureBuilder) -> Result<(), Error> {

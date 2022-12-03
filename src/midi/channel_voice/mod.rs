@@ -36,7 +36,7 @@ pub fn parse(i: &[u8]) -> IResult<&[u8], ChannelVoice> {
         other => {
             log::warn!(
                 "Unknown Midi ChannelVoice tag with id: 0x{:02x}",
-                other.into_inner(),
+                u8::from(other),
             );
             return Err(nom::Err::Failure(Error::new(i, error::ErrorKind::NoneOf)));
         }

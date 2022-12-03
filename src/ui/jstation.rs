@@ -40,6 +40,10 @@ impl Interface {
         self.iface.have_who_am_i_resp(resp)
     }
 
+    pub fn bank_dump(&mut self) -> Result<(), Error> {
+        self.iface.bank_dump()
+    }
+
     fn set_listener(&mut self, listener: Listener) {
         self.subscription = Some(Subscription {
             id: self.next_subscription_id,
