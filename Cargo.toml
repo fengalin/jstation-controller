@@ -18,7 +18,7 @@ env_logger = "0.9"
 flume = "0.10.13"
 futures = "0.3.25"
 iced = { version = "0.5.2", features = [ "default_system_font", "smol" ] }
-iced_audio = { git = "https://github.com/fengalin/iced_audio", branch = "pure-widgets" }
+iced_audio = { git = "https://github.com/iced-rs/iced_audio" }
 iced_lazy = "0.2.0"
 iced_native = "0.6.1"
 image = "0.24"

@@ -1,4 +1,4 @@
-use nom::{branch::alt, IResult};
+pub mod data;
 
 mod interface;
 pub use interface::{Error, Interface, Listener};
@@ -12,6 +12,7 @@ pub use sysex::{
 pub mod procedure;
 pub use procedure::{Procedure, ProcedureBuilder};
 
+use nom::{branch::alt, IResult};
 use std::sync::Arc;
 
 use crate::midi;
@@ -68,7 +69,7 @@ pub mod split_bytes {
     }
 
     pub fn from_chan(chan: Channel) -> [u8; 2] {
-        from_u8(chan.into_inner())
+        from_u8(chan.into())
     }
 
     pub fn from_u16(val: u16) -> [u8; 4] {

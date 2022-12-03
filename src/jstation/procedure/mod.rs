@@ -85,6 +85,9 @@ macro_rules! declare_procs(
 );
 
 declare_procs!(
-    who_am_i: WhoAmIReq, WhoAmIResp;
+    bank_dump: BankDumpReq, StartBankDumpResp, EndBankDumpResp;
     utility_settings: UtilitySettingsReq, UtilitySettingsResp;
+    one_program: OneProgramReq, OneProgramResp;
+    program_indices: ProgramIndicesReq, ProgramIndicesResp;
+    who_am_i: WhoAmIReq, WhoAmIResp;
 );

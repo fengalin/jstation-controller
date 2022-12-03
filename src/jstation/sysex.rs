@@ -36,7 +36,7 @@ impl BufferBuilder {
 
         let mut checksum = CHECKSUM_INIT;
         buf.extend(
-            [chan.into_inner(), PRODUCT_ID, proc_id]
+            [chan.into(), PRODUCT_ID, proc_id]
                 .into_iter()
                 .chain(split_bytes::from_u8(version))
                 .inspect(write_checksum(&mut checksum)),
@@ -121,6 +121,7 @@ pub fn take_split_bytes_bool<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i 
     Ok((i, split_bytes::to_bool(bytes)))
 }
 
+#[track_caller]
 pub fn take_split_bytes_u8<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], u8> {
     let (i, bytes) = take(2usize)(i)?;
     *checksum = *checksum ^ bytes[0] ^ bytes[1];
@@ -132,6 +133,7 @@ pub fn take_split_bytes_chan<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i 
     take_split_bytes_u8(i, checksum).map(|(i, tag_chan)| (i, midi::TagChannel::from(tag_chan).chan))
 }
 
+#[track_caller]
 pub fn take_split_bytes_u16<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], u16> {
     let (i, bytes) = take(4usize)(i)?;
     *checksum = *checksum ^ bytes[0] ^ bytes[1] ^ bytes[2] ^ bytes[3];
@@ -139,6 +141,7 @@ pub fn take_split_bytes_u16<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [
     Ok((i, split_bytes::to_u16(bytes)))
 }
 
+#[track_caller]
 pub fn take_split_bytes_len<'i>(
     i: &'i [u8],
     checksum: &mut u8,

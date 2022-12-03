@@ -10,12 +10,20 @@ pub use port::{DirectionalPorts, PortsIn, PortsOut};
 pub mod scanner;
 pub use scanner::Scannable;
 
+use std::fmt;
+
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag(u8);
 
-impl Tag {
-    pub const fn into_inner(self) -> u8 {
-        self.0
+impl From<Tag> for u8 {
+    fn from(tag: Tag) -> Self {
+        tag.0
+    }
+}
+
+impl fmt::Display for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&(self.0 + 1), f)
     }
 }
 
@@ -24,10 +32,6 @@ pub struct Channel(u8);
 
 impl Channel {
     pub const ALL: Self = Channel(0x7e);
-
-    pub const fn into_inner(self) -> u8 {
-        self.0
-    }
 }
 
 impl From<u8> for Channel {
@@ -36,7 +40,11 @@ impl From<u8> for Channel {
     }
 }
 
-use std::fmt;
+impl From<Channel> for u8 {
+    fn from(chan: Channel) -> Self {
+        chan.0
+    }
+}
 
 impl fmt::Display for Channel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

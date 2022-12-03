@@ -36,7 +36,7 @@ impl From<UtilitySettingsResp> for Settings {
             global_cabinet: val.global_cabinet,
             midi_merge: val.midi_merge,
             midi_channel: MIDI_CHANNEL_RANGE
-                .normal_param(val.midi_channel.into_inner() as i32, DEFAULT_MIDI_CHANNEL),
+                .normal_param(u8::from(val.midi_channel) as i32, DEFAULT_MIDI_CHANNEL),
         }
     }
 }
@@ -61,7 +61,7 @@ pub enum Event {
     DigitalOutLevel(u8),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum PrivEvent {
     Stereo(bool),
     DryTrack(bool),
@@ -172,7 +172,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
                 text("Midi Channel"),
                 row![
                     Knob::new(self.settings.midi_channel, MidiChannel)
-                        .on_release(MidiChannelReleased)
+                        .on_release(|| Some(MidiChannelReleased))
                         .size(KNOB_SIZE),
                     text(&self.midi_channel_str),
                 ]
