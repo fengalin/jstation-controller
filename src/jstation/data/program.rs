@@ -1,44 +1,41 @@
 use std::{borrow::Cow, fmt};
 
-pub const PARAM_COUNT: usize = 44;
-const NAME_MAX_LEN: usize = 20;
-
-#[derive(Clone, Debug, thiserror::Error)]
-pub enum Error {
-    #[error("Program data out of range: {}", .0)]
-    DataOutOfRange(usize),
-    #[error("Program name out of range: {}", .0)]
-    NameOutOfRange(usize),
-}
+use crate::jstation::{
+    data::{ParameterNumber, RawParameter, RawValue},
+    Error,
+};
 
 #[derive(Debug)]
 pub struct Program {
     bank: ProgramBank,
     nb: ProgramNumber,
 
-    original_data: Cow<'static, [u8]>,
+    original_data: Cow<'static, [RawValue]>,
     original_name: Cow<'static, str>,
 
-    data: Cow<'static, [u8]>,
+    data: Cow<'static, [RawValue]>,
     name: Cow<'static, str>,
 }
 
 impl Program {
+    pub const PARAM_COUNT: usize = (ParameterNumber::MAX.as_u8() + 1) as usize;
+    const NAME_MAX_LEN: usize = 20;
+
     pub fn try_new(
         bank: ProgramBank,
         nb: ProgramNumber,
-        data: Vec<u8>,
+        data: Vec<RawValue>,
         name: String,
     ) -> Result<Self, Error> {
-        if data.len() > PARAM_COUNT {
-            return Err(Error::DataOutOfRange(data.len()));
+        if data.len() > Self::PARAM_COUNT {
+            return Err(Error::ProgramDataOutOfRange(data.len()));
         }
 
-        if name.len() > NAME_MAX_LEN {
-            return Err(Error::NameOutOfRange(name.len()));
+        if name.len() > Self::NAME_MAX_LEN {
+            return Err(Error::ProgramNameOutOfRange(name.len()));
         }
 
-        let data = Cow::<[u8]>::from(data);
+        let data = Cow::<[RawValue]>::from(data);
         let name = Cow::<str>::from(name);
 
         Ok(Program {
@@ -59,12 +56,16 @@ impl Program {
         self.nb
     }
 
-    pub fn data(&self) -> &[u8] {
+    pub fn data(&self) -> &[RawValue] {
         &self.data
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn parameter(&self, nb: ParameterNumber) -> RawParameter {
+        RawParameter::new(nb, self.data[nb.as_u8() as usize])
     }
 
     pub fn has_changed(&self) -> bool {
@@ -95,8 +96,8 @@ impl Program {
     pub fn rename_as(&mut self, mut name: String) {
         // Truncate the name so as to comply with the device's limits
         let buf = name.as_bytes();
-        if buf.len() > NAME_MAX_LEN {
-            name = String::from_utf8_lossy(&buf[..NAME_MAX_LEN]).to_string();
+        if buf.len() > Self::NAME_MAX_LEN {
+            name = String::from_utf8_lossy(&buf[..Self::NAME_MAX_LEN]).to_string();
         }
 
         if name == self.name {
@@ -155,12 +156,6 @@ impl From<ProgramBank> for u8 {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct ProgramNumber(u8);
-
-impl ProgramNumber {
-    pub const fn into_inner(self) -> u8 {
-        self.0
-    }
-}
 
 impl From<u8> for ProgramNumber {
     fn from(nb: u8) -> Self {

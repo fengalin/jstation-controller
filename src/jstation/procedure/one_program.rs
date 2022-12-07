@@ -1,14 +1,14 @@
 use nom::{error::{self, Error}, IResult};
 
 use crate::jstation::{
-    data::{program, Program, ProgramBank},
+    data::{Program, ProgramBank, ProgramNumber, RawValue},
     split_bytes, take_split_bytes_u16, take_split_bytes_u8, BufferBuilder, ProcedureBuilder
 };
 
 #[derive(Debug)]
 pub struct OneProgramReq {
     pub bank: ProgramBank,
-    pub nb: u8,
+    pub nb: ProgramNumber,
 }
 
 impl ProcedureBuilder for OneProgramReq {
@@ -18,7 +18,7 @@ impl ProcedureBuilder for OneProgramReq {
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_fixed_size_data(
             split_bytes::from_u8(self.bank.into()).into_iter()
-            .chain(split_bytes::from_u8(self.nb).into_iter())
+            .chain(split_bytes::from_u8(self.nb.into()).into_iter())
         );
     }
 }
@@ -26,9 +26,12 @@ impl ProcedureBuilder for OneProgramReq {
 impl OneProgramReq {
     pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramReq> {
         let (i, bank) = take_split_bytes_u8(i, checksum)?;
-        let (i, nb) = take_split_bytes_u8(i, checksum)?;
+        let bank = ProgramBank::from(bank);
 
-        Ok((i, OneProgramReq { bank: bank.into(), nb }))
+        let (i, nb) = take_split_bytes_u8(i, checksum)?;
+        let nb = ProgramNumber::from(nb);
+
+        Ok((i, OneProgramReq { bank, nb }))
     }
 }
 
@@ -49,7 +52,7 @@ impl ProcedureBuilder for OneProgramResp {
     }
 
     fn push_variable_size_data(&self, buffer: &mut crate::jstation::sysex::BufferBuilder) {
-        let mut buf = self.prog.data().to_owned();
+        let mut buf: Vec<u8> = self.prog.data().iter().map(Into::into).collect();
         buf.extend(self.prog.name().as_bytes());
         // Terminal 0 for name
         buf.push(0x00);
@@ -61,18 +64,21 @@ impl ProcedureBuilder for OneProgramResp {
 impl OneProgramResp {
     pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramResp> {
         let (i, bank) = take_split_bytes_u8(i, checksum)?;
+        let bank = ProgramBank::from(bank);
+
         let (i, nb) = take_split_bytes_u8(i, checksum)?;
+        let nb = ProgramNumber::from(nb);
 
         let (mut i, mut len) = take_split_bytes_u16(i, checksum)?;
 
-        let mut data = vec![];
-        for _ in 0..program::PARAM_COUNT {
+        let mut data = Vec::<RawValue>::new();
+        for _ in 0..Program::PARAM_COUNT {
             let (i_, byte) = take_split_bytes_u8(i, checksum)?;
             i = i_;
-            data.push(byte);
+            data.push(byte.into());
         }
 
-        len -= program::PARAM_COUNT as u16;
+        len -= Program::PARAM_COUNT as u16;
 
         let mut name = vec![];
         let mut got_zero = false;
@@ -90,7 +96,7 @@ impl OneProgramResp {
         }
 
         let name = String::from_utf8_lossy(&name).to_string();
-        let prog = Program::try_new(bank.into(), nb.into(), data, name)
+        let prog = Program::try_new(bank, nb, data, name)
             .map_err(|err| {
                 log::error!("{err}");
 

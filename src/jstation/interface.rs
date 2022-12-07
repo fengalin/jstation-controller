@@ -1,49 +1,13 @@
 use std::sync::Arc;
 
 use crate::{
-    jstation::{parse_raw_midi_msg, procedure, sysex, Message, Procedure, ProcedureBuilder},
+    jstation::{parse_raw_midi_msg, procedure, sysex, Error, Message, Procedure, ProcedureBuilder},
     midi,
 };
 
 use std::time::Duration;
 
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(200);
-
-#[derive(Clone, Debug, thiserror::Error)]
-pub enum Error {
-    #[error("Error Parsing MIDI message")]
-    Parse,
-    #[error("{}", .0)]
-    Midi(#[from] midi::Error),
-    #[error("No MIDI connection")]
-    MidiNotConnected,
-    #[error("An error occured sending a MIDI message")]
-    MidiSend,
-    #[error("Device handshake timed out")]
-    HandshakeTimeout,
-    #[error("{}: {}", ctx, source)]
-    WithContext {
-        ctx: Arc<str>,
-        source: Arc<dyn std::error::Error + Send + Sync>,
-    },
-}
-
-impl Error {
-    // FIXME there must be a better way...
-    pub fn with_context<E>(ctx: &'static str, source: E) -> Self
-    where
-        E: 'static + std::error::Error + Send + Sync,
-    {
-        Error::WithContext {
-            ctx: Arc::from(ctx),
-            source: Arc::new(source),
-        }
-    }
-
-    pub fn is_handshake_timeout(&self) -> bool {
-        matches!(self, Error::HandshakeTimeout)
-    }
-}
 
 pub struct Interface {
     pub ins: midi::PortsIn,
