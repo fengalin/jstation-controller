@@ -1,2 +1,13 @@
+#[macro_use]
+pub mod parameter;
+pub use parameter::{
+    BoolCCParameter, BoolParameter, BoolRawParameter, DiscreteCCParameter, DiscreteParameter,
+    DiscreteRange, DiscreteRawParameter, DiscreteValue, Normal, ParameterNumber, RawParameter,
+    RawValue,
+};
+
+pub mod dsp;
+pub use dsp::CCParameter;
+
 pub mod program;
-pub use program::{Program, ProgramBank};
+pub use program::{Program, ProgramBank, ProgramNumber};

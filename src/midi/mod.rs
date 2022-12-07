@@ -1,5 +1,5 @@
 pub mod channel_voice;
-pub use channel_voice::{ChannelVoice, CC};
+pub use channel_voice::{CCNumber, CCValue, ChannelVoice, CC};
 
 mod error;
 pub use error::Error;
@@ -14,6 +14,12 @@ use std::fmt;
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag(u8);
+
+impl Tag {
+    pub fn as_u8(self) -> u8 {
+        self.0
+    }
+}
 
 impl From<Tag> for u8 {
     fn from(tag: Tag) -> Self {
@@ -32,6 +38,10 @@ pub struct Channel(u8);
 
 impl Channel {
     pub const ALL: Self = Channel(0x7e);
+
+    pub fn as_u8(self) -> u8 {
+        self.0
+    }
 }
 
 impl From<u8> for Channel {

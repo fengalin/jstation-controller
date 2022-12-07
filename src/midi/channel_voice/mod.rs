@@ -5,7 +5,7 @@ use nom::{
 };
 
 pub mod cc;
-pub use cc::CC;
+pub use cc::{CCNumber, CCValue, CC};
 
 use crate::midi;
 
@@ -18,7 +18,6 @@ pub struct ChannelVoice {
 #[derive(Copy, Clone, Debug)]
 pub enum Message {
     CC(CC),
-    // FIXME check range / use specific type
     ProgramChange(u8),
 }
 
@@ -36,7 +35,7 @@ pub fn parse(i: &[u8]) -> IResult<&[u8], ChannelVoice> {
         other => {
             log::warn!(
                 "Unknown Midi ChannelVoice tag with id: 0x{:02x}",
-                u8::from(other),
+                other.as_u8(),
             );
             return Err(nom::Err::Failure(Error::new(i, error::ErrorKind::NoneOf)));
         }

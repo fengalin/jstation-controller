@@ -37,20 +37,18 @@ macro_rules! declare_procs(
 
         #[derive(Debug)]
         pub enum Procedure {
-            $(
-                $( $proc($proc), )*
-            )*
+            $( $(
+                $proc($proc),
+            )* )*
         }
 
-        $(
-            $(
-                impl From<$proc> for Procedure {
-                    fn from(proc: $proc) -> Self {
-                        Procedure::$proc(proc)
-                    }
+        $( $(
+            impl From<$proc> for Procedure {
+                fn from(proc: $proc) -> Self {
+                    Procedure::$proc(proc)
                 }
-            )*
-        )*
+            }
+        )* )*
 
         pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], Procedure> {
             let (i, proc_id_version) = take(3usize)(i)?;
@@ -59,12 +57,10 @@ macro_rules! declare_procs(
 
             let proc_id = proc_id_version[0];
             let version = split_bytes::to_u8(&proc_id_version[1..3]);
-
             match (proc_id, version) {
-                $($(
-                    ($module::$proc::ID, $module::$proc::VERSION) => {
-                        $module::$proc::parse(i, checksum)
-                            .map(|(i, proc)| (i, proc.into()))
+                $( $(
+                    ($proc::ID, $proc::VERSION) => {
+                        let (i, proc) = $proc::parse(i, checksum)
                             .map_err(|err| {
                                 log::error!(
                                     "Failed to parse Procedure {}: {err}",
@@ -72,11 +68,13 @@ macro_rules! declare_procs(
                                 );
 
                                 err
-                            })
+                            })?;
+
+                        Ok((i, proc.into()))
                     }
-                )*)*
+                )* )*
                 _ => {
-                    log::warn!("Unknown Procedure with id: 0x{proc_id:02x}, version: {version}");
+                    log::warn!("Unknown Procedure with id: x{proc_id:02x}, version: {version}");
                     Err(nom::Err::Failure(Error::new(i, error::ErrorKind::NoneOf)))
                 }
             }

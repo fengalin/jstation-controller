@@ -1,7 +1,14 @@
+pub mod channel_voice;
+pub use channel_voice::ChannelVoice;
+
 pub mod data;
+pub use data::{CCParameter, Program, ProgramNumber};
+
+mod error;
+pub use error::Error;
 
 mod interface;
-pub use interface::{Error, Interface, Listener};
+pub use interface::{Interface, Listener};
 
 mod sysex;
 pub use sysex::{
@@ -19,12 +26,12 @@ use crate::midi;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ChannelVoice(midi::ChannelVoice),
+    ChannelVoice(ChannelVoice),
     SysEx(Arc<sysex::Message>),
 }
 
-impl From<midi::ChannelVoice> for Message {
-    fn from(cv: midi::ChannelVoice) -> Self {
+impl From<ChannelVoice> for Message {
+    fn from(cv: ChannelVoice) -> Self {
         Message::ChannelVoice(cv)
     }
 }
@@ -36,7 +43,16 @@ impl From<sysex::Message> for Message {
 }
 
 fn parse_midi_channel_voice(i: &[u8]) -> IResult<&[u8], Message> {
-    midi::channel_voice::parse(i).map(|(i, msg)| (i, msg.into()))
+    let (i, cv) = midi::channel_voice::parse(i)?;
+
+    let cv = ChannelVoice::try_from(cv).map_err(|err| {
+        use nom::error::{self, Error};
+
+        log::warn!("{err}");
+        nom::Err::Failure(Error::new(i, error::ErrorKind::NoneOf))
+    })?;
+
+    Ok((i, cv.into()))
 }
 
 fn parse_sysex(i: &[u8]) -> IResult<&[u8], Message> {

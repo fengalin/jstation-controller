@@ -40,5 +40,5 @@ lto = true
 [patch.crates-io]
 iced = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
 iced_graphics = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
-iced_native = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
 iced_lazy = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
+iced_native = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }

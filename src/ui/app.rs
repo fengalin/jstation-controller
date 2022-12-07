@@ -98,7 +98,19 @@ impl App {
                 }
             }
             Ok(ChannelVoice(cv)) => {
-                log::info!("Unhandled {:?}", cv.msg);
+                use jstation::channel_voice::Message::*;
+                match cv.msg {
+                    CC(cc) => {
+                        use jstation::CCParameter::*;
+                        match cc {
+                            Gain(gain) => log::info!("Got {gain:?}"),
+                            other => log::info!("Unhandled cc {other:?}"),
+                        }
+                    }
+                    ProgramChange(pc) => {
+                        log::info!("Unhandled {pc:?}");
+                    }
+                }
             }
             Err(err) if err.is_handshake_timeout() => {
                 if let Some(scanner_ctx) = self.scanner_ctx.take() {
@@ -113,7 +125,14 @@ impl App {
                     return Err(Error::JStationNotFound);
                 }
             }
-            Err(err) => Err(err)?,
+            Err(err) => {
+                // Switch to true to panic on first error
+                if false {
+                    panic!("{err}");
+                } else {
+                    Err(err)?;
+                }
+            }
         }
 
         Ok(())
