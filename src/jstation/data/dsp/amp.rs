@@ -1,5 +1,5 @@
 use crate::{
-    jstation::data::{Normal, ParameterNumber, RawValue},
+    jstation::data::{DiscreteParameter, Normal, ParameterNumber, RawValue},
     midi::CCNumber,
 };
 
@@ -10,7 +10,7 @@ discrete_parameter!(AmpModeling {
     const CC_NB = CCNumber::new(34),
 });
 
-pub static NAMES: [(&str, &str); 25] = [
+pub static NAMES: [(&str, &str); (AmpModeling::MAX_RAW.as_u8() + 1) as usize] = [
     ("J Crunch", "JM150 Millennium Crunch"),
     ("J Solo", "JM150 Millennium Solo"),
     ("J Clean", "JM150 Millennium Clean"),

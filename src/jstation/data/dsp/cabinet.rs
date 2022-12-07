@@ -1,5 +1,5 @@
 use crate::{
-    jstation::data::{Normal, ParameterNumber, RawValue},
+    jstation::data::{DiscreteParameter, Normal, ParameterNumber, RawValue},
     midi::CCNumber,
 };
 
@@ -10,7 +10,7 @@ discrete_parameter!(Cabinet {
     const CC_NB = CCNumber::new(66),
 });
 
-pub static NAMES: [(&str, &str); 19] = [
+pub static NAMES: [(&str, &str); (Cabinet::MAX_RAW.as_u8() + 1) as usize] = [
     ("No Cabinet", ""),
     ("British 4x12", "Marshall 1960A with 75W Celestions"),
     ("Johnson 4x12", "loaded with Vintage 30W Celestions"),
