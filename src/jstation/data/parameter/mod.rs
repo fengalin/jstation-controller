@@ -58,6 +58,17 @@ impl fmt::Display for ParameterNumber {
     }
 }
 
+pub enum ValueStatus {
+    Changed,
+    Unchanged,
+}
+
+impl ValueStatus {
+    pub fn has_changed(self) -> bool {
+        matches!(self, ValueStatus::Changed)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Error, ParameterNumber};

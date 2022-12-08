@@ -1,6 +1,6 @@
 use crate::{jstation::Error, midi::CCValue};
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
 pub struct Normal(f32);
 
 impl Normal {
@@ -69,13 +69,13 @@ mod tests {
         assert_eq!(Normal::try_from(0.5).unwrap(), Normal::HALF);
         assert_eq!(Normal::try_from(1.0).unwrap(), Normal::MAX);
 
-        match Normal::try_from(Normal::MIN.0 - 0.1).unwrap_err() {
-            Error::NormalOutOfRange(val) => assert_eq!(val, Normal::MIN.0 - 0.1),
+        match Normal::try_from(Normal::MIN.0 - f32::EPSILON).unwrap_err() {
+            Error::NormalOutOfRange(val) => assert_eq!(val, Normal::MIN.0 - f32::EPSILON),
             other => panic!("{other}"),
         }
 
-        match Normal::try_from(Normal::MAX.0 + 0.1).unwrap_err() {
-            Error::NormalOutOfRange(val) => assert_eq!(val, Normal::MAX.0 + 0.1),
+        match Normal::try_from(Normal::MAX.0 + f32::EPSILON).unwrap_err() {
+            Error::NormalOutOfRange(val) => assert_eq!(val, Normal::MAX.0 + f32::EPSILON),
             other => panic!("{other}"),
         }
     }

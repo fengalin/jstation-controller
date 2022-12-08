@@ -1,6 +1,6 @@
 use crate::{
     jstation::{
-        data::{Normal, ParameterNumber, RawParameter, RawValue},
+        data::{Normal, ParameterNumber, RawParameter, RawValue, ValueStatus},
         Error,
     },
     midi::{CCNumber, CCValue, CC},
@@ -9,6 +9,7 @@ use crate::{
 pub trait DiscreteParameter:
     From<DiscreteValue> + Into<DiscreteValue> + Copy + Clone + std::fmt::Debug + Sized
 {
+    const NAME: &'static str;
     const DEFAULT: Normal;
     const MIN_RAW: RawValue;
     const MAX_RAW: RawValue;
@@ -18,14 +19,36 @@ pub trait DiscreteParameter:
         DiscreteValue::new(normal, Self::RANGE).into()
     }
 
+    fn try_from_raw(raw: RawValue) -> Result<Self, Error> {
+        let value = DiscreteValue::try_from_raw(raw, Self::RANGE)
+            .map_err(|err| Error::with_context(Self::NAME, err))?;
+
+        Ok(value.into())
+    }
+
+    fn to_raw_value(self) -> RawValue {
+        self.into().get_raw(Self::RANGE)
+    }
+
+    fn normal(self) -> Normal {
+        self.into().normal()
+    }
+
     /// Resets the parameter to its default value.
-    fn reset(&mut self) {
-        *self = DiscreteValue::new(Self::DEFAULT, Self::RANGE).into();
+    fn reset(&mut self) -> ValueStatus {
+        self.set(Self::DEFAULT)
     }
 
     /// Sets the value snapping it to its discrete range.
-    fn set(&mut self, normal: Normal) {
-        *self = DiscreteValue::new(normal, Self::RANGE).into();
+    fn set(&mut self, normal: Normal) -> ValueStatus {
+        let discrete = DiscreteValue::new(normal, Self::RANGE);
+        if discrete == (*self).into() {
+            return ValueStatus::Unchanged;
+        }
+
+        *self = discrete.into();
+
+        ValueStatus::Changed
     }
 }
 
@@ -33,12 +56,8 @@ pub trait DiscreteParameter:
 pub trait DiscreteRawParameter: DiscreteParameter {
     const PARAMETER_NB: ParameterNumber;
 
-    fn try_from_raw(raw: RawValue) -> Result<Self, Error> {
-        DiscreteValue::try_from_raw(raw, Self::RANGE).map(From::from)
-    }
-
-    fn to_raw(self) -> RawParameter {
-        RawParameter::new(Self::PARAMETER_NB, self.into().get_raw(Self::RANGE))
+    fn to_raw_parameter(self) -> RawParameter {
+        RawParameter::new(Self::PARAMETER_NB, self.to_raw_value())
     }
 }
 
@@ -64,6 +83,12 @@ macro_rules! discrete_parameter {
         #[derive(Clone, Copy, Debug)]
         pub struct $param(crate::jstation::data::DiscreteValue);
 
+        impl Default for $param {
+            fn default() -> Self {
+                $param($default.into())
+            }
+        }
+
         impl From<crate::jstation::data::DiscreteValue> for $param {
             fn from(value: crate::jstation::data::DiscreteValue) -> Self {
                 $param(value)
@@ -77,6 +102,7 @@ macro_rules! discrete_parameter {
         }
 
         impl crate::jstation::data::DiscreteParameter for $param {
+            const NAME: &'static str = stringify!($param);
             const DEFAULT: crate::jstation::data::Normal = $default;
             const MIN_RAW: crate::jstation::data::RawValue = $min;
             const MAX_RAW: crate::jstation::data::RawValue = $max;
@@ -192,7 +218,7 @@ macro_rules! discrete_parameter {
 }
 
 // A discrete value which is guaranteed to be snapped to the provided [`DiscreteRange`].
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct DiscreteValue {
     normal: Normal,
 }
@@ -216,6 +242,12 @@ impl DiscreteValue {
 
     pub fn get_raw(&self, range: DiscreteRange) -> RawValue {
         ((self.normal.as_f32() * range.zero_based_max) as u8 + range.min).into()
+    }
+}
+
+impl From<Normal> for DiscreteValue {
+    fn from(normal: Normal) -> Self {
+        DiscreteValue { normal }
     }
 }
 

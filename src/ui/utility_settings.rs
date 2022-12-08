@@ -2,63 +2,20 @@ use iced::{
     widget::{checkbox, column, row, text},
     Alignment, Element, Length,
 };
-use iced_audio::{IntRange, Knob, Normal, NormalParam};
+use iced_audio::{Knob, Normal};
 use iced_lazy::{self, Component};
-use once_cell::sync::Lazy;
 
-use crate::{jstation::procedure::UtilitySettingsResp, midi};
-
-const DEFAULT_DIGITAL_OUT_LEVEL: i32 = 12;
-static DIGITAL_OUT_LEVEL_RANGE: Lazy<IntRange> = Lazy::new(|| IntRange::new(0, 24));
-
-const DEFAULT_MIDI_CHANNEL: i32 = 0;
-static MIDI_CHANNEL_RANGE: Lazy<IntRange> = Lazy::new(|| IntRange::new(0, 15));
+use crate::{
+    jstation::data::dsp::{DigitalOutLevel, UtilitySettings},
+    ui::{jstation_to_ui_param, ui_to_jstation_normal},
+};
 
 const KNOB_SIZE: Length = Length::Units(35);
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Settings {
-    stereo_mono: bool,
-    dry_track: bool,
-    digital_out_level: NormalParam,
-    global_cabinet: bool,
-    midi_merge: bool,
-    midi_channel: NormalParam,
-}
-
-impl From<UtilitySettingsResp> for Settings {
-    fn from(val: UtilitySettingsResp) -> Self {
-        Settings {
-            stereo_mono: val.stereo_mono,
-            dry_track: val.dry_track,
-            digital_out_level: DIGITAL_OUT_LEVEL_RANGE
-                .normal_param(val.digital_out_level as i32, DEFAULT_DIGITAL_OUT_LEVEL),
-            global_cabinet: val.global_cabinet,
-            midi_merge: val.midi_merge,
-            midi_channel: MIDI_CHANNEL_RANGE
-                .normal_param(val.midi_channel.as_u8() as i32, DEFAULT_MIDI_CHANNEL),
-        }
-    }
-}
-
-impl From<Settings> for UtilitySettingsResp {
-    fn from(val: Settings) -> Self {
-        UtilitySettingsResp {
-            stereo_mono: val.stereo_mono,
-            dry_track: val.dry_track,
-            digital_out_level: DIGITAL_OUT_LEVEL_RANGE.unmap_to_value(val.digital_out_level.value)
-                as u8,
-            global_cabinet: val.global_cabinet,
-            midi_merge: val.midi_merge,
-            midi_channel: (MIDI_CHANNEL_RANGE.unmap_to_value(val.midi_channel.value) as u8).into(),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum Event {
-    UtilitySettings(UtilitySettingsResp),
-    DigitalOutLevel(u8),
+    UtilitySettings(UtilitySettings),
+    DigitalOutLevel(DigitalOutLevel),
 }
 
 #[derive(Debug)]
@@ -73,7 +30,7 @@ pub enum PrivEvent {
 }
 
 pub struct Panel<'a, Message> {
-    settings: Settings,
+    settings: UtilitySettings,
     digital_out_level_str: String,
     midi_channel_str: String,
     midi_channel_changed: bool,
@@ -81,12 +38,12 @@ pub struct Panel<'a, Message> {
 }
 
 impl<'a, Message> Panel<'a, Message> {
-    pub fn new<F>(settings: UtilitySettingsResp, on_change: F) -> Self
+    pub fn new<F>(settings: UtilitySettings, on_change: F) -> Self
     where
         F: 'a + Fn(Event) -> Message,
     {
         Self {
-            settings: settings.into(),
+            settings,
             digital_out_level_str: format!("{:02}", settings.digital_out_level),
             midi_channel_str: format!("{:02}", settings.midi_channel),
             midi_channel_changed: false,
@@ -99,34 +56,42 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
     type State = ();
     type Event = PrivEvent;
 
-    fn update(&mut self, _state: &mut Self::State, mut event: PrivEvent) -> Option<Message> {
+    fn update(&mut self, _state: &mut Self::State, event: PrivEvent) -> Option<Message> {
+        use crate::jstation::data::DiscreteParameter;
+
         use PrivEvent::*;
         match event {
             Stereo(is_checked) => self.settings.stereo_mono = is_checked,
             DryTrack(is_checked) => self.settings.dry_track = is_checked,
             DigitalOutLevel(val) => {
-                let val = DIGITAL_OUT_LEVEL_RANGE.snapped(val);
-                if self.settings.digital_out_level.value == val {
+                if !self
+                    .settings
+                    .digital_out_level
+                    .set(ui_to_jstation_normal(val))
+                    .has_changed()
+                {
                     return None;
                 }
 
-                self.settings.digital_out_level.value = val;
-                let val = DIGITAL_OUT_LEVEL_RANGE.unmap_to_value(val) as u8;
-                self.digital_out_level_str = format!("{val:02}");
+                self.digital_out_level_str = format!("{:02}", self.settings.digital_out_level);
 
-                return Some((self.on_change)(Event::DigitalOutLevel(val)));
+                return Some((self.on_change)(Event::DigitalOutLevel(
+                    self.settings.digital_out_level,
+                )));
             }
             GlobalCabinet(is_checked) => self.settings.global_cabinet = is_checked,
             MidiMerge(is_checked) => self.settings.midi_merge = is_checked,
-            MidiChannel(ref mut val) => {
-                *val = MIDI_CHANNEL_RANGE.snapped(*val);
-                if self.settings.midi_channel.value == *val {
+            MidiChannel(val) => {
+                if !self
+                    .settings
+                    .midi_channel
+                    .set(ui_to_jstation_normal(val))
+                    .has_changed()
+                {
                     return None;
                 }
 
-                self.settings.midi_channel.value = *val;
-                let chan = midi::Channel::from(MIDI_CHANNEL_RANGE.unmap_to_value(*val) as u8);
-                self.midi_channel_str = format!("{chan:02}");
+                self.midi_channel_str = format!("{:02}", self.settings.midi_channel);
 
                 self.midi_channel_changed = true;
 
@@ -143,9 +108,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             }
         }
 
-        Some((self.on_change)(Event::UtilitySettings(
-            self.settings.into(),
-        )))
+        Some((self.on_change)(Event::UtilitySettings(self.settings)))
     }
 
     fn view(&self, _state: &Self::State) -> Element<PrivEvent> {
@@ -171,9 +134,12 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             column![
                 text("Midi Channel"),
                 row![
-                    Knob::new(self.settings.midi_channel, MidiChannel)
-                        .on_release(|| Some(MidiChannelReleased))
-                        .size(KNOB_SIZE),
+                    Knob::new(
+                        jstation_to_ui_param(self.settings.midi_channel),
+                        MidiChannel,
+                    )
+                    .on_release(|| Some(MidiChannelReleased))
+                    .size(KNOB_SIZE),
                     text(&self.midi_channel_str),
                 ]
                 .spacing(5)
@@ -183,7 +149,11 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             column![
                 text("Digital Out Level"),
                 row![
-                    Knob::new(self.settings.digital_out_level, DigitalOutLevel).size(KNOB_SIZE),
+                    Knob::new(
+                        jstation_to_ui_param(self.settings.digital_out_level),
+                        DigitalOutLevel,
+                    )
+                    .size(KNOB_SIZE),
                     text(&self.digital_out_level_str),
                 ]
                 .spacing(5)
