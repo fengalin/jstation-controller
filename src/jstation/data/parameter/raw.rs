@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::jstation::data::ParameterNumber;
+use crate::{jstation::data::ParameterNumber, midi};
 
 #[derive(Copy, Clone, Debug)]
 pub struct RawParameter {
@@ -42,6 +42,12 @@ impl RawValue {
 impl From<u8> for RawValue {
     fn from(value: u8) -> Self {
         Self(value)
+    }
+}
+
+impl From<midi::Channel> for RawValue {
+    fn from(chan: midi::Channel) -> Self {
+        Self(chan.as_u8())
     }
 }
 

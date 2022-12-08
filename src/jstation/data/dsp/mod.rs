@@ -52,3 +52,7 @@ declare_cc_params!(
     noise_gate: NoiseGateOn, NoiseGateAttackTime, NoiseGateThreshold;
     utility_settings: DigitalOutLevel;
 );
+
+// `MidiChannel` is not associated with a CC param.
+// It is updated as part of the `UtilitySettingsResp` `procedure`.
+pub use utility_settings::{MidiChannel, UtilitySettings};

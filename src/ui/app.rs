@@ -47,7 +47,7 @@ pub struct App {
     ports: Rc<RefCell<ui::port::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
     show_utility_settings: bool,
-    utility_settings: jstation::procedure::UtilitySettingsResp,
+    utility_settings: jstation::data::dsp::UtilitySettings,
     output_text: String,
 }
 
@@ -81,7 +81,7 @@ impl App {
                         self.ports.borrow_mut().set_ports(port_in, port_out);
                     }
                     UtilitySettingsResp(resp) => {
-                        self.utility_settings = *resp;
+                        self.utility_settings = resp.try_into()?;
 
                         // FIXME handle ui consequence of the error
                         self.jstation.bank_dump()?;

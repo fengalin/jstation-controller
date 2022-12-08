@@ -3,7 +3,7 @@ pub mod parameter;
 pub use parameter::{
     BoolCCParameter, BoolParameter, BoolRawParameter, DiscreteCCParameter, DiscreteParameter,
     DiscreteRange, DiscreteRawParameter, DiscreteValue, Normal, ParameterNumber, RawParameter,
-    RawValue,
+    RawValue, ValueStatus,
 };
 
 pub mod dsp;
