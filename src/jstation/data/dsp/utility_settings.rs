@@ -1,33 +1,28 @@
-use std::fmt;
-
 use crate::{
-    jstation::{data::{Normal, DiscreteParameter, RawValue}, procedure::UtilitySettingsResp},
+    jstation::{
+        data::{DiscreteParameter, Normal, RawValue},
+        procedure::UtilitySettingsResp,
+    },
     midi::CCNumber,
 };
 
-discrete_parameter!(DigitalOutLevel {
-    const DEFAULT = Normal::MIN,
-    const MAX_RAW = RawValue::new(24),
-    const CC_NB = CCNumber::new(14),
-});
-
-impl fmt::Display for DigitalOutLevel {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&(self.to_raw_value().as_u8()), f)
+discrete_parameter!(
+    #[derive(Display)]
+    DigitalOutLevel {
+        const DEFAULT = Normal::MIN,
+        const MAX_RAW = RawValue::new(24),
+        const CC_NB = CCNumber::new(14),
     }
-}
+);
 
-discrete_parameter!(MidiChannel {
-    const DEFAULT = Normal::MIN,
-    const MIN_RAW = RawValue::new(1),
-    const MAX_RAW = RawValue::new(15),
-});
-
-impl fmt::Display for MidiChannel {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&(self.to_raw_value().as_u8()), f)
+discrete_parameter!(
+    #[derive(Display)]
+    MidiChannel {
+        const DEFAULT = Normal::MIN,
+        const MIN_RAW = RawValue::new(1),
+        const MAX_RAW = RawValue::new(15),
     }
-}
+);
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct UtilitySettings {

@@ -39,9 +39,19 @@ pub trait DiscreteParameter:
         self.set(Self::DEFAULT)
     }
 
-    /// Sets the value snapping it to its discrete range.
-    fn set(&mut self, normal: Normal) -> ValueStatus {
-        let discrete = DiscreteValue::new(normal, Self::RANGE);
+    /// Compare `self` with the provided value snapping it to the discrete range of `Self`.
+    fn compare_with(&mut self, normal: impl Into<Normal>) -> ValueStatus {
+        let discrete = DiscreteValue::new(normal.into(), Self::RANGE);
+        if discrete == (*self).into() {
+            return ValueStatus::Unchanged;
+        }
+
+        ValueStatus::Changed
+    }
+
+    /// Sets the value snapping it to the discrete range of `Self`.
+    fn set(&mut self, normal: impl Into<Normal>) -> ValueStatus {
+        let discrete = DiscreteValue::new(normal.into(), Self::RANGE);
         if discrete == (*self).into() {
             return ValueStatus::Unchanged;
         }
@@ -101,6 +111,12 @@ macro_rules! discrete_parameter {
             }
         }
 
+        impl From<$param> for Normal {
+            fn from(param: $param) -> Self {
+                crate::jstation::data::DiscreteValue::from(param).normal()
+            }
+        }
+
         impl crate::jstation::data::DiscreteParameter for $param {
             const NAME: &'static str = stringify!($param);
             const DEFAULT: crate::jstation::data::Normal = $default;
@@ -109,6 +125,20 @@ macro_rules! discrete_parameter {
             const RANGE: crate::jstation::data::DiscreteRange =
                 crate::jstation::data::DiscreteRange::new(Self::MIN_RAW, Self::MAX_RAW);
         }
+    };
+
+    (#[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const MIN_RAW = $min:expr,
+        const MAX_RAW = $max:expr $(,)?
+    } ) => {
+        discrete_parameter!($param {
+            const DEFAULT = $default,
+            const MIN_RAW = $min,
+            const MAX_RAW = $max,
+        });
+
+        discrete_parameter!(#[derive(Display)] $param);
     };
 
     ($param:ident {
@@ -120,6 +150,18 @@ macro_rules! discrete_parameter {
             const MIN_RAW = crate::jstation::data::RawValue::ZERO,
             const MAX_RAW = $max,
         });
+    };
+
+    (#[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const MAX_RAW = $max:expr $(,)?
+    } ) => {
+        discrete_parameter!($param {
+            const DEFAULT = $default,
+            const MAX_RAW = $max,
+        });
+
+        discrete_parameter!(#[derive(Display)] $param);
     };
 
     ( $param:ident {
@@ -169,12 +211,41 @@ macro_rules! discrete_parameter {
         }
     };
 
+    ( #[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const MIN_RAW = $min:expr,
+        const MAX_RAW = $max:expr,
+        const CC_NB = $cc_nb:expr $(,)?
+    } ) => {
+        discrete_parameter!($param {
+            const DEFAULT = $default,
+            const MIN_RAW = $min,
+            const MAX_RAW = $max,
+            const CC_NB = $cc_nb,
+        });
+
+        discrete_parameter!(#[derive(Display)] $param);
+    };
+
     ( $param:ident {
         const DEFAULT = $default:expr,
         const MAX_RAW = $max:expr,
         const CC_NB = $cc_nb:expr $(,)?
     } ) => {
         discrete_parameter!($param {
+            const DEFAULT = $default,
+            const MIN_RAW = crate::jstation::data::RawValue::ZERO,
+            const MAX_RAW = $max,
+            const CC_NB = $cc_nb,
+        });
+    };
+
+    ( #[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const MAX_RAW = $max:expr,
+        const CC_NB = $cc_nb:expr $(,)?
+    } ) => {
+        discrete_parameter!(#[derive(Display)]  $param {
             const DEFAULT = $default,
             const MIN_RAW = crate::jstation::data::RawValue::ZERO,
             const MAX_RAW = $max,
@@ -201,6 +272,24 @@ macro_rules! discrete_parameter {
         }
     };
 
+    ( #[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const MIN_RAW = $min:expr,
+        const MAX_RAW = $max:expr,
+        const PARAMETER_NB = $param_nb:expr,
+        const CC_NB = $cc_nb:expr $(,)?
+    } ) => {
+        discrete_parameter!($param {
+            const DEFAULT = $default,
+            const MIN_RAW = $min,
+            const MAX_RAW = $max,
+            const PARAMETER_NB = $param_nb,
+            const CC_NB = $cc_nb
+        });
+
+        discrete_parameter!(#[derive(Display)] $param);
+    };
+
     ( $param:ident {
         const DEFAULT = $default:expr,
         const MAX_RAW = $max:expr,
@@ -214,6 +303,30 @@ macro_rules! discrete_parameter {
             const PARAMETER_NB = $param_nb,
             const CC_NB = $cc_nb,
         });
+    };
+
+    ( #[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const MAX_RAW = $max:expr,
+        const PARAMETER_NB = $param_nb:expr,
+        const CC_NB = $cc_nb:expr $(,)?
+    } ) => {
+        discrete_parameter!(#[derive(Display)] $param {
+            const DEFAULT = $default,
+            const MIN_RAW = crate::jstation::data::RawValue::ZERO,
+            const MAX_RAW = $max,
+            const PARAMETER_NB = $param_nb,
+            const CC_NB = $cc_nb,
+        });
+    };
+
+    ( #[derive(Display)] $param:ident ) => {
+        impl std::fmt::Display for $param {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                use crate::jstation::data::DiscreteParameter;
+                std::fmt::Display::fmt(&(self.to_raw_value().as_u8()), f)
+            }
+        }
     };
 }
 
@@ -248,6 +361,12 @@ impl DiscreteValue {
 impl From<Normal> for DiscreteValue {
     fn from(normal: Normal) -> Self {
         DiscreteValue { normal }
+    }
+}
+
+impl From<DiscreteValue> for Normal {
+    fn from(val: DiscreteValue) -> Self {
+        val.normal
     }
 }
 

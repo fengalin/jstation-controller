@@ -1,28 +1,59 @@
 use crate::{jstation::Error, midi::CC};
 
-macro_rules! declare_cc_params(
-    ( $( $module:ident: $( $cc_param:ident $(,)? )*; )* ) => {
-        $(
-            mod $module;
-            pub use $module::{$( $cc_param, )*};
-        )*
+pub mod amp;
+pub use amp::Amp;
 
+pub mod cabinet;
+
+pub mod noise_gate;
+
+pub mod utility_settings;
+// `MidiChannel` is not associated with a CC param.
+// It is updated as part of the `UtilitySettingsResp` `procedure`.
+pub use utility_settings::{MidiChannel, UtilitySettings};
+
+macro_rules! declare_params(
+    // We could generate $set_param if macro `std::concat_idents` was stable.
+    ( $( ($module:ident, $set:ident, $set_param:ident): $( $param:ident $(,)? )*; )* ) => {
         #[derive(Copy, Clone, Debug)]
-        pub enum CCParameter {
-            $( $(
-                $cc_param($cc_param),
-            )* )*
+        pub enum Parameter {
+            $( $set($set_param), )*
         }
 
-        $( $(
-            impl From<$cc_param> for CCParameter {
-                fn from(cc_param: $cc_param) -> Self {
-                    CCParameter::$cc_param(cc_param)
+        $(
+            #[derive(Copy, Clone, Debug)]
+            pub enum $set_param {
+                $( $param($module::$param), )*
+            }
+
+            impl From<$set_param> for Parameter {
+                fn from(set_param: $set_param) -> Self {
+                    Parameter::$set(set_param)
                 }
             }
-        )* )*
 
-        impl TryFrom<CC> for CCParameter {
+            $(
+                impl From<$module::$param> for $set_param {
+                    fn from(param: $module::$param) -> Self {
+                        $set_param::$param(param)
+                    }
+                }
+
+                impl From<&$module::$param> for $set_param {
+                    fn from(param: &$module::$param) -> Self {
+                        $set_param::$param(*param)
+                    }
+                }
+
+                impl From<&mut $module::$param> for $set_param {
+                    fn from(param: &mut $module::$param) -> Self {
+                        $set_param::$param(*param)
+                    }
+                }
+            )*
+        )*
+
+        impl TryFrom<CC> for Parameter {
             type Error = Error;
 
             fn try_from(cc: CC) -> Result<Self, Self::Error> {
@@ -30,8 +61,8 @@ macro_rules! declare_cc_params(
 
                 match cc.nb {
                     $( $(
-                        $cc_param::CC_NB => {
-                            Ok(CCParameter::$cc_param($cc_param::from_cc(cc.value)))
+                        $module::$param::CC_NB => {
+                            Ok(Parameter::$set($module::$param::from_cc(cc.value).into()))
                         }
                     )* )*
                     _ => {
@@ -46,13 +77,9 @@ macro_rules! declare_cc_params(
     };
 );
 
-declare_cc_params!(
-    amp: AmpModeling, Gain, Treble, Middle, Bass, Level;
-    cabinet: Cabinet;
-    noise_gate: NoiseGateOn, NoiseGateAttackTime, NoiseGateThreshold;
-    utility_settings: DigitalOutLevel;
+declare_params!(
+    (amp, Amp, AmpParameter): Modeling, Gain, Treble, Middle, Bass, Level;
+    (cabinet, Cabinet, CabinetParameter): Type;
+    (noise_gate, NoiseGate, NoiseGateParameter): GateOn, AttackTime, Threshold;
+    (utility_settings, UtilitySettings, UtilitySettingsParameter): DigitalOutLevel;
 );
-
-// `MidiChannel` is not associated with a CC param.
-// It is updated as part of the `UtilitySettingsResp` `procedure`.
-pub use utility_settings::{MidiChannel, UtilitySettings};

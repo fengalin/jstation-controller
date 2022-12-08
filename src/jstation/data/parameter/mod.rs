@@ -64,8 +64,8 @@ pub enum ValueStatus {
 }
 
 impl ValueStatus {
-    pub fn has_changed(self) -> bool {
-        matches!(self, ValueStatus::Changed)
+    pub fn is_unchanged(self) -> bool {
+        matches!(self, ValueStatus::Unchanged)
     }
 }
 
