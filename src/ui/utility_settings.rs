@@ -2,12 +2,15 @@ use iced::{
     widget::{checkbox, column, row, text},
     Alignment, Element, Length,
 };
-use iced_audio::{Knob, Normal};
+use iced_audio::Knob;
 use iced_lazy::{self, Component};
 
 use crate::{
-    jstation::data::dsp::{DigitalOutLevel, UtilitySettings},
-    ui::{jstation_to_ui_param, ui_to_jstation_normal},
+    jstation::data::{
+        dsp::{utility_settings, UtilitySettings},
+        DiscreteParameter,
+    },
+    ui::{to_jstation_normal, to_ui_param},
 };
 
 const KNOB_SIZE: Length = Length::Units(35);
@@ -15,24 +18,22 @@ const KNOB_SIZE: Length = Length::Units(35);
 #[derive(Debug, Clone)]
 pub enum Event {
     UtilitySettings(UtilitySettings),
-    DigitalOutLevel(DigitalOutLevel),
+    DigitalOutLevel(utility_settings::DigitalOutLevel),
 }
 
 #[derive(Debug)]
 pub enum PrivEvent {
     Stereo(bool),
     DryTrack(bool),
-    DigitalOutLevel(Normal),
+    DigitalOutLevel(utility_settings::DigitalOutLevel),
     GlobalCabinet(bool),
     MidiMerge(bool),
-    MidiChannel(Normal),
+    MidiChannel(utility_settings::MidiChannel),
     MidiChannelReleased,
 }
 
 pub struct Panel<'a, Message> {
     settings: UtilitySettings,
-    digital_out_level_str: String,
-    midi_channel_str: String,
     midi_channel_changed: bool,
     on_change: Box<dyn 'a + Fn(Event) -> Message>,
 }
@@ -44,8 +45,6 @@ impl<'a, Message> Panel<'a, Message> {
     {
         Self {
             settings,
-            digital_out_level_str: format!("{:02}", settings.digital_out_level),
-            midi_channel_str: format!("{:02}", settings.midi_channel),
             midi_channel_changed: false,
             on_change: Box::new(on_change),
         }
@@ -57,23 +56,19 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
     type Event = PrivEvent;
 
     fn update(&mut self, _state: &mut Self::State, event: PrivEvent) -> Option<Message> {
-        use crate::jstation::data::DiscreteParameter;
-
         use PrivEvent::*;
         match event {
             Stereo(is_checked) => self.settings.stereo_mono = is_checked,
             DryTrack(is_checked) => self.settings.dry_track = is_checked,
-            DigitalOutLevel(val) => {
-                if !self
+            DigitalOutLevel(digital_out_level) => {
+                if self
                     .settings
                     .digital_out_level
-                    .set(ui_to_jstation_normal(val))
-                    .has_changed()
+                    .set(digital_out_level)
+                    .is_unchanged()
                 {
                     return None;
                 }
-
-                self.digital_out_level_str = format!("{:02}", self.settings.digital_out_level);
 
                 return Some((self.on_change)(Event::DigitalOutLevel(
                     self.settings.digital_out_level,
@@ -81,17 +76,10 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             }
             GlobalCabinet(is_checked) => self.settings.global_cabinet = is_checked,
             MidiMerge(is_checked) => self.settings.midi_merge = is_checked,
-            MidiChannel(val) => {
-                if !self
-                    .settings
-                    .midi_channel
-                    .set(ui_to_jstation_normal(val))
-                    .has_changed()
-                {
+            MidiChannel(chan) => {
+                if self.settings.midi_channel.set(chan).is_unchanged() {
                     return None;
                 }
-
-                self.midi_channel_str = format!("{:02}", self.settings.midi_channel);
 
                 self.midi_channel_changed = true;
 
@@ -134,13 +122,14 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             column![
                 text("Midi Channel"),
                 row![
-                    Knob::new(
-                        jstation_to_ui_param(self.settings.midi_channel),
-                        MidiChannel,
-                    )
+                    Knob::new(to_ui_param(self.settings.midi_channel), |normal| {
+                        MidiChannel(utility_settings::MidiChannel::from_snapped(
+                            to_jstation_normal(normal),
+                        ))
+                    })
                     .on_release(|| Some(MidiChannelReleased))
                     .size(KNOB_SIZE),
-                    text(&self.midi_channel_str),
+                    text(format!("{:02}", self.settings.midi_channel)),
                 ]
                 .spacing(5)
                 .align_items(Alignment::Center),
@@ -149,12 +138,13 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             column![
                 text("Digital Out Level"),
                 row![
-                    Knob::new(
-                        jstation_to_ui_param(self.settings.digital_out_level),
-                        DigitalOutLevel,
-                    )
+                    Knob::new(to_ui_param(self.settings.digital_out_level), |normal| {
+                        DigitalOutLevel(utility_settings::DigitalOutLevel::from_snapped(
+                            to_jstation_normal(normal),
+                        ))
+                    })
                     .size(KNOB_SIZE),
-                    text(&self.digital_out_level_str),
+                    text(format!("{:02}", self.settings.digital_out_level)),
                 ]
                 .spacing(5)
                 .align_items(Alignment::Center),

@@ -7,7 +7,7 @@ pub use parameter::{
 };
 
 pub mod dsp;
-pub use dsp::CCParameter;
+pub use dsp::Parameter;
 
 pub mod program;
 pub use program::{Program, ProgramBank, ProgramNumber};

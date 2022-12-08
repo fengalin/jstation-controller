@@ -10,16 +10,26 @@ use std::{cell::RefCell, future, rc::Rc, sync::Arc};
 
 pub static APP_NAME: Lazy<Arc<str>> = Lazy::new(|| "J-Station Controller".into());
 
-use crate::{jstation, midi, ui};
+use crate::{
+    jstation::{self, data::dsp},
+    midi, ui,
+};
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    JStation(Result<jstation::Message, jstation::Error>),
+    Amp(dsp::AmpParameter),
+    UtilitySettings(ui::utility_settings::Event),
     Ports(ui::port::Selection),
     StartScan,
     ShowUtilitySettings(bool),
     ShowMidiPanel(bool),
-    JStation(Result<jstation::Message, jstation::Error>),
-    UtilitySettings(ui::utility_settings::Event),
+}
+
+impl From<dsp::AmpParameter> for Message {
+    fn from(param: dsp::AmpParameter) -> Self {
+        Message::Amp(param)
+    }
 }
 
 impl From<ui::utility_settings::Event> for Message {
@@ -43,11 +53,13 @@ pub enum Error {
 
 pub struct App {
     jstation: ui::jstation::Interface,
+    amp: Rc<RefCell<dsp::Amp>>,
     show_midi_panel: bool,
     ports: Rc<RefCell<ui::port::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
     show_utility_settings: bool,
-    utility_settings: jstation::data::dsp::UtilitySettings,
+    // FIXME use a Rc<RefCell<_>> ?
+    utility_settings: dsp::UtilitySettings,
     output_text: String,
 }
 
@@ -99,14 +111,12 @@ impl App {
             }
             Ok(ChannelVoice(cv)) => {
                 use jstation::channel_voice::Message::*;
+                use jstation::Parameter::*;
                 match cv.msg {
-                    CC(cc) => {
-                        use jstation::CCParameter::*;
-                        match cc {
-                            Gain(gain) => log::info!("Got {gain:?}"),
-                            other => log::info!("Unhandled cc {other:?}"),
-                        }
-                    }
+                    CC(Amp(amp)) => log::info!("Got {amp:?}"),
+                    CC(Cabinet(cabinet)) => log::info!("Got {cabinet:?}"),
+                    CC(NoiseGate(noise_gate)) => log::info!("Got {noise_gate:?}"),
+                    CC(UtilitySettings(util_settings)) => log::info!("Got {util_settings:?}"),
                     ProgramChange(pc) => {
                         log::info!("Unhandled {pc:?}");
                     }
@@ -164,6 +174,8 @@ impl Application for App {
         let app = App {
             jstation,
 
+            amp: Rc::new(RefCell::new(dsp::Amp::default())),
+
             show_midi_panel: false,
             ports: RefCell::new(ports).into(),
             scanner_ctx: None,
@@ -195,6 +207,9 @@ impl Application for App {
                 if let Err(err) = self.handle_jstation_event(res) {
                     self.show_error(&err);
                 }
+            }
+            Amp(amp) => {
+                dbg!(&amp);
             }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
             Ports(ui::port::Selection { port_in, port_out }) => {
@@ -271,6 +286,7 @@ impl Application for App {
             row![utility_settings, midi_panel]
                 .spacing(20)
                 .width(Length::Fill),
+            ui::amp::Panel::new(self.amp.clone(), Amp),
             vertical_space(Length::Fill),
             text(&self.output_text),
         ];

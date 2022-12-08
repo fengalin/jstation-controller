@@ -1,5 +1,5 @@
 use crate::{
-    jstation::{CCParameter, Error, ProgramNumber},
+    jstation::{Error, Parameter, ProgramNumber},
     midi,
 };
 
@@ -11,7 +11,7 @@ pub struct ChannelVoice {
 
 #[derive(Copy, Clone, Debug)]
 pub enum Message {
-    CC(CCParameter),
+    CC(Parameter),
     ProgramChange(ProgramNumber),
 }
 
@@ -21,7 +21,7 @@ impl TryFrom<midi::ChannelVoice> for ChannelVoice {
     fn try_from(cv: midi::ChannelVoice) -> Result<Self, Self::Error> {
         use midi::channel_voice::Message::*;
         let msg = match cv.msg {
-            CC(cc) => Message::CC(CCParameter::try_from(cc)?),
+            CC(cc) => Message::CC(Parameter::try_from(cc)?),
             ProgramChange(prog_nb) => Message::ProgramChange(ProgramNumber::from(prog_nb)),
         };
 

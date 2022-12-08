@@ -3,14 +3,16 @@ use crate::{
     midi::CCNumber,
 };
 
-discrete_parameter!(AmpModeling {
+use std::fmt;
+
+discrete_parameter!(Modeling {
     const DEFAULT = Normal::MIN,
     const MAX_RAW = RawValue::new(24),
     const PARAMETER_NB = ParameterNumber::new(9),
     const CC_NB = CCNumber::new(34),
 });
 
-pub static NAMES: [(&str, &str); (AmpModeling::MAX_RAW.as_u8() + 1) as usize] = [
+static MODELINGS: [(&str, &str); (Modeling::MAX_RAW.as_u8() + 1) as usize] = [
     ("J Crunch", "JM150 Millennium Crunch"),
     ("J Solo", "JM150 Millennium Solo"),
     ("J Clean", "JM150 Millennium Clean"),
@@ -38,37 +40,69 @@ pub static NAMES: [(&str, &str); (AmpModeling::MAX_RAW.as_u8() + 1) as usize] = 
     ("Direct (A8)", "Direct - no modelling"),
 ];
 
-discrete_parameter!(Gain {
-    const DEFAULT = Normal::MIN,
-    const MAX_RAW = RawValue::new(90),
-    const PARAMETER_NB = ParameterNumber::new(10),
-    const CC_NB = CCNumber::new(35),
-});
+impl fmt::Display for Modeling {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let idx = self.to_raw_value().as_u8() as usize;
+        fmt::Display::fmt(&(MODELINGS[idx].0), f)
+    }
+}
 
-discrete_parameter!(Treble {
-    const DEFAULT = Normal::HALF,
-    const MAX_RAW = RawValue::new(90),
-    const PARAMETER_NB = ParameterNumber::new(11),
-    const CC_NB = CCNumber::new(39),
-});
+discrete_parameter!(
+    #[derive(Display)]
+    Gain {
+        const DEFAULT = Normal::MIN,
+        const MAX_RAW = RawValue::new(90),
+        const PARAMETER_NB = ParameterNumber::new(10),
+        const CC_NB = CCNumber::new(35),
+    }
+);
 
-discrete_parameter!(Middle {
-    const DEFAULT = Normal::HALF,
-    const MAX_RAW = RawValue::new(90),
-    const PARAMETER_NB = ParameterNumber::new(12),
-    const CC_NB = CCNumber::new(38),
-});
+discrete_parameter!(
+    #[derive(Display)]
+    Treble {
+        const DEFAULT = Normal::HALF,
+        const MAX_RAW = RawValue::new(90),
+        const PARAMETER_NB = ParameterNumber::new(11),
+        const CC_NB = CCNumber::new(39),
+    }
+);
 
-discrete_parameter!(Bass {
-    const DEFAULT = Normal::HALF,
-    const MAX_RAW = RawValue::new(90),
-    const PARAMETER_NB = ParameterNumber::new(13),
-    const CC_NB = CCNumber::new(37),
-});
+discrete_parameter!(
+    #[derive(Display)]
+    Middle {
+        const DEFAULT = Normal::HALF,
+        const MAX_RAW = RawValue::new(90),
+        const PARAMETER_NB = ParameterNumber::new(12),
+        const CC_NB = CCNumber::new(38),
+    }
+);
 
-discrete_parameter!(Level {
-    const DEFAULT = Normal::MIN,
-    const MAX_RAW = RawValue::new(90),
-    const PARAMETER_NB = ParameterNumber::new(14),
-    const CC_NB = CCNumber::new(36),
-});
+discrete_parameter!(
+    #[derive(Display)]
+    Bass {
+        const DEFAULT = Normal::HALF,
+        const MAX_RAW = RawValue::new(90),
+        const PARAMETER_NB = ParameterNumber::new(13),
+        const CC_NB = CCNumber::new(37),
+    }
+);
+
+discrete_parameter!(
+    #[derive(Display)]
+    Level {
+        const DEFAULT = Normal::MIN,
+        const MAX_RAW = RawValue::new(90),
+        const PARAMETER_NB = ParameterNumber::new(14),
+        const CC_NB = CCNumber::new(36),
+    }
+);
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Amp {
+    pub modeling: Modeling,
+    pub gain: Gain,
+    pub treble: Treble,
+    pub middle: Middle,
+    pub bass: Bass,
+    pub level: Level,
+}
