@@ -19,6 +19,7 @@ use crate::{
 pub enum Message {
     JStation(Result<jstation::Message, jstation::Error>),
     Amp(dsp::AmpParameter),
+    Cabinet(dsp::cabinet::Type),
     UtilitySettings(ui::utility_settings::Event),
     Ports(ui::port::Selection),
     StartScan,
@@ -29,6 +30,12 @@ pub enum Message {
 impl From<dsp::AmpParameter> for Message {
     fn from(param: dsp::AmpParameter) -> Self {
         Message::Amp(param)
+    }
+}
+
+impl From<dsp::cabinet::Type> for Message {
+    fn from(param: dsp::cabinet::Type) -> Self {
+        Message::Cabinet(param)
     }
 }
 
@@ -54,6 +61,7 @@ pub enum Error {
 pub struct App {
     jstation: ui::jstation::Interface,
     amp: Rc<RefCell<dsp::Amp>>,
+    cabinet: Rc<RefCell<dsp::cabinet::Type>>,
     show_midi_panel: bool,
     ports: Rc<RefCell<ui::port::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
@@ -175,6 +183,7 @@ impl Application for App {
             jstation,
 
             amp: Rc::new(RefCell::new(dsp::Amp::default())),
+            cabinet: Rc::new(RefCell::new(dsp::cabinet::Type::default())),
 
             show_midi_panel: false,
             ports: RefCell::new(ports).into(),
@@ -210,6 +219,10 @@ impl Application for App {
             }
             Amp(amp_param) => {
                 dbg!(&amp_param, amp_param.to_cc());
+            }
+            Cabinet(cabinet_type) => {
+                use jstation::data::DiscreteCCParameter;
+                dbg!(&cabinet_type, cabinet_type.to_cc());
             }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
             Ports(ui::port::Selection { port_in, port_out }) => {
@@ -287,6 +300,7 @@ impl Application for App {
                 .spacing(20)
                 .width(Length::Fill),
             ui::amp::Panel::new(self.amp.clone(), Amp),
+            ui::cabinet::Panel::new(self.cabinet.clone(), Cabinet),
             vertical_space(Length::Fill),
             text(&self.output_text),
         ]

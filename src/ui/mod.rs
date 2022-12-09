@@ -1,21 +1,22 @@
 macro_rules! param_handling {
+    ($dsp:expr, $param:ident, $value:expr) => { {
+        let param = &mut $dsp.borrow_mut().$param;
+        if param.set($value).is_unchanged() {
+            return None;
+        }
+
+        *param
+    } };
+
     ($dsp:expr, match $event:ident { $( $variant:ident => $param:ident $(,)? )* } ) => {
         match $event {
-            $(
-                $variant(value) => {
-                    let $param = &mut $dsp.borrow_mut().$param;
-                    if $param.set(value).is_unchanged() {
-                        return None;
-                    }
-
-                    $param.into()
-                }
-            )*
+            $( $variant(value) => param_handling!($dsp, $param, value).into(), )*
         }
     };
 }
 
 pub mod amp;
+pub mod cabinet;
 
 pub mod app;
 pub use app::{App, APP_NAME};
