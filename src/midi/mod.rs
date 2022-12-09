@@ -77,6 +77,12 @@ impl From<u8> for TagChannel {
     }
 }
 
+impl From<TagChannel> for u8 {
+    fn from(tag_chan: TagChannel) -> Self {
+        tag_chan.tag.as_u8() | tag_chan.chan.as_u8()
+    }
+}
+
 pub mod sysex {
     pub const TAG: u8 = 0xf0;
     pub const END_TAG: u8 = 0xf7;

@@ -24,6 +24,7 @@ iced_lazy = "0.3.0"
 iced_native = "0.7"
 iced_wgpu = "0.6"
 image = "0.24"
+jstation_derive = { path = "jstation_derive" }
 log = "0.4"
 midir = "0.8"
 nom = "7.1.1"

@@ -1,9 +1,9 @@
 #[macro_use]
 pub mod parameter;
 pub use parameter::{
-    BoolCCParameter, BoolParameter, BoolRawParameter, DiscreteCCParameter, DiscreteParameter,
-    DiscreteRange, DiscreteRawParameter, DiscreteValue, Normal, ParameterNumber, RawParameter,
-    RawValue, ValueStatus,
+    BoolParameter, BoolRawParameter, CCParameter, DiscreteParameter, DiscreteRange,
+    DiscreteRawParameter, DiscreteValue, Normal, ParameterNumber, ParameterSetter, RawParameter,
+    RawValue,
 };
 
 pub mod dsp;

@@ -5,7 +5,7 @@ pub struct Normal(f32);
 
 impl Normal {
     pub const MIN: Normal = Normal(0.0);
-    pub const HALF: Normal = Normal(0.5);
+    pub const CENTER: Normal = Normal(0.5);
     pub const MAX: Normal = Normal(1.0);
 
     const MAX_CC_VALUE: f32 = CCValue::MAX.as_u8() as f32;
@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn normal() {
         assert_eq!(Normal::try_from(0.0).unwrap(), Normal::MIN);
-        assert_eq!(Normal::try_from(0.5).unwrap(), Normal::HALF);
+        assert_eq!(Normal::try_from(0.5).unwrap(), Normal::CENTER);
         assert_eq!(Normal::try_from(1.0).unwrap(), Normal::MAX);
 
         match Normal::try_from(Normal::MIN.0 - f32::EPSILON).unwrap_err() {

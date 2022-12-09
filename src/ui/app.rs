@@ -132,9 +132,35 @@ impl App {
                 use jstation::channel_voice::Message::*;
                 use jstation::Parameter::*;
                 match cv.msg {
-                    CC(Amp(amp)) => log::info!("Got {amp:?}"),
-                    CC(Cabinet(cabinet)) => log::info!("Got {cabinet:?}"),
-                    CC(NoiseGate(noise_gate)) => log::info!("Got {noise_gate:?}"),
+                    CC(Amp(param)) => {
+                        log::info!("Got {param:?}");
+                        // FIXME find a better way
+                        fn handle_device_amp_change(
+                            app: &mut App,
+                            param: dsp::AmpParameter,
+                        ) -> Option<()> {
+                            use dsp::AmpParameter::*;
+                            use jstation::data::DiscreteParameter;
+
+                            let _: dsp::AmpParameter = param_handling!(
+                                app.amp,
+                                match param {
+                                    Modeling => modeling,
+                                    Gain => gain,
+                                    Treble => treble,
+                                    Middle => middle,
+                                    Bass => bass,
+                                    Level => level,
+                                }
+                            );
+
+                            Some(())
+                        }
+
+                        handle_device_amp_change(self, param);
+                    }
+                    CC(Cabinet(param)) => log::info!("Got {param:?}"),
+                    CC(NoiseGate(param)) => log::info!("Got {param:?}"),
                     CC(UtilitySettings(util_settings)) => log::info!("Got {util_settings:?}"),
                     ProgramChange(pc) => {
                         log::info!("Unhandled {pc:?}");
@@ -229,15 +255,18 @@ impl Application for App {
                     self.show_error(&err);
                 }
             }
-            Amp(amp_param) => {
-                dbg!(&amp_param, amp_param.to_cc());
+            Amp(param) => {
+                // FIXME handle the error
+                let _ = self.jstation.send_cc(param.to_cc());
             }
-            Cabinet(cabinet_type) => {
+            Cabinet(param) => {
                 use jstation::data::DiscreteCCParameter;
-                dbg!(&cabinet_type, cabinet_type.to_cc());
+                // FIXME handle the error
+                let _ = self.jstation.send_cc(param.to_cc());
             }
-            NoiseGate(ng_param) => {
-                dbg!(&ng_param, ng_param.to_cc());
+            NoiseGate(param) => {
+                // FIXME handle the error
+                let _ = self.jstation.send_cc(param.to_cc());
             }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
             Ports(ui::port::Selection { port_in, port_out }) => {
@@ -262,8 +291,9 @@ impl Application for App {
                 dbg!(&event);
                 match event {
                     UtilitySettings(settings) => self.utility_settings = settings,
-                    DigitalOutLevel(val) => {
-                        self.utility_settings.digital_out_level = val;
+                    DigitalOutLevel(param) => {
+                        // FIXME send to device
+                        self.utility_settings.digital_out_level = param;
                     }
                 }
             }

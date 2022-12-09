@@ -44,6 +44,10 @@ impl Interface {
         self.iface.bank_dump()
     }
 
+    pub fn send_cc(&mut self, cc: midi::CC) -> Result<(), Error> {
+        self.iface.send_cc(cc)
+    }
+
     fn set_listener(&mut self, listener: Listener) {
         self.subscription = Some(Subscription {
             id: self.next_subscription_id,

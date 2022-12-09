@@ -1,15 +1,8 @@
-#[macro_use]
 mod boolean;
-pub use boolean::{BoolCCParameter, BoolParameter, BoolRawParameter};
+pub use boolean::{BoolParameter, BoolRawParameter};
 
-#[macro_use]
 mod discrete;
-pub use discrete::{
-    DiscreteCCParameter, DiscreteParameter, DiscreteRange, DiscreteRawParameter, DiscreteValue,
-};
-
-#[macro_use]
-mod list;
+pub use discrete::{DiscreteParameter, DiscreteRange, DiscreteRawParameter, DiscreteValue};
 
 mod normal;
 pub use normal::Normal;
@@ -19,7 +12,7 @@ pub use raw::{RawParameter, RawValue};
 
 use std::fmt;
 
-use crate::jstation::Error;
+use crate::{jstation::Error, midi};
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct ParameterNumber(u8);
@@ -61,15 +54,23 @@ impl fmt::Display for ParameterNumber {
     }
 }
 
-pub enum ValueStatus {
-    Changed,
-    Unchanged,
+pub trait ParameterSetter {
+    type Parameter: Clone + Copy;
+
+    // Sets the parameter group with the provided parameter.
+    //
+    // Returns the updated parameter if its value has changed.
+    fn set(&mut self, param: Self::Parameter) -> Option<Self::Parameter>;
 }
 
-impl ValueStatus {
-    pub fn is_unchanged(&self) -> bool {
-        matches!(self, ValueStatus::Unchanged)
-    }
+/// A `CCParameter`, e.g. which can be received or sent as a `CC` midi message.
+pub trait CCParameter: Sized {
+    // Build a Parameter from a `CC` midi message.
+    //
+    // Returns `None` if the Parameter could not be built from this `cc`.
+    fn from_cc(cc: midi::CC) -> Option<Self>;
+
+    fn to_cc(self) -> Option<midi::CC>;
 }
 
 #[cfg(test)]

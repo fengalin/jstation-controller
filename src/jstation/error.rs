@@ -5,7 +5,7 @@ use crate::{jstation::data::RawValue, midi};
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum Error {
     #[error("Unknown J-Station CC number x{:02x}", .0)]
-    CCNumber(u8),
+    CCNumberUnknown(u8),
 
     #[error("Parameter number {} out of range", .0)]
     ParameterNumberOutOfRange(u8),

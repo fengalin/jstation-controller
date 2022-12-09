@@ -1,139 +1,73 @@
-use crate::{
-    jstation::data::{Normal, ParameterNumber, RawValue},
-    midi::CCNumber,
-};
+use jstation_derive::ParamGroup;
 
-discrete_parameter!(Modeling {
-    const DEFAULT = Normal::MIN,
-    const MAX_RAW = RawValue::new(24),
-    const PARAMETER_NB = ParameterNumber::new(9),
-    const CC_NB = CCNumber::new(34),
-});
-
-generate_parameter_list!(
-    Modeling,
-    ModelingNick,
-    nick,
-    nicks,
-    [
-        "J Crunch",
-        "J Solo",
-        "J Clean",
-        "Boutique",
-        "Rectified",
-        "Brit Stack",
-        "Brit Class A",
-        "BlackFace",
-        "Boat Back",
-        "Flat Top",
-        "Hot Rod",
-        "Tweed",
-        "Blues",
-        "Fuzz",
-        "Modern",
-        "British",
-        "Rock",
-        "Hiwatt (A1)",
-        "Brit Master Vol (A2)",
-        "Brit 800 EL84 (A3)",
-        "Band Master (A4)",
-        "Bass Man (A5)",
-        "Stella Bass (A6)",
-        "'83 Concert (A7)",
-        "Direct (A8)",
-    ],
-);
-
-generate_parameter_list!(
-    Modeling,
-    ModelingName,
-    name,
-    names,
-    [
-        "JM150 Millennium Crunch",
-        "JM150 Millennium Solo",
-        "JM150 Millennium Clean",
-        "Matchless DC30",
-        "MesaBoogie Dual Rectifier",
-        "Marshall JCM900",
-        "'63 Vox AC30 top boost",
-        "'65 Fender Twin Reverb",
-        "piezo acoustic guitar",
-        "dreadnaught acoustic guitar",
-        "Mesa Boogie Mark II C",
-        "'57 Fender Tweed Deluxe",
-        "dynamic blues tube combo",
-        "60's fuzz tone",
-        "SWR bass",
-        "Trace Elliot bass amp",
-        "Ampeg SVT bass amp",
-        "Hiwatt Custom 50",
-        "'78 Marshall Mstr Volume",
-        "'81 Marshall JCM800 with EL34s",
-        "'72 Fender Bandmaster",
-        "'65 Fender Bassman",
-        "SWR Interstellar Odrive",
-        "'83 Fender Concert Head",
-        "Direct - no modelling",
-    ],
-);
-
-discrete_parameter!(
-    #[derive(Display)]
-    Gain {
-        const DEFAULT = Normal::MIN,
-        const MAX_RAW = RawValue::new(90),
-        const PARAMETER_NB = ParameterNumber::new(10),
-        const CC_NB = CCNumber::new(35),
-    }
-);
-
-discrete_parameter!(
-    #[derive(Display)]
-    Treble {
-        const DEFAULT = Normal::HALF,
-        const MAX_RAW = RawValue::new(90),
-        const PARAMETER_NB = ParameterNumber::new(11),
-        const CC_NB = CCNumber::new(39),
-    }
-);
-
-discrete_parameter!(
-    #[derive(Display)]
-    Middle {
-        const DEFAULT = Normal::HALF,
-        const MAX_RAW = RawValue::new(90),
-        const PARAMETER_NB = ParameterNumber::new(12),
-        const CC_NB = CCNumber::new(38),
-    }
-);
-
-discrete_parameter!(
-    #[derive(Display)]
-    Bass {
-        const DEFAULT = Normal::HALF,
-        const MAX_RAW = RawValue::new(90),
-        const PARAMETER_NB = ParameterNumber::new(13),
-        const CC_NB = CCNumber::new(37),
-    }
-);
-
-discrete_parameter!(
-    #[derive(Display)]
-    Level {
-        const DEFAULT = Normal::MIN,
-        const MAX_RAW = RawValue::new(90),
-        const PARAMETER_NB = ParameterNumber::new(14),
-        const CC_NB = CCNumber::new(36),
-    }
-);
-
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Debug, Default, ParamGroup)]
 pub struct Amp {
+    #[discrete(max = 24, param_nb = 9, cc_nb = 34, display_map = name, display_map = nick)]
     pub modeling: Modeling,
+    #[discrete(max = 90, param_nb = 10, cc_nb = 35, display_raw)]
     pub gain: Gain,
+    #[discrete(max = 90, default_center, param_nb = 11, cc_nb = 39, display_raw)]
     pub treble: Treble,
+    #[discrete(max = 90, default_center, param_nb = 12, cc_nb = 38, display_raw)]
     pub middle: Middle,
+    #[discrete(max = 90, default_center, param_nb = 13, cc_nb = 37, display_raw)]
     pub bass: Bass,
+    #[discrete(max = 90, param_nb = 14, cc_nb = 36, display_raw)]
     pub level: Level,
 }
+
+const MODELING_NAMES: [&str; 25] = [
+    "JM150 Millennium Crunch",
+    "JM150 Millennium Solo",
+    "JM150 Millennium Clean",
+    "Matchless DC30",
+    "MesaBoogie Dual Rectifier",
+    "Marshall JCM900",
+    "'63 Vox AC30 top boost",
+    "'65 Fender Twin Reverb",
+    "piezo acoustic guitar",
+    "dreadnaught acoustic guitar",
+    "Mesa Boogie Mark II C",
+    "'57 Fender Tweed Deluxe",
+    "dynamic blues tube combo",
+    "60's fuzz tone",
+    "SWR bass",
+    "Trace Elliot bass amp",
+    "Ampeg SVT bass amp",
+    "Hiwatt Custom 50",
+    "'78 Marshall Mstr Volume",
+    "'81 Marshall JCM800 with EL34s",
+    "'72 Fender Bandmaster",
+    "'65 Fender Bassman",
+    "SWR Interstellar Odrive",
+    "'83 Fender Concert Head",
+    "Direct - no modelling",
+];
+
+const MODELING_NICKS: [&str; 25] = [
+    "J Crunch",
+    "J Solo",
+    "J Clean",
+    "Boutique",
+    "Rectified",
+    "Brit Stack",
+    "Brit Class A",
+    "BlackFace",
+    "Boat Back",
+    "Flat Top",
+    "Hot Rod",
+    "Tweed",
+    "Blues",
+    "Fuzz",
+    "Modern",
+    "British",
+    "Rock",
+    "Hiwatt (A1)",
+    "Brit Master Vol (A2)",
+    "Brit 800 EL84 (A3)",
+    "Band Master (A4)",
+    "Bass Man (A5)",
+    "Stella Bass (A6)",
+    "'83 Concert (A7)",
+    "Direct (A8)",
+];

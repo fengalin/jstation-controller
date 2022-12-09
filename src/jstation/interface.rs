@@ -64,6 +64,10 @@ impl Interface {
         self.send(&proc.build_for(self.sysex_chan))
     }
 
+    pub fn send_cc(&mut self, cc: midi::CC) -> Result<(), Error> {
+        self.send(&cc.build_for(self.cc_chan))
+    }
+
     fn send(&mut self, msg: &[u8]) -> Result<(), Error> {
         self.midi_out
             .as_mut()
