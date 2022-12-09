@@ -3,11 +3,14 @@ use crate::{
     midi::CCNumber,
 };
 
-bool_parameter!(GateOn {
-    const DEFAULT = false,
-    const PARAMETER_NB = ParameterNumber::new(16),
-    const CC_NB = CCNumber::new(41),
-});
+bool_parameter!(
+    #[derive(Display)]
+    GateOn {
+        const DEFAULT = false,
+        const PARAMETER_NB = ParameterNumber::new(16),
+        const CC_NB = CCNumber::new(41),
+    }
+);
 
 discrete_parameter!(
     #[derive(Display)]
@@ -29,3 +32,10 @@ discrete_parameter!(
         const CC_NB = CCNumber::new(43),
     }
 );
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct NoiseGate {
+    pub gate_on: GateOn,
+    pub attack_time: AttackTime,
+    pub threshold: Threshold,
+}

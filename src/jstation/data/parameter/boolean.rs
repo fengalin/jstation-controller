@@ -1,22 +1,39 @@
 use crate::{
-    jstation::data::{ParameterNumber, RawParameter, RawValue},
+    jstation::data::{ParameterNumber, RawParameter, RawValue, ValueStatus},
     midi::{CCNumber, CCValue, CC},
 };
 
-pub trait BoolParameter: From<bool> + Into<bool> + Copy + Clone + std::fmt::Debug + Sized {
+pub trait BoolParameter:
+    From<bool> + Into<bool> + PartialEq + Copy + Clone + std::fmt::Debug + Sized
+{
     const DEFAULT: bool;
 
-    /// Resets the parameter to its default value.
-    fn reset(&mut self) {
-        *self = Self::DEFAULT.into();
+    fn from_raw(raw: RawValue) -> Self {
+        (raw.as_u8() == 0).into()
     }
 
-    fn value(self) -> bool {
+    fn to_raw_value(self) -> RawValue {
+        RawValue::new(if self.into() { 0 } else { u8::MAX })
+    }
+
+    fn is_active(self) -> bool {
         self.into()
     }
 
-    fn set(&mut self, value: bool) {
-        *self = value.into();
+    /// Resets the parameter to its default value.
+    fn reset(&mut self) -> ValueStatus {
+        self.set(Self::DEFAULT.into())
+    }
+
+    /// Sets the value if it is different than current.
+    fn set(&mut self, new: Self) -> ValueStatus {
+        if new == *self {
+            return ValueStatus::Unchanged;
+        }
+
+        *self = new;
+
+        ValueStatus::Changed
     }
 }
 
@@ -24,14 +41,8 @@ pub trait BoolParameter: From<bool> + Into<bool> + Copy + Clone + std::fmt::Debu
 pub trait BoolRawParameter: BoolParameter {
     const PARAMETER_NB: ParameterNumber;
 
-    fn from_raw(raw: RawValue) -> Self {
-        (raw.as_u8() == 0).into()
-    }
-
-    fn to_raw(self) -> RawParameter {
-        let value = RawValue::new(if self.into() { 0 } else { u8::MAX });
-
-        RawParameter::new(Self::PARAMETER_NB, value)
+    fn to_raw_parameter(self) -> RawParameter {
+        RawParameter::new(Self::PARAMETER_NB, self.to_raw_value())
     }
 }
 
@@ -57,9 +68,19 @@ pub trait BoolCCParameter: BoolParameter {
 }
 
 macro_rules! bool_parameter {
-    ($param:ident { const DEFAULT = $default:expr $(,)? } ) => {
-        #[derive(Clone, Copy, Debug)]
+    ( $param:ident { const DEFAULT = $default:expr $(,)? } ) => {
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
         pub struct $param(bool);
+
+        impl crate::jstation::data::BoolParameter for $param {
+            const DEFAULT: bool = $default;
+        }
+
+        impl Default for $param {
+            fn default() -> Self {
+                $param($default)
+            }
+        }
 
         impl From<bool> for $param {
             fn from(value: bool) -> Self {
@@ -72,10 +93,14 @@ macro_rules! bool_parameter {
                 value.0
             }
         }
+    };
 
-        impl crate::jstation::data::BoolParameter for $param {
-            const DEFAULT: bool = $default;
-        }
+    ( #[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr $(,)?
+    } ) => {
+        bool_parameter!($param { const DEFAULT = $default });
+
+        bool_parameter!(#[derive(Display)] $param);
     };
 
     ( $param:ident {
@@ -89,6 +114,18 @@ macro_rules! bool_parameter {
         }
     };
 
+    ( #[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const PARAMETER_NB = $param_nb:expr $(,)?
+    } ) => {
+        bool_parameter!($param {
+            const DEFAULT = $default,
+            const PARAMETER_NB = $param_nb,
+        });
+
+        bool_parameter!(#[derive(Display)] $param);
+    };
+
     ( $param:ident {
         const DEFAULT = $default:expr,
         const CC_NB = $cc_nb:expr $(,)?
@@ -100,6 +137,18 @@ macro_rules! bool_parameter {
         }
     };
 
+    ( #[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const CC_NB = $cc_nb:expr $(,)?
+    } ) => {
+        bool_parameter!($param {
+            const DEFAULT = $default,
+            const CC_NB = $cc_nb,
+        });
+
+        bool_parameter!(#[derive(Display)] $param);
+    };
+
     ( $param:ident {
         const DEFAULT = $default:expr,
         const PARAMETER_NB = $param_nb:expr,
@@ -107,11 +156,38 @@ macro_rules! bool_parameter {
     } ) => {
         bool_parameter!($param {
             const DEFAULT = $default,
-            const PARAMETER_NB = $param_nb
+            const PARAMETER_NB = $param_nb,
         });
 
         impl crate::jstation::data::BoolCCParameter for $param {
             const CC_NB: crate::jstation::midi::CCNumber = $cc_nb;
+        }
+    };
+
+    ( #[derive(Display)] $param:ident {
+        const DEFAULT = $default:expr,
+        const PARAMETER_NB = $param_nb:expr,
+        const CC_NB = $cc_nb:expr $(,)?
+    } ) => {
+        bool_parameter!($param {
+            const DEFAULT = $default,
+            const PARAMETER_NB = $param_nb,
+            const CC_NB = $cc_nb,
+        });
+
+        bool_parameter!(#[derive(Display)] $param);
+    };
+
+    ( #[derive(Display)] $param:ident ) => {
+        impl std::fmt::Display for $param {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                use crate::jstation::data::BoolParameter;
+                if self.is_active() {
+                    f.write_str("on")
+                } else {
+                    f.write_str("off")
+                }
+            }
         }
     };
 }
