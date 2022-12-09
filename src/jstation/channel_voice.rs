@@ -1,5 +1,5 @@
 use crate::{
-    jstation::{Error, Parameter, ProgramNumber},
+    jstation::{CCParameter, Error, Parameter, ProgramNumber},
     midi,
 };
 
@@ -21,7 +21,12 @@ impl TryFrom<midi::ChannelVoice> for ChannelVoice {
     fn try_from(cv: midi::ChannelVoice) -> Result<Self, Self::Error> {
         use midi::channel_voice::Message::*;
         let msg = match cv.msg {
-            CC(cc) => Message::CC(Parameter::try_from(cc)?),
+            CC(cc) => Message::CC(Parameter::from_cc(cc).ok_or_else(|| {
+                let err = Error::CCNumberUnknown(cc.nb.into());
+                log::warn!("{err}");
+
+                err
+            })?),
             ProgramChange(prog_nb) => Message::ProgramChange(ProgramNumber::from(prog_nb)),
         };
 

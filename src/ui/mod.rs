@@ -2,15 +2,15 @@ macro_rules! param_handling {
     ($dsp:expr, $param:ident, $value:expr) => { {
         let param = &mut $dsp.borrow_mut().$param;
         if param.set($value).is_unchanged() {
-            return None;
+            None
+        } else {
+            Some(*param)
         }
-
-        *param
     } };
 
-    ($dsp:expr, match $event:ident { $( $variant:ident => $param:ident $(,)? )* } ) => {
+    ($dsp:expr, $tranform:expr, match $event:ident { $( $variant:ident => $param:ident $(,)? )* } ) => {
         match $event {
-            $( $variant(value) => param_handling!($dsp, $param, value).into(), )*
+            $( $variant(value) => param_handling!($dsp, $param, value).map(|param| $tranform(param)), )*
         }
     };
 }
@@ -58,11 +58,11 @@ mod tests {
         use crate::jstation::data::Normal;
 
         const JS_MIN: Normal = Normal::MIN;
-        const JS_HALF: Normal = Normal::HALF;
+        const JS_CENTER: Normal = Normal::CENTER;
         const JS_MAX: Normal = Normal::MAX;
 
         assert_eq!(to_ui_normal(JS_MIN).as_f32(), JS_MIN.as_f32());
-        assert_eq!(to_ui_normal(JS_HALF).as_f32(), JS_HALF.as_f32());
+        assert_eq!(to_ui_normal(JS_CENTER).as_f32(), JS_CENTER.as_f32());
         assert_eq!(to_ui_normal(JS_MAX).as_f32(), JS_MAX.as_f32());
 
         let less_than_min_res = Normal::try_from(0.0 - f32::EPSILON);
@@ -78,11 +78,11 @@ mod tests {
         use iced_audio::Normal;
 
         const UI_MIN: Normal = Normal::MIN;
-        const UI_HALF: Normal = Normal::CENTER;
+        const UI_CENTER: Normal = Normal::CENTER;
         const UI_MAX: Normal = Normal::MAX;
 
         assert_eq!(to_jstation_normal(UI_MIN).as_f32(), UI_MIN.as_f32());
-        assert_eq!(to_jstation_normal(UI_HALF).as_f32(), UI_HALF.as_f32());
+        assert_eq!(to_jstation_normal(UI_CENTER).as_f32(), UI_CENTER.as_f32());
         assert_eq!(to_jstation_normal(UI_MAX).as_f32(), UI_MAX.as_f32());
 
         let clipped_less_than_min = Normal::from_clipped(0.0 - f32::EPSILON);

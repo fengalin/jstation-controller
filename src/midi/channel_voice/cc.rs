@@ -16,6 +16,12 @@ impl CC {
     pub fn new(nb: CCNumber, value: CCValue) -> Self {
         CC { nb, value }
     }
+
+    pub fn build_for(self, chan: midi::Channel) -> [u8; 3] {
+        let tag_chan = midi::TagChannel { tag: CC::TAG, chan };
+
+        [tag_chan.into(), self.nb.into(), self.value.into()]
+    }
 }
 
 pub fn parse(i: &[u8]) -> IResult<&[u8], CC> {

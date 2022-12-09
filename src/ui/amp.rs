@@ -60,8 +60,9 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         match event {
             Parameter(param) => {
                 use AmpParameter::*;
-                let changed_param = param_handling!(
+                param_handling!(
                     self.amp,
+                    AmpParameter::from,
                     match param {
                         Modeling => modeling,
                         Gain => gain,
@@ -70,14 +71,14 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
                         Bass => bass,
                         Level => level,
                     }
-                );
-
-                return Some((self.on_change)(changed_param));
+                )
+                .map(|changed_param| (self.on_change)(changed_param))
             }
-            MustShowNicks(show_nick) => state.show_nick = show_nick,
+            MustShowNicks(show_nick) => {
+                state.show_nick = show_nick;
+                None
+            }
         }
-
-        None
     }
 
     fn view(&self, state: &Self::State) -> Element<Event> {

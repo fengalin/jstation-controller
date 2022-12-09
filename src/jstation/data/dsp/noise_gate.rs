@@ -1,41 +1,11 @@
-use crate::{
-    jstation::data::{Normal, ParameterNumber, RawValue},
-    midi::CCNumber,
-};
+use jstation_derive::ParamGroup;
 
-bool_parameter!(
-    #[derive(Display)]
-    GateOn {
-        const DEFAULT = false,
-        const PARAMETER_NB = ParameterNumber::new(16),
-        const CC_NB = CCNumber::new(41),
-    }
-);
-
-discrete_parameter!(
-    #[derive(Display)]
-    AttackTime {
-        const DEFAULT = Normal::MIN,
-        const MAX_RAW = RawValue::new(10),
-        const PARAMETER_NB = ParameterNumber::new(17),
-        const CC_NB = CCNumber::new(42),
-    }
-);
-
-discrete_parameter!(
-    #[derive(Display)]
-    Threshold {
-        const DEFAULT = Normal::MIN,
-        const MIN_RAW = RawValue::new(1),
-        const MAX_RAW = RawValue::new(99),
-        const PARAMETER_NB = ParameterNumber::new(18),
-        const CC_NB = CCNumber::new(43),
-    }
-);
-
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Debug, Default, ParamGroup)]
 pub struct NoiseGate {
+    #[boolean(param_nb = 16, cc_nb = 41, display_raw)]
     pub gate_on: GateOn,
+    #[discrete(max = 10, param_nb = 17, cc_nb = 42, display_raw)]
     pub attack_time: AttackTime,
+    #[discrete(min = 1, max = 99, param_nb = 18, cc_nb = 43, display_raw)]
     pub threshold: Threshold,
 }

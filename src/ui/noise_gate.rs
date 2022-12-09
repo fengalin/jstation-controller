@@ -40,16 +40,16 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
 
     fn update(&mut self, _state: &mut Self::State, event: NoiseGateParameter) -> Option<Message> {
         use NoiseGateParameter::*;
-        let changed_param = param_handling!(
+        param_handling!(
             self.noise_gate,
+            NoiseGateParameter::from,
             match event {
                 GateOn => gate_on,
                 AttackTime => attack_time,
                 Threshold => threshold,
             }
-        );
-
-        Some((self.on_change)(changed_param))
+        )
+        .map(|changed_param| (self.on_change)(changed_param))
     }
 
     fn view(&self, _state: &Self::State) -> Element<NoiseGateParameter> {

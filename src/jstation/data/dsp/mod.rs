@@ -1,104 +1,57 @@
-use crate::{jstation::Error, midi::CC};
+use crate::{jstation::CCParameter, midi};
 
 pub mod amp;
 pub use amp::Amp;
 
 pub mod cabinet;
+pub use cabinet::Cabinet;
 
 pub mod noise_gate;
 pub use noise_gate::NoiseGate;
 
 pub mod utility_settings;
-// `MidiChannel` is not associated with a CC param.
-// It is updated as part of the `UtilitySettingsResp` `procedure`.
-pub use utility_settings::{MidiChannel, UtilitySettings};
+pub use utility_settings::UtilitySettings;
 
-use crate::jstation::data::{BoolCCParameter, DiscreteCCParameter};
-
-macro_rules! declare_params {
-    // We could generate $set_param if macro `std::concat_idents` was stable.
-    ( $( ($module:ident, $set:ident, $set_param:ident): $( $param:ident $(,)? )*; )* ) => {
-        #[derive(Copy, Clone, Debug)]
-        pub enum Parameter {
-            $( $set($set_param), )*
-        }
-
-        $(
-            #[derive(Copy, Clone, Debug)]
-            pub enum $set_param {
-                $( $param($module::$param), )*
-            }
-
-            impl From<$set_param> for Parameter {
-                fn from(set_param: $set_param) -> Self {
-                    Parameter::$set(set_param)
-                }
-            }
-
-            impl $set_param {
-                pub fn to_cc(self) -> CC {
-                    match self {
-                        $( $set_param::$param(param) => param.to_cc(), )*
-                    }
-                }
-            }
-
-            $(
-                impl From<$module::$param> for $set_param {
-                    fn from(param: $module::$param) -> Self {
-                        $set_param::$param(param)
-                    }
-                }
-
-                impl From<&$module::$param> for $set_param {
-                    fn from(param: &$module::$param) -> Self {
-                        $set_param::$param(*param)
-                    }
-                }
-
-                impl From<&mut $module::$param> for $set_param {
-                    fn from(param: &mut $module::$param) -> Self {
-                        $set_param::$param(*param)
-                    }
-                }
-            )*
-        )*
-
-        impl Parameter {
-            pub fn to_cc(self) -> CC {
-                match self {
-                    $( Parameter::$set(set_param) => set_param.to_cc(), )*
-                }
-            }
-        }
-
-        impl TryFrom<CC> for Parameter {
-            type Error = Error;
-
-            fn try_from(cc: CC) -> Result<Self, Self::Error> {
-                use crate::jstation::data::{BoolCCParameter, DiscreteCCParameter};
-
-                match cc.nb {
-                    $( $(
-                        $module::$param::CC_NB => {
-                            Ok(Parameter::$set($module::$param::from_cc(cc.value).into()))
-                        }
-                    )* )*
-                    _ => {
-                        let err = Error::CCNumber(cc.nb.as_u8());
-                        log::warn!("{err}");
-
-                        Err(err)
-                    }
-                }
-            }
-        }
-    };
+#[derive(Clone, Copy, Debug)]
+pub enum Parameter {
+    Amp(amp::Parameter),
+    Cabinet(cabinet::Parameter),
+    NoiseGate(noise_gate::Parameter),
+    UtilitySettings(utility_settings::Parameter),
 }
 
-declare_params!(
-    (amp, Amp, AmpParameter): Modeling, Gain, Treble, Middle, Bass, Level;
-    (cabinet, Cabinet, CabinetParameter): Type;
-    (noise_gate, NoiseGate, NoiseGateParameter): GateOn, AttackTime, Threshold;
-    (utility_settings, UtilitySettings, UtilitySettingsParameter): DigitalOutLevel;
-);
+// FIXME impl ParameterSetter for a Device struct using Parameter?
+
+impl CCParameter for Parameter {
+    fn from_cc(cc: midi::CC) -> Option<Self> {
+        // FIXME not ideal: we might be able to match on cc nb ranges instead
+
+        let mut param = amp::Parameter::from_cc(cc).map(Parameter::Amp);
+        if param.is_some() {
+            return param;
+        }
+        param = cabinet::Parameter::from_cc(cc).map(Parameter::Cabinet);
+        if param.is_some() {
+            return param;
+        }
+        param = noise_gate::Parameter::from_cc(cc).map(Parameter::NoiseGate);
+        if param.is_some() {
+            return param;
+        }
+        param = utility_settings::Parameter::from_cc(cc).map(Parameter::UtilitySettings);
+        if param.is_some() {
+            return param;
+        }
+
+        None
+    }
+
+    fn to_cc(self) -> Option<midi::CC> {
+        match self {
+            Parameter::Amp(param) => param.to_cc(),
+            Parameter::Cabinet(param) => param.to_cc(),
+            Parameter::NoiseGate(param) => param.to_cc(),
+            Parameter::UtilitySettings(param) => param.to_cc(),
+        }
+    }
+}

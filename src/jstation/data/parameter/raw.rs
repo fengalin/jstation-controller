@@ -27,7 +27,7 @@ pub struct RawValue(u8);
 
 impl RawValue {
     pub const ZERO: Self = RawValue(0);
-    pub const HALF: Self = RawValue(0x7f);
+    pub const CENTER: Self = RawValue(0x7f);
     pub const MAX: Self = RawValue(0xff);
 
     pub const fn new(value: u8) -> Self {
