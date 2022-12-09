@@ -20,7 +20,7 @@ const KNOB_SIZE: Length = Length::Units(35);
 #[derive(Debug, Clone)]
 pub enum Event {
     Parameter(AmpParameter),
-    MustShowAltNames(bool),
+    MustShowNicks(bool),
 }
 
 impl From<AmpParameter> for Event {
@@ -73,7 +73,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
 
                 return Some((self.on_change)(changed_param));
             }
-            MustShowAltNames(show_nick) => state.show_nick = show_nick,
+            MustShowNicks(show_nick) => state.show_nick = show_nick,
         }
 
         None
@@ -100,8 +100,8 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         let amp = self.amp.borrow();
 
         let mut modelings = column![row![
-            text("Amplifier Model"),
-            checkbox("nick", state.show_nick, Event::MustShowAltNames),
+            text("Amp. Model"),
+            checkbox("nick", state.show_nick, Event::MustShowNicks),
         ]
         .spacing(10),]
         .spacing(10)
