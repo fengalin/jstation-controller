@@ -17,6 +17,7 @@ macro_rules! param_handling {
 
 pub mod amp;
 pub mod cabinet;
+pub mod noise_gate;
 
 pub mod app;
 pub use app::{App, APP_NAME};

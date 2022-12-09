@@ -74,7 +74,7 @@ pub trait DiscreteCCParameter: DiscreteParameter {
 }
 
 macro_rules! discrete_parameter {
-    ($param:ident {
+    ( $param:ident {
         const DEFAULT = $default:expr,
         const MIN_RAW = $min:expr,
         const MAX_RAW = $max:expr $(,)?
@@ -116,7 +116,7 @@ macro_rules! discrete_parameter {
         }
     };
 
-    (#[derive(Display)] $param:ident {
+    ( #[derive(Display)] $param:ident {
         const DEFAULT = $default:expr,
         const MIN_RAW = $min:expr,
         const MAX_RAW = $max:expr $(,)?
@@ -130,7 +130,7 @@ macro_rules! discrete_parameter {
         discrete_parameter!(#[derive(Display)] $param);
     };
 
-    ($param:ident {
+    ( $param:ident {
         const DEFAULT = $default:expr,
         const MAX_RAW = $max:expr $(,)?
     } ) => {
@@ -141,7 +141,7 @@ macro_rules! discrete_parameter {
         });
     };
 
-    (#[derive(Display)] $param:ident {
+    ( #[derive(Display)] $param:ident {
         const DEFAULT = $default:expr,
         const MAX_RAW = $max:expr $(,)?
     } ) => {

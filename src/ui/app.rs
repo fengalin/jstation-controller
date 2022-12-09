@@ -20,6 +20,7 @@ pub enum Message {
     JStation(Result<jstation::Message, jstation::Error>),
     Amp(dsp::AmpParameter),
     Cabinet(dsp::cabinet::Type),
+    NoiseGate(dsp::NoiseGateParameter),
     UtilitySettings(ui::utility_settings::Event),
     Ports(ui::port::Selection),
     StartScan,
@@ -36,6 +37,12 @@ impl From<dsp::AmpParameter> for Message {
 impl From<dsp::cabinet::Type> for Message {
     fn from(param: dsp::cabinet::Type) -> Self {
         Message::Cabinet(param)
+    }
+}
+
+impl From<dsp::NoiseGateParameter> for Message {
+    fn from(param: dsp::NoiseGateParameter) -> Self {
+        Message::NoiseGate(param)
     }
 }
 
@@ -62,12 +69,16 @@ pub struct App {
     jstation: ui::jstation::Interface,
     amp: Rc<RefCell<dsp::Amp>>,
     cabinet: Rc<RefCell<dsp::cabinet::Type>>,
+    noise_gate: Rc<RefCell<dsp::NoiseGate>>,
+
     show_midi_panel: bool,
     ports: Rc<RefCell<ui::port::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
+
     show_utility_settings: bool,
     // FIXME use a Rc<RefCell<_>> ?
     utility_settings: dsp::UtilitySettings,
+
     output_text: String,
 }
 
@@ -184,6 +195,7 @@ impl Application for App {
 
             amp: Rc::new(RefCell::new(dsp::Amp::default())),
             cabinet: Rc::new(RefCell::new(dsp::cabinet::Type::default())),
+            noise_gate: Rc::new(RefCell::new(dsp::NoiseGate::default())),
 
             show_midi_panel: false,
             ports: RefCell::new(ports).into(),
@@ -223,6 +235,9 @@ impl Application for App {
             Cabinet(cabinet_type) => {
                 use jstation::data::DiscreteCCParameter;
                 dbg!(&cabinet_type, cabinet_type.to_cc());
+            }
+            NoiseGate(ng_param) => {
+                dbg!(&ng_param, ng_param.to_cc());
             }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
             Ports(ui::port::Selection { port_in, port_out }) => {
@@ -301,6 +316,7 @@ impl Application for App {
                 .width(Length::Fill),
             ui::amp::Panel::new(self.amp.clone(), Amp),
             ui::cabinet::Panel::new(self.cabinet.clone(), Cabinet),
+            ui::noise_gate::Panel::new(self.noise_gate.clone(), NoiseGate),
             vertical_space(Length::Fill),
             text(&self.output_text),
         ]

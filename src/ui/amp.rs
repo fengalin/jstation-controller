@@ -45,6 +45,7 @@ impl<'a, Message> Panel<'a, Message> {
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct State {
     show_nick: bool,

@@ -6,6 +6,7 @@ pub use amp::Amp;
 pub mod cabinet;
 
 pub mod noise_gate;
+pub use noise_gate::NoiseGate;
 
 pub mod utility_settings;
 // `MidiChannel` is not associated with a CC param.
