@@ -12,7 +12,9 @@ pub mod utility_settings;
 // It is updated as part of the `UtilitySettingsResp` `procedure`.
 pub use utility_settings::{MidiChannel, UtilitySettings};
 
-macro_rules! declare_params(
+use crate::jstation::data::{BoolCCParameter, DiscreteCCParameter};
+
+macro_rules! declare_params {
     // We could generate $set_param if macro `std::concat_idents` was stable.
     ( $( ($module:ident, $set:ident, $set_param:ident): $( $param:ident $(,)? )*; )* ) => {
         #[derive(Copy, Clone, Debug)]
@@ -29,6 +31,14 @@ macro_rules! declare_params(
             impl From<$set_param> for Parameter {
                 fn from(set_param: $set_param) -> Self {
                     Parameter::$set(set_param)
+                }
+            }
+
+            impl $set_param {
+                pub fn to_cc(self) -> CC {
+                    match self {
+                        $( $set_param::$param(param) => param.to_cc(), )*
+                    }
                 }
             }
 
@@ -53,6 +63,14 @@ macro_rules! declare_params(
             )*
         )*
 
+        impl Parameter {
+            pub fn to_cc(self) -> CC {
+                match self {
+                    $( Parameter::$set(set_param) => set_param.to_cc(), )*
+                }
+            }
+        }
+
         impl TryFrom<CC> for Parameter {
             type Error = Error;
 
@@ -75,7 +93,7 @@ macro_rules! declare_params(
             }
         }
     };
-);
+}
 
 declare_params!(
     (amp, Amp, AmpParameter): Modeling, Gain, Treble, Middle, Bass, Level;

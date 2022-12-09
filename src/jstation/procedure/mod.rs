@@ -28,7 +28,7 @@ pub trait ProcedureBuilder {
     }
 }
 
-macro_rules! declare_procs(
+macro_rules! declare_procs {
     ( $( $module:ident: $( $proc:ident $(,)? )*; )* ) => {
         $(
             pub mod $module;
@@ -80,7 +80,7 @@ macro_rules! declare_procs(
             }
         }
     };
-);
+}
 
 declare_procs!(
     bank_dump: BankDumpReq, StartBankDumpResp, EndBankDumpResp;

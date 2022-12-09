@@ -8,6 +8,9 @@ pub use discrete::{
     DiscreteCCParameter, DiscreteParameter, DiscreteRange, DiscreteRawParameter, DiscreteValue,
 };
 
+#[macro_use]
+mod list;
+
 mod normal;
 pub use normal::Normal;
 
@@ -64,7 +67,7 @@ pub enum ValueStatus {
 }
 
 impl ValueStatus {
-    pub fn is_unchanged(self) -> bool {
+    pub fn is_unchanged(&self) -> bool {
         matches!(self, ValueStatus::Unchanged)
     }
 }

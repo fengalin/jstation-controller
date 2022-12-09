@@ -1,5 +1,5 @@
 use iced::{
-    widget::{column, row, text},
+    widget::{checkbox, column, pick_list, row, text},
     Alignment, Element, Length,
 };
 use iced_audio::Knob;
@@ -17,6 +17,18 @@ use crate::{
 
 const KNOB_SIZE: Length = Length::Units(35);
 
+#[derive(Debug, Clone)]
+pub enum Event {
+    Parameter(AmpParameter),
+    MustShowAltNames(bool),
+}
+
+impl From<AmpParameter> for Event {
+    fn from(param: AmpParameter) -> Self {
+        Event::Parameter(param)
+    }
+}
+
 pub struct Panel<'a, Message> {
     amp: Rc<RefCell<Amp>>,
     on_change: Box<dyn 'a + Fn(AmpParameter) -> Message>,
@@ -33,61 +45,89 @@ impl<'a, Message> Panel<'a, Message> {
         }
     }
 }
+#[derive(Clone, Copy, Debug, Default)]
+pub struct State {
+    show_nick: bool,
+}
 
 impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
-    type State = ();
-    type Event = AmpParameter;
+    type State = State;
+    type Event = Event;
 
-    fn update(&mut self, _state: &mut Self::State, event: AmpParameter) -> Option<Message> {
-        use AmpParameter::*;
-        let changed_param = match event {
-            // FIXME looks like it could be generated
-            Modeling(value) => {
-                let modeling = &mut self.amp.borrow_mut().modeling;
-                if modeling.set(value).is_unchanged() {
-                    return None;
-                }
+    fn update(&mut self, state: &mut Self::State, event: Event) -> Option<Message> {
+        use Event::*;
+        match event {
+            Parameter(param) => {
+                use AmpParameter::*;
+                let changed_param = param_handling!(
+                    self.amp,
+                    match param {
+                        Modeling => modeling,
+                        Gain => gain,
+                        Treble => treble,
+                        Middle => middle,
+                        Bass => bass,
+                        Level => level,
+                    }
+                );
 
-                modeling.into()
+                return Some((self.on_change)(changed_param));
             }
-            Gain(value) => {
-                let gain = &mut self.amp.borrow_mut().gain;
-                if gain.set(value).is_unchanged() {
-                    return None;
-                }
+            MustShowAltNames(show_nick) => state.show_nick = show_nick,
+        }
 
-                gain.into()
-            }
-            other => {
-                dbg!(&other);
-                return None;
-            }
-        };
-
-        Some((self.on_change)(changed_param))
+        None
     }
 
-    fn view(&self, _state: &Self::State) -> Element<AmpParameter> {
+    fn view(&self, state: &Self::State) -> Element<Event> {
+        macro_rules! param_knob {
+            ($amp:ident, $variant:ident, $param:ident) => {
+                column![
+                    text(stringify!($variant)),
+                    Knob::new(to_ui_param($amp.$param), |normal| {
+                        $variant(amp::$variant::from_snapped(to_jstation_normal(normal))).into()
+                    })
+                    .size(KNOB_SIZE),
+                    text(format!("{:02}", $amp.$param)),
+                ]
+                .spacing(5)
+                .align_items(Alignment::Center)
+            };
+        }
+
         use AmpParameter::*;
 
         let amp = self.amp.borrow();
+
+        let mut modelings = column![row![
+            text("Amplifier Model"),
+            checkbox("nick", state.show_nick, Event::MustShowAltNames),
+        ]
+        .spacing(10),]
+        .spacing(10)
+        .padding(5);
+
+        if state.show_nick {
+            modelings = modelings.push(pick_list(
+                amp::Modeling::nicks(),
+                Some(amp.modeling.nick()),
+                |nick| Modeling(nick.param()).into(),
+            ));
+        } else {
+            modelings = modelings.push(pick_list(
+                amp::Modeling::names(),
+                Some(amp.modeling.name()),
+                |name| Modeling(name.param()).into(),
+            ));
+        }
+
         let content: Element<_> = row![
-            column![text("Amplifier Model"), text(amp.modeling)]
-                .spacing(10)
-                .padding(5),
-            column![
-                text("Gain"),
-                row![
-                    Knob::new(to_ui_param(amp.gain), |normal| {
-                        Gain(amp::Gain::from_snapped(to_jstation_normal(normal))).into()
-                    })
-                    .size(KNOB_SIZE),
-                    text(format!("{:02}", amp.gain)),
-                ]
-                .spacing(5)
-                .align_items(Alignment::Center),
-            ]
-            .align_items(Alignment::Center),
+            modelings,
+            param_knob!(amp, Gain, gain),
+            param_knob!(amp, Treble, treble),
+            param_knob!(amp, Middle, middle),
+            param_knob!(amp, Bass, bass),
+            param_knob!(amp, Level, level),
         ]
         .spacing(10)
         .align_items(Alignment::Fill)

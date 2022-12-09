@@ -1,9 +1,7 @@
 use crate::{
-    jstation::data::{DiscreteParameter, Normal, ParameterNumber, RawValue},
+    jstation::data::{Normal, ParameterNumber, RawValue},
     midi::CCNumber,
 };
-
-use std::fmt;
 
 discrete_parameter!(Type {
     const DEFAULT = Normal::MIN,
@@ -12,34 +10,58 @@ discrete_parameter!(Type {
     const CC_NB = CCNumber::new(66),
 });
 
-static TYPES: [(&str, &str); (Type::MAX_RAW.as_u8() + 1) as usize] = [
-    ("No Cabinet", ""),
-    ("British 4x12", "Marshall 1960A with 75W Celestions"),
-    ("Johnson 4x12", "loaded with Vintage 30W Celestions"),
-    ("Fane 4x12", "Hiwatt SE4123 with Fanes"),
-    ("Johnson 2x12", "Open back with Vintage 30W Celestions"),
-    ("American 2x12", "Fender Twin 2x12"),
-    ("Jennings Blue 2x12", "'63 Vox AC30"),
-    ("Tweed 1x12", "Fender Deluxe 1x12"),
-    ("Blonde 2x12", "Bassman 2x12"),
-    ("Bass 4x10 with Tweeter", "SWR 4x10 with tweeter"),
-    ("Bass 360 1x18", "Acoustic 360"),
-    ("Flex Bass 1x15", "Ampeg Portaflex"),
-    (
+generate_parameter_list!(
+    Type,
+    TypeNick,
+    nick,
+    nicks,
+    [
+        "No Cabinet",
+        "British 4x12",
+        "Johnson 4x12",
+        "Fane 4x12",
+        "Johnson 2x12",
+        "American 2x12",
+        "Jennings Blue 2x12",
+        "Tweed 1x12",
+        "Blonde 2x12",
+        "Bass 4x10 with Tweeter",
+        "Bass 360 1x18",
+        "Flex Bass 1x15",
         "Green Back 4x12",
-        "Marshall 1960B with 25W Celestion Greenbacks",
-    ),
-    ("Mega 1516", "Peavy 1x15 and 2x8"),
-    ("Boutique 4x12", "VHT 4x12 with Celestion V30s"),
-    ("'65 Tweed 1x12", "'65 Fender Deluxe"),
-    ("Goliath 4x10", "SWR Goliath"),
-    ("Ivy League 1x10", "Fender Harvard"),
-    ("Bass Man 4x10", "Fender Bassman"),
-];
+        "Mega 1516",
+        "Boutique 4x12",
+        "'65 Tweed 1x12",
+        "Goliath 4x10",
+        "Ivy League 1x10",
+        "Bass Man 4x10",
+    ]
+);
 
-impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let idx = self.to_raw_value().as_u8() as usize;
-        fmt::Display::fmt(&(TYPES[idx].0), f)
-    }
-}
+generate_parameter_list!(
+    Type,
+    TypeName,
+    name,
+    names,
+    [
+        "No Cabinet",
+        "Marshall 1960A with 75W Celestions",
+        "loaded with Vintage 30W Celestions",
+        "Hiwatt SE4123 with Fanes",
+        "Open back with Vintage 30W Celestions",
+        "Fender Twin 2x12",
+        "'63 Vox AC30",
+        "Fender Deluxe 1x12",
+        "Bassman 2x12",
+        "SWR 4x10 with tweeter",
+        "Acoustic 360",
+        "Ampeg Portaflex",
+        "Marshall 1960B with 25W Celestion Greenbacks",
+        "Peavy 1x15 and 2x8",
+        "VHT 4x12 with Celestion V30s",
+        "'65 Fender Deluxe",
+        "SWR Goliath",
+        "Fender Harvard",
+        "Fender Bassman",
+    ]
+);
