@@ -208,8 +208,8 @@ impl Application for App {
                     self.show_error(&err);
                 }
             }
-            Amp(amp) => {
-                dbg!(&amp);
+            Amp(amp_param) => {
+                dbg!(&amp_param, amp_param.to_cc());
             }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
             Ports(ui::port::Selection { port_in, port_out }) => {
@@ -289,7 +289,8 @@ impl Application for App {
             ui::amp::Panel::new(self.amp.clone(), Amp),
             vertical_space(Length::Fill),
             text(&self.output_text),
-        ];
+        ]
+        .spacing(20);
 
         container(content)
             .padding(10)

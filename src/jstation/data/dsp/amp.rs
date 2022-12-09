@@ -1,9 +1,7 @@
 use crate::{
-    jstation::data::{DiscreteParameter, Normal, ParameterNumber, RawValue},
+    jstation::data::{Normal, ParameterNumber, RawValue},
     midi::CCNumber,
 };
-
-use std::fmt;
 
 discrete_parameter!(Modeling {
     const DEFAULT = Normal::MIN,
@@ -12,40 +10,73 @@ discrete_parameter!(Modeling {
     const CC_NB = CCNumber::new(34),
 });
 
-static MODELINGS: [(&str, &str); (Modeling::MAX_RAW.as_u8() + 1) as usize] = [
-    ("J Crunch", "JM150 Millennium Crunch"),
-    ("J Solo", "JM150 Millennium Solo"),
-    ("J Clean", "JM150 Millennium Clean"),
-    ("Boutique", "Matchless DC30"),
-    ("Rectified", "MesaBoogie Dual Rectifier"),
-    ("Brit Stack", "Marshall JCM900"),
-    ("Brit Class A", "'63 Vox AC30 top boost"),
-    ("BlackFace", "'65 Fender Twin Reverb"),
-    ("Boat Back", "piezo acoustic guitar"),
-    ("Flat Top", "dreadnaught acoustic guitar"),
-    ("Hot Rod", "Mesa Boogie Mark II C"),
-    ("Tweed", "'57 Fender Tweed Deluxe"),
-    ("Blues", "dynamic blues tube combo"),
-    ("Fuzz", "60's fuzz tone"),
-    ("Modern", "SWR bass"),
-    ("British", "Trace Elliot bass amp"),
-    ("Rock", "Ampeg SVT bass amp"),
-    ("Hiwatt (A1)", "Hiwatt Custom 50"),
-    ("Brit Master Vol (A2)", "'78 Marshall Mstr Volume"),
-    ("Brit 800 EL84 (A3)", "'81 Marshall JCM800 w/EL34s"),
-    ("Band Master (A4)", "'72 Fender Bandmaster"),
-    ("Bass Man (A5)", "'65 Fender Bassman"),
-    ("Stella Bass (A6)", "SWR Interstellar Odrive"),
-    ("'83 Concert (A7)", "'83 Fender Concert Head"),
-    ("Direct (A8)", "Direct - no modelling"),
-];
+generate_parameter_list!(
+    Modeling,
+    ModelingNick,
+    nick,
+    nicks,
+    [
+        "J Crunch",
+        "J Solo",
+        "J Clean",
+        "Boutique",
+        "Rectified",
+        "Brit Stack",
+        "Brit Class A",
+        "BlackFace",
+        "Boat Back",
+        "Flat Top",
+        "Hot Rod",
+        "Tweed",
+        "Blues",
+        "Fuzz",
+        "Modern",
+        "British",
+        "Rock",
+        "Hiwatt (A1)",
+        "Brit Master Vol (A2)",
+        "Brit 800 EL84 (A3)",
+        "Band Master (A4)",
+        "Bass Man (A5)",
+        "Stella Bass (A6)",
+        "'83 Concert (A7)",
+        "Direct (A8)",
+    ],
+);
 
-impl fmt::Display for Modeling {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let idx = self.to_raw_value().as_u8() as usize;
-        fmt::Display::fmt(&(MODELINGS[idx].0), f)
-    }
-}
+generate_parameter_list!(
+    Modeling,
+    ModelingName,
+    name,
+    names,
+    [
+        "JM150 Millennium Crunch",
+        "JM150 Millennium Solo",
+        "JM150 Millennium Clean",
+        "Matchless DC30",
+        "MesaBoogie Dual Rectifier",
+        "Marshall JCM900",
+        "'63 Vox AC30 top boost",
+        "'65 Fender Twin Reverb",
+        "piezo acoustic guitar",
+        "dreadnaught acoustic guitar",
+        "Mesa Boogie Mark II C",
+        "'57 Fender Tweed Deluxe",
+        "dynamic blues tube combo",
+        "60's fuzz tone",
+        "SWR bass",
+        "Trace Elliot bass amp",
+        "Ampeg SVT bass amp",
+        "Hiwatt Custom 50",
+        "'78 Marshall Mstr Volume",
+        "'81 Marshall JCM800 with EL34s",
+        "'72 Fender Bandmaster",
+        "'65 Fender Bassman",
+        "SWR Interstellar Odrive",
+        "'83 Fender Concert Head",
+        "Direct - no modelling",
+    ],
+);
 
 discrete_parameter!(
     #[derive(Display)]

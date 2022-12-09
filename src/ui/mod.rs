@@ -1,3 +1,20 @@
+macro_rules! param_handling {
+    ($dsp:expr, match $event:ident { $( $variant:ident => $param:ident $(,)? )* } ) => {
+        match $event {
+            $(
+                $variant(value) => {
+                    let $param = &mut $dsp.borrow_mut().$param;
+                    if $param.set(value).is_unchanged() {
+                        return None;
+                    }
+
+                    $param.into()
+                }
+            )*
+        }
+    };
+}
+
 pub mod amp;
 
 pub mod app;
