@@ -9,7 +9,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     jstation::data::{
-        dsp::{amp, Amp, AmpParameter},
+        dsp::{amp, Amp},
         DiscreteParameter,
     },
     ui::{to_jstation_normal, to_ui_param},
@@ -19,30 +19,23 @@ const KNOB_SIZE: Length = Length::Units(35);
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    Parameter(AmpParameter),
+    Parameter(amp::Parameter),
     MustShowNicks(bool),
 }
 
-impl From<AmpParameter> for Event {
-    fn from(param: AmpParameter) -> Self {
+impl From<amp::Parameter> for Event {
+    fn from(param: amp::Parameter) -> Self {
         Event::Parameter(param)
     }
 }
 
-pub struct Panel<'a, Message> {
+pub struct Panel {
     amp: Rc<RefCell<Amp>>,
-    on_change: Box<dyn 'a + Fn(AmpParameter) -> Message>,
 }
 
-impl<'a, Message> Panel<'a, Message> {
-    pub fn new<F>(amp: Rc<RefCell<Amp>>, on_change: F) -> Self
-    where
-        F: 'a + Fn(AmpParameter) -> Message,
-    {
-        Self {
-            amp,
-            on_change: Box::new(on_change),
-        }
+impl Panel {
+    pub fn new(amp: Rc<RefCell<Amp>>) -> Self {
+        Self { amp }
     }
 }
 
@@ -51,7 +44,10 @@ pub struct State {
     show_nick: bool,
 }
 
-impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
+impl<Message> Component<Message, iced::Renderer> for Panel
+where
+    Message: From<amp::Parameter>,
+{
     type State = State;
     type Event = Event;
 
@@ -59,20 +55,8 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         use Event::*;
         match event {
             Parameter(param) => {
-                use AmpParameter::*;
-                param_handling!(
-                    self.amp,
-                    AmpParameter::from,
-                    match param {
-                        Modeling => modeling,
-                        Gain => gain,
-                        Treble => treble,
-                        Middle => middle,
-                        Bass => bass,
-                        Level => level,
-                    }
-                )
-                .map(|changed_param| (self.on_change)(changed_param))
+                use crate::jstation::data::ParameterSetter;
+                return self.amp.borrow_mut().set(param).map(Message::from);
             }
             MustShowNicks(show_nick) => {
                 state.show_nick = show_nick;
@@ -97,8 +81,6 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             };
         }
 
-        use AmpParameter::*;
-
         let amp = self.amp.borrow();
 
         let mut modelings = column![row![
@@ -113,16 +95,17 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             modelings = modelings.push(pick_list(
                 amp::Modeling::nicks(),
                 Some(amp.modeling.nick()),
-                |nick| Modeling(nick.param()).into(),
+                |nick| amp::Parameter::from(nick.param()).into(),
             ));
         } else {
             modelings = modelings.push(pick_list(
                 amp::Modeling::names(),
                 Some(amp.modeling.name()),
-                |name| Modeling(name.param()).into(),
+                |name| amp::Parameter::from(name.param()).into(),
             ));
         }
 
+        use amp::Parameter::*;
         let content: Element<_> = row![
             modelings,
             param_knob!(amp, Gain, gain),
@@ -144,8 +127,11 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
     }
 }
 
-impl<'a, Message: 'a> From<Panel<'a, Message>> for Element<'a, Message, iced::Renderer> {
-    fn from(panel: Panel<'a, Message>) -> Self {
+impl<'a, Message> From<Panel> for Element<'a, Message, iced::Renderer>
+where
+    Message: 'a + From<amp::Parameter>,
+{
+    fn from(panel: Panel) -> Self {
         iced_lazy::component(panel)
     }
 }
