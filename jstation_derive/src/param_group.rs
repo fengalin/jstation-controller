@@ -45,8 +45,8 @@ impl<'a> ToTokens for ParamGroup<'a> {
         let group_name = &self.name;
 
         tokens.extend({
-            let param_enum = self.params.iter().map(Param::name);
-            let param_from = self.params.iter().map(Param::name);
+            let param_enum = self.params.iter().map(Param::typ);
+            let param_from = self.params.iter().map(Param::typ);
 
             quote! {
                 #[derive(Clone, Copy, Debug)]
@@ -84,7 +84,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
 
         tokens.extend({
             let variant_set_field = self.params.iter().map(|p| {
-                let variant = p.name();
+                let variant = p.typ();
                 let field = p.field();
 
                 quote! {
@@ -114,7 +114,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
             // Only implement for params with a declared cc_nb
             let variant_from_cc = self.params.iter().filter_map(|p| {
                 p.cc_nb().map(|cc_nb| {
-                    let param = p.name();
+                    let param = p.typ();
                     quote! {
                         #cc_nb => #param::from_cc(cc).map(Parameter::#param),
                     }
@@ -123,7 +123,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
 
             let variant_to_cc = self.params.iter().filter_map(|p| {
                 p.cc_nb().map(|_| {
-                    let variant = p.name();
+                    let variant = p.typ();
                     quote! {
                         Parameter::#variant(param) => param.to_cc(),
                     }

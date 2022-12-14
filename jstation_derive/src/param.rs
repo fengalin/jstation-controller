@@ -45,10 +45,10 @@ impl<'a> Param<'a> {
         Some(param)
     }
 
-    pub fn name(&self) -> &Type {
+    pub fn typ(&self) -> &Type {
         match self {
-            Param::Discrete(param) => param.name(),
-            Param::Boolean(param) => param.name(),
+            Param::Discrete(param) => param.typ(),
+            Param::Boolean(param) => param.typ(),
         }
     }
 

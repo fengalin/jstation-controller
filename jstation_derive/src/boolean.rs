@@ -7,6 +7,7 @@ use crate::param::Arg;
 
 pub struct Boolean<'a> {
     field: &'a Field,
+    name: Option<String>,
     default: TokenStream,
     display_raw: bool,
     param_nb: Option<Expr>,
@@ -17,6 +18,7 @@ impl<'a> Boolean<'a> {
     fn new(field: &'a Field) -> Self {
         Boolean {
             field,
+            name: None,
             default: quote! { false },
             display_raw: false,
             param_nb: None,
@@ -47,6 +49,16 @@ impl<'a> Boolean<'a> {
                 }
                 "param_nb" => param.param_nb = Some(arg.value_or_abort(field)),
                 "cc_nb" => param.cc_nb = Some(arg.value_or_abort(field)),
+                "name" => {
+                    let name = match arg.value_or_abort(field) {
+                        Expr::Lit(syn::ExprLit {
+                            lit: syn::Lit::Str(lit_str),
+                            ..
+                        }) => lit_str.value(),
+                        other => other.to_token_stream().to_string(),
+                    };
+                    param.name = Some(name);
+                }
                 other => {
                     abort!(
                         field,
@@ -60,7 +72,7 @@ impl<'a> Boolean<'a> {
         param
     }
 
-    pub fn name(&self) -> &Type {
+    pub fn typ(&self) -> &Type {
         &self.field.ty
     }
 
@@ -75,7 +87,11 @@ impl<'a> Boolean<'a> {
 
 impl<'a> ToTokens for Boolean<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let param = self.name();
+        let param = self.typ();
+        let param_name = self.name.clone().unwrap_or_else(|| {
+            use heck::ToTitleCase;
+            param.to_token_stream().to_string().to_title_case()
+        });
         let param_default = &self.default;
 
         tokens.extend(quote! {
@@ -83,7 +99,7 @@ impl<'a> ToTokens for Boolean<'a> {
             pub struct #param(bool);
 
             impl crate::jstation::data::BoolParameter for #param {
-                const NAME: &'static str = stringify!(#param);
+                const NAME: &'static str = #param_name;
                 const DEFAULT: bool = #param_default;
             }
 

@@ -38,6 +38,12 @@ impl From<dsp::cabinet::Parameter> for Message {
     }
 }
 
+impl From<dsp::compressor::Parameter> for Message {
+    fn from(param: dsp::compressor::Parameter) -> Self {
+        Message::Parameter(param.into())
+    }
+}
+
 impl From<dsp::noise_gate::Parameter> for Message {
     fn from(param: dsp::noise_gate::Parameter) -> Self {
         Message::Parameter(param.into())
@@ -67,6 +73,7 @@ pub struct App {
     jstation: ui::jstation::Interface,
     amp: Rc<RefCell<dsp::Amp>>,
     cabinet: Rc<RefCell<dsp::Cabinet>>,
+    compressor: Rc<RefCell<dsp::Compressor>>,
     noise_gate: Rc<RefCell<dsp::NoiseGate>>,
 
     show_midi_panel: bool,
@@ -134,6 +141,10 @@ impl App {
                     CC(Amp(param)) => {
                         log::info!("Got {param:?}");
                         let _ = self.amp.borrow_mut().set(param);
+                    }
+                    CC(Compressor(param)) => {
+                        log::info!("Got {param:?}");
+                        let _ = self.compressor.borrow_mut().set(param);
                     }
                     CC(Cabinet(param)) => {
                         log::info!("Got {param:?}");
@@ -203,6 +214,7 @@ impl Application for App {
 
             amp: Rc::new(RefCell::new(dsp::Amp::default())),
             cabinet: Rc::new(RefCell::new(dsp::Cabinet::default())),
+            compressor: Rc::new(RefCell::new(dsp::Compressor::default())),
             noise_gate: Rc::new(RefCell::new(dsp::NoiseGate::default())),
 
             show_midi_panel: false,
@@ -322,6 +334,7 @@ impl Application for App {
             row![utility_settings, midi_panel]
                 .spacing(20)
                 .width(Length::Fill),
+            ui::compressor::Panel::new(self.compressor.clone()),
             ui::amp::Panel::new(self.amp.clone()),
             ui::cabinet::Panel::new(self.cabinet.clone()),
             ui::noise_gate::Panel::new(self.noise_gate.clone()),

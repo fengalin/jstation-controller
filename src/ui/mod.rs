@@ -1,5 +1,9 @@
+#[macro_use]
+mod macros;
+
 pub mod amp;
 pub mod cabinet;
+pub mod compressor;
 pub mod noise_gate;
 
 pub mod app;

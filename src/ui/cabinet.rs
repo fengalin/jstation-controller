@@ -6,7 +6,10 @@ use iced_lazy::{self, Component};
 
 use std::{cell::RefCell, rc::Rc};
 
-use crate::jstation::data::dsp::{cabinet, Cabinet};
+use crate::jstation::data::{
+    dsp::{cabinet, Cabinet},
+    DiscreteParameter,
+};
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -64,7 +67,7 @@ where
         let cabinet = self.cabinet.borrow();
 
         let mut cabinet_types = column![row![
-            text("Cabinet type"),
+            text(cabinet::Type::NAME),
             checkbox("nick", state.show_nick, Event::MustShowNicks),
         ]
         .spacing(10),]
