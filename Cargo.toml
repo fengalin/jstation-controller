@@ -11,10 +11,8 @@ repository = "https://github.com/fengalin/jstation-controller"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
 bitflags = "1.3.2"
-chrono = "0.4.19"
-env_logger = "0.9"
+env_logger = "0.10"
 flume = "0.10.13"
 futures = "0.3.25"
 iced = { version = "0.6", features = [ "default_system_font", "smol" ] }
@@ -22,8 +20,7 @@ iced_audio = { git = "https://github.com/iced-rs/iced_audio" }
 iced_core = "0.6"
 iced_lazy = "0.3.0"
 iced_native = "0.7"
-iced_wgpu = "0.6"
-image = "0.24"
+iced_wgpu = "0.7"
 jstation_derive = { path = "jstation_derive" }
 log = "0.4"
 midir = "0.8"
@@ -32,13 +29,9 @@ once_cell = "1.0"
 smallvec = { version = "1.10", features = [ "union" ] }
 smol = "1.2.5"
 thiserror = "1.0"
-timer = "0.2.0"
 
 [profile.release]
 lto = true
-
-#[patch.'https://github.com/fengalin/iced_audio']
-#iced_audio = { path = "../iced_audio" }
 
 [patch.crates-io]
 iced = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
