@@ -6,34 +6,27 @@ use iced_lazy::{self, Component};
 
 use std::{cell::RefCell, rc::Rc};
 
-use crate::jstation::data::{dsp::cabinet, DiscreteParameter};
+use crate::jstation::data::dsp::{cabinet, Cabinet};
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    Parameter(cabinet::Type),
+    Parameter(cabinet::Parameter),
     MustShowNicks(bool),
 }
 
 impl From<cabinet::Type> for Event {
     fn from(param: cabinet::Type) -> Self {
-        Event::Parameter(param)
+        Event::Parameter(cabinet::Parameter::Type(param))
     }
 }
 
-pub struct Panel<'a, Message> {
-    cabinet: Rc<RefCell<cabinet::Type>>,
-    on_change: Box<dyn 'a + Fn(cabinet::Type) -> Message>,
+pub struct Panel {
+    cabinet: Rc<RefCell<Cabinet>>,
 }
 
-impl<'a, Message> Panel<'a, Message> {
-    pub fn new<F>(cabinet: Rc<RefCell<cabinet::Type>>, on_change: F) -> Self
-    where
-        F: 'a + Fn(cabinet::Type) -> Message,
-    {
-        Self {
-            cabinet,
-            on_change: Box::new(on_change),
-        }
+impl Panel {
+    pub fn new(cabinet: Rc<RefCell<Cabinet>>) -> Self {
+        Self { cabinet }
     }
 }
 
@@ -42,20 +35,24 @@ pub struct State {
     show_nick: bool,
 }
 
-impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
+impl<Message> Component<Message, iced::Renderer> for Panel
+where
+    Message: From<cabinet::Parameter>,
+{
     type State = State;
     type Event = Event;
 
     fn update(&mut self, state: &mut Self::State, event: Event) -> Option<Message> {
         use Event::*;
         match event {
-            Parameter(cabinet_type) => {
-                let param = &mut self.cabinet.borrow_mut();
-                if param.set(cabinet_type).is_unchanged() {
-                    return None;
-                }
+            Parameter(cabinet_param) => {
+                use crate::jstation::data::ParameterSetter;
 
-                return Some((self.on_change)(param.to_owned()));
+                return self
+                    .cabinet
+                    .borrow_mut()
+                    .set(cabinet_param)
+                    .map(Message::from);
             }
             MustShowNicks(show_nick) => state.show_nick = show_nick,
         }
@@ -64,7 +61,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
     }
 
     fn view(&self, state: &Self::State) -> Element<Event> {
-        let cabinet_type = self.cabinet.borrow();
+        let cabinet = self.cabinet.borrow();
 
         let mut cabinet_types = column![row![
             text("Cabinet type"),
@@ -77,14 +74,14 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         if state.show_nick {
             cabinet_types = cabinet_types.push(pick_list(
                 cabinet::Type::nicks(),
-                Some(cabinet_type.nick()),
-                |nick| Event::Parameter(nick.param()),
+                Some(cabinet.typ.nick()),
+                |nick| nick.param().into(),
             ));
         } else {
             cabinet_types = cabinet_types.push(pick_list(
                 cabinet::Type::names(),
-                Some(cabinet_type.name()),
-                |name| Event::Parameter(name.param()),
+                Some(cabinet.typ.name()),
+                |name| name.param().into(),
             ));
         }
 
@@ -99,8 +96,11 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
     }
 }
 
-impl<'a, Message: 'a> From<Panel<'a, Message>> for Element<'a, Message, iced::Renderer> {
-    fn from(panel: Panel<'a, Message>) -> Self {
+impl<'a, Message> From<Panel> for Element<'a, Message, iced::Renderer>
+where
+    Message: 'a + From<cabinet::Parameter>,
+{
+    fn from(panel: Panel) -> Self {
         iced_lazy::component(panel)
     }
 }

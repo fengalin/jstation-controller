@@ -9,7 +9,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     jstation::data::{
-        dsp::{noise_gate, NoiseGate, NoiseGateParameter},
+        dsp::{noise_gate, NoiseGate},
         BoolParameter, DiscreteParameter,
     },
     ui::{to_jstation_normal, to_ui_param},
@@ -17,42 +17,33 @@ use crate::{
 
 const KNOB_SIZE: Length = Length::Units(35);
 
-pub struct Panel<'a, Message> {
+pub struct Panel {
     noise_gate: Rc<RefCell<NoiseGate>>,
-    on_change: Box<dyn 'a + Fn(NoiseGateParameter) -> Message>,
 }
 
-impl<'a, Message> Panel<'a, Message> {
-    pub fn new<F>(noise_gate: Rc<RefCell<NoiseGate>>, on_change: F) -> Self
-    where
-        F: 'a + Fn(NoiseGateParameter) -> Message,
-    {
-        Self {
-            noise_gate,
-            on_change: Box::new(on_change),
-        }
+impl Panel {
+    pub fn new(noise_gate: Rc<RefCell<NoiseGate>>) -> Self {
+        Self { noise_gate }
     }
 }
 
-impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
+impl<Message> Component<Message, iced::Renderer> for Panel
+where
+    Message: From<noise_gate::Parameter>,
+{
     type State = ();
-    type Event = NoiseGateParameter;
+    type Event = noise_gate::Parameter;
 
-    fn update(&mut self, _state: &mut Self::State, event: NoiseGateParameter) -> Option<Message> {
-        use NoiseGateParameter::*;
-        param_handling!(
-            self.noise_gate,
-            NoiseGateParameter::from,
-            match event {
-                GateOn => gate_on,
-                AttackTime => attack_time,
-                Threshold => threshold,
-            }
-        )
-        .map(|changed_param| (self.on_change)(changed_param))
+    fn update(
+        &mut self,
+        _state: &mut Self::State,
+        event: noise_gate::Parameter,
+    ) -> Option<Message> {
+        use crate::jstation::data::ParameterSetter;
+        self.noise_gate.borrow_mut().set(event).map(Message::from)
     }
 
-    fn view(&self, _state: &Self::State) -> Element<NoiseGateParameter> {
+    fn view(&self, _state: &Self::State) -> Element<noise_gate::Parameter> {
         macro_rules! param_knob {
             ($ng:ident, $variant:ident, $param:ident) => {
                 column![
@@ -71,10 +62,9 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             };
         }
 
-        use NoiseGateParameter::*;
-
         let ng = self.noise_gate.borrow();
 
+        use noise_gate::Parameter::*;
         let content: Element<_> = row![
             column![
                 text("Noise Gate"),
@@ -101,8 +91,11 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
     }
 }
 
-impl<'a, Message: 'a> From<Panel<'a, Message>> for Element<'a, Message, iced::Renderer> {
-    fn from(panel: Panel<'a, Message>) -> Self {
+impl<'a, Message> From<Panel> for Element<'a, Message, iced::Renderer>
+where
+    Message: 'a + From<noise_gate::Parameter>,
+{
+    fn from(panel: Panel) -> Self {
         iced_lazy::component(panel)
     }
 }

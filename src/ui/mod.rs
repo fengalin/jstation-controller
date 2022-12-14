@@ -1,20 +1,3 @@
-macro_rules! param_handling {
-    ($dsp:expr, $param:ident, $value:expr) => { {
-        let param = &mut $dsp.borrow_mut().$param;
-        if param.set($value).is_unchanged() {
-            None
-        } else {
-            Some(*param)
-        }
-    } };
-
-    ($dsp:expr, $tranform:expr, match $event:ident { $( $variant:ident => $param:ident $(,)? )* } ) => {
-        match $event {
-            $( $variant(value) => param_handling!($dsp, $param, value).map(|param| $tranform(param)), )*
-        }
-    };
-}
-
 pub mod amp;
 pub mod cabinet;
 pub mod noise_gate;

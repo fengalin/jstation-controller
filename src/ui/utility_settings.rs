@@ -61,25 +61,16 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             Stereo(is_checked) => self.settings.stereo_mono = is_checked,
             DryTrack(is_checked) => self.settings.dry_track = is_checked,
             DigitalOutLevel(digital_out_level) => {
-                if self
+                return self
                     .settings
                     .digital_out_level
                     .set(digital_out_level)
-                    .is_unchanged()
-                {
-                    return None;
-                }
-
-                return Some((self.on_change)(Event::DigitalOutLevel(
-                    self.settings.digital_out_level,
-                )));
+                    .map(|new_dol| (self.on_change)(Event::DigitalOutLevel(new_dol)));
             }
             GlobalCabinet(is_checked) => self.settings.global_cabinet = is_checked,
             MidiMerge(is_checked) => self.settings.midi_merge = is_checked,
             MidiChannel(chan) => {
-                if self.settings.midi_channel.set(chan).is_unchanged() {
-                    return None;
-                }
+                self.settings.midi_channel.set(chan)?;
 
                 self.midi_channel_changed = true;
 

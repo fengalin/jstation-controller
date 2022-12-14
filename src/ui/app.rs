@@ -18,9 +18,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum Message {
     JStation(Result<jstation::Message, jstation::Error>),
-    Amp(dsp::AmpParameter),
-    Cabinet(dsp::cabinet::Type),
-    NoiseGate(dsp::NoiseGateParameter),
+    Parameter(dsp::Parameter),
     UtilitySettings(ui::utility_settings::Event),
     Ports(ui::port::Selection),
     StartScan,
@@ -28,21 +26,21 @@ pub enum Message {
     ShowMidiPanel(bool),
 }
 
-impl From<dsp::AmpParameter> for Message {
-    fn from(param: dsp::AmpParameter) -> Self {
-        Message::Amp(param)
+impl From<dsp::amp::Parameter> for Message {
+    fn from(param: dsp::amp::Parameter) -> Self {
+        Message::Parameter(param.into())
     }
 }
 
-impl From<dsp::cabinet::Type> for Message {
-    fn from(param: dsp::cabinet::Type) -> Self {
-        Message::Cabinet(param)
+impl From<dsp::cabinet::Parameter> for Message {
+    fn from(param: dsp::cabinet::Parameter) -> Self {
+        Message::Parameter(param.into())
     }
 }
 
-impl From<dsp::NoiseGateParameter> for Message {
-    fn from(param: dsp::NoiseGateParameter) -> Self {
-        Message::NoiseGate(param)
+impl From<dsp::noise_gate::Parameter> for Message {
+    fn from(param: dsp::noise_gate::Parameter) -> Self {
+        Message::Parameter(param.into())
     }
 }
 
@@ -68,7 +66,7 @@ pub enum Error {
 pub struct App {
     jstation: ui::jstation::Interface,
     amp: Rc<RefCell<dsp::Amp>>,
-    cabinet: Rc<RefCell<dsp::cabinet::Type>>,
+    cabinet: Rc<RefCell<dsp::Cabinet>>,
     noise_gate: Rc<RefCell<dsp::NoiseGate>>,
 
     show_midi_panel: bool,
@@ -130,37 +128,21 @@ impl App {
             }
             Ok(ChannelVoice(cv)) => {
                 use jstation::channel_voice::Message::*;
+                use jstation::data::ParameterSetter;
                 use jstation::Parameter::*;
                 match cv.msg {
                     CC(Amp(param)) => {
                         log::info!("Got {param:?}");
-                        // FIXME find a better way
-                        fn handle_device_amp_change(
-                            app: &mut App,
-                            param: dsp::AmpParameter,
-                        ) -> Option<()> {
-                            use dsp::AmpParameter::*;
-                            use jstation::data::DiscreteParameter;
-
-                            let _: dsp::AmpParameter = param_handling!(
-                                app.amp,
-                                match param {
-                                    Modeling => modeling,
-                                    Gain => gain,
-                                    Treble => treble,
-                                    Middle => middle,
-                                    Bass => bass,
-                                    Level => level,
-                                }
-                            );
-
-                            Some(())
-                        }
-
-                        handle_device_amp_change(self, param);
+                        let _ = self.amp.borrow_mut().set(param);
                     }
-                    CC(Cabinet(param)) => log::info!("Got {param:?}"),
-                    CC(NoiseGate(param)) => log::info!("Got {param:?}"),
+                    CC(Cabinet(param)) => {
+                        log::info!("Got {param:?}");
+                        let _ = self.cabinet.borrow_mut().set(param);
+                    }
+                    CC(NoiseGate(param)) => {
+                        log::info!("Got {param:?}");
+                        let _ = self.noise_gate.borrow_mut().set(param);
+                    }
                     CC(UtilitySettings(util_settings)) => log::info!("Got {util_settings:?}"),
                     ProgramChange(pc) => {
                         log::info!("Unhandled {pc:?}");
@@ -220,7 +202,7 @@ impl Application for App {
             jstation,
 
             amp: Rc::new(RefCell::new(dsp::Amp::default())),
-            cabinet: Rc::new(RefCell::new(dsp::cabinet::Type::default())),
+            cabinet: Rc::new(RefCell::new(dsp::Cabinet::default())),
             noise_gate: Rc::new(RefCell::new(dsp::NoiseGate::default())),
 
             show_midi_panel: false,
@@ -255,18 +237,14 @@ impl Application for App {
                     self.show_error(&err);
                 }
             }
-            Amp(param) => {
-                // FIXME handle the error
-                let _ = self.jstation.send_cc(param.to_cc());
-            }
-            Cabinet(param) => {
-                use jstation::data::DiscreteCCParameter;
-                // FIXME handle the error
-                let _ = self.jstation.send_cc(param.to_cc());
-            }
-            NoiseGate(param) => {
-                // FIXME handle the error
-                let _ = self.jstation.send_cc(param.to_cc());
+            Parameter(param) => {
+                use jstation::data::CCParameter;
+                if let Some(cc) = param.to_cc() {
+                    // FIXME handle the error
+                    let _ = self.jstation.send_cc(cc);
+                } else {
+                    log::error!("No CC impl for {:?}", param);
+                }
             }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
             Ports(ui::port::Selection { port_in, port_out }) => {
@@ -344,9 +322,9 @@ impl Application for App {
             row![utility_settings, midi_panel]
                 .spacing(20)
                 .width(Length::Fill),
-            ui::amp::Panel::new(self.amp.clone(), Amp),
-            ui::cabinet::Panel::new(self.cabinet.clone(), Cabinet),
-            ui::noise_gate::Panel::new(self.noise_gate.clone(), NoiseGate),
+            ui::amp::Panel::new(self.amp.clone()),
+            ui::cabinet::Panel::new(self.cabinet.clone()),
+            ui::noise_gate::Panel::new(self.noise_gate.clone()),
             vertical_space(Length::Fill),
             text(&self.output_text),
         ]
