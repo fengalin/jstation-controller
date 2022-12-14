@@ -1,6 +1,6 @@
 use iced::{
     widget::{checkbox, column, pick_list, row, text},
-    Alignment, Element, Length,
+    Alignment, Element,
 };
 use iced_audio::Knob;
 use iced_lazy::{self, Component};
@@ -14,8 +14,6 @@ use crate::{
     },
     ui::{to_jstation_normal, to_ui_param},
 };
-
-const KNOB_SIZE: Length = Length::Units(35);
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -66,25 +64,10 @@ where
     }
 
     fn view(&self, state: &Self::State) -> Element<Event> {
-        macro_rules! param_knob {
-            ($amp:ident, $variant:ident, $param:ident) => {
-                column![
-                    text(stringify!($variant)),
-                    Knob::new(to_ui_param($amp.$param), |normal| {
-                        $variant(amp::$variant::from_snapped(to_jstation_normal(normal))).into()
-                    })
-                    .size(KNOB_SIZE),
-                    text(format!("{:02}", $amp.$param)),
-                ]
-                .spacing(5)
-                .align_items(Alignment::Center)
-            };
-        }
-
         let amp = self.amp.borrow();
 
         let mut modelings = column![row![
-            text("Amp. Model"),
+            text(amp::Modeling::NAME),
             checkbox("nick", state.show_nick, Event::MustShowNicks),
         ]
         .spacing(10),]
@@ -108,11 +91,11 @@ where
         use amp::Parameter::*;
         let content: Element<_> = row![
             modelings,
-            param_knob!(amp, Gain, gain),
-            param_knob!(amp, Treble, treble),
-            param_knob!(amp, Middle, middle),
-            param_knob!(amp, Bass, bass),
-            param_knob!(amp, Level, level),
+            param_knob!(amp, gain, Gain, display_raw),
+            param_knob!(amp, treble, Treble, display_raw),
+            param_knob!(amp, middle, Middle, display_raw),
+            param_knob!(amp, bass, Bass, display_raw),
+            param_knob!(amp, level, Level, display_raw),
         ]
         .spacing(10)
         .align_items(Alignment::Fill)

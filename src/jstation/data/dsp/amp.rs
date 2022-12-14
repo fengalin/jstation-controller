@@ -2,7 +2,7 @@ use jstation_derive::ParamGroup;
 
 #[derive(Debug, Default, ParamGroup)]
 pub struct Amp {
-    #[discrete(max = 24, param_nb = 9, cc_nb = 34, display_map = name, display_map = nick)]
+    #[discrete(max = 24, param_nb = 9, cc_nb = 34, name = "Amp. Modeling", display_map = name, display_map = nick)]
     pub modeling: Modeling,
     #[discrete(max = 90, param_nb = 10, cc_nb = 35, display_raw)]
     pub gain: Gain,

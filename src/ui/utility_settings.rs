@@ -111,7 +111,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             .spacing(10)
             .padding(5),
             column![
-                text("Midi Channel"),
+                text(utility_settings::MidiChannel::NAME),
                 row![
                     Knob::new(to_ui_param(self.settings.midi_channel), |normal| {
                         MidiChannel(utility_settings::MidiChannel::from_snapped(
@@ -127,7 +127,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             ]
             .align_items(Alignment::Center),
             column![
-                text("Digital Out Level"),
+                text(utility_settings::DigitalOutLevel::NAME),
                 row![
                     Knob::new(to_ui_param(self.settings.digital_out_level), |normal| {
                         DigitalOutLevel(utility_settings::DigitalOutLevel::from_snapped(

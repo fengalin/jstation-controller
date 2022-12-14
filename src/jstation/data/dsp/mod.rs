@@ -6,6 +6,9 @@ pub use amp::Amp;
 pub mod cabinet;
 pub use cabinet::Cabinet;
 
+pub mod compressor;
+pub use compressor::Compressor;
+
 pub mod noise_gate;
 pub use noise_gate::NoiseGate;
 
@@ -16,6 +19,7 @@ pub use utility_settings::UtilitySettings;
 pub enum Parameter {
     Amp(amp::Parameter),
     Cabinet(cabinet::Parameter),
+    Compressor(compressor::Parameter),
     NoiseGate(noise_gate::Parameter),
     UtilitySettings(utility_settings::Parameter),
 }
@@ -31,6 +35,10 @@ impl CCParameter for Parameter {
             return param;
         }
         param = cabinet::Parameter::from_cc(cc).map(Parameter::Cabinet);
+        if param.is_some() {
+            return param;
+        }
+        param = compressor::Parameter::from_cc(cc).map(Parameter::Compressor);
         if param.is_some() {
             return param;
         }
@@ -50,6 +58,7 @@ impl CCParameter for Parameter {
         match self {
             Parameter::Amp(param) => param.to_cc(),
             Parameter::Cabinet(param) => param.to_cc(),
+            Parameter::Compressor(param) => param.to_cc(),
             Parameter::NoiseGate(param) => param.to_cc(),
             Parameter::UtilitySettings(param) => param.to_cc(),
         }
