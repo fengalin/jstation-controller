@@ -1,8 +1,18 @@
 macro_rules! param_knob {
-    ($group:ident, $param:ident, $variant:ident, display_raw) => {
-        param_knob!($group, $param, $variant, format!("{:02}", $group.$param))
+    ($group:ident, $param:ident, $variant:ident) => {
+        param_knob!($group, $param, $variant, $group.$param)
     };
-    ($group:ident, $param:ident, $variant:ident, $display:expr) => {
+
+    ($group:ident, $param:ident, $variant:ident, display_raw) => {
+        param_knob!(
+            $group,
+            $param,
+            $variant,
+            format!("{}", $group.$param.to_raw_value().as_u8()),
+        )
+    };
+
+    ($group:ident, $param:ident, $variant:ident, $display:expr $(,)?) => {
         column![
             text($group::$variant::NAME),
             Knob::new(to_ui_param($group.$param), |normal| {

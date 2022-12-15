@@ -47,9 +47,9 @@ where
         use compressor::Parameter::*;
         let content: Element<_> = row![
             param_switch!("Compressor", compressor, switch, Switch),
-            param_knob!(compressor, threshold, Threshold, display_raw),
+            param_knob!(compressor, threshold, Threshold),
             param_knob!(compressor, ratio, Ratio, compressor.ratio.value()),
-            param_knob!(compressor, gain, Gain, display_raw),
+            param_knob!(compressor, gain, Gain),
             param_knob!(compressor, freq, Freq, compressor.freq.value()),
         ]
         .spacing(10)

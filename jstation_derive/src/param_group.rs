@@ -89,7 +89,10 @@ impl<'a> ToTokens for ParamGroup<'a> {
 
                 quote! {
                     Parameter::#variant(param) => {
-                        self.#field.set(param).map(Parameter::#variant)
+                        crate::jstation::data::ParameterSetter::set(
+                            &mut self.#field,
+                            param,
+                        ).map(Parameter::#variant)
                     }
                 }
             });

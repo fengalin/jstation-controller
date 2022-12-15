@@ -1,18 +1,20 @@
+use std::fmt;
+
 use jstation_derive::ParamGroup;
 
 #[derive(Debug, Default, ParamGroup)]
 pub struct Amp {
     #[discrete(max = 24, param_nb = 9, cc_nb = 34, name = "Amp. Modeling", display_map = name, display_map = nick)]
     pub modeling: Modeling,
-    #[discrete(max = 90, param_nb = 10, cc_nb = 35, display_raw)]
+    #[discrete(max = 90, param_nb = 10, cc_nb = 35)]
     pub gain: Gain,
-    #[discrete(max = 90, default_center, param_nb = 11, cc_nb = 39, display_raw)]
+    #[discrete(max = 90, default_center, param_nb = 11, cc_nb = 39)]
     pub treble: Treble,
-    #[discrete(max = 90, default_center, param_nb = 12, cc_nb = 38, display_raw)]
+    #[discrete(max = 90, default_center, param_nb = 12, cc_nb = 38)]
     pub middle: Middle,
-    #[discrete(max = 90, default_center, param_nb = 13, cc_nb = 37, display_raw)]
+    #[discrete(max = 90, default_center, param_nb = 13, cc_nb = 37)]
     pub bass: Bass,
-    #[discrete(max = 90, param_nb = 14, cc_nb = 36, display_raw)]
+    #[discrete(max = 90, param_nb = 14, cc_nb = 36)]
     pub level: Level,
 }
 
@@ -71,3 +73,33 @@ const MODELING_NICKS: [&str; 25] = [
     "'83 Concert (A7)",
     "Direct (A8)",
 ];
+
+impl fmt::Display for Gain {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        super::fmt_percent(*self, f)
+    }
+}
+
+impl fmt::Display for Treble {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        super::fmt_bipolar_normal(*self, f)
+    }
+}
+
+impl fmt::Display for Middle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        super::fmt_bipolar_normal(*self, f)
+    }
+}
+
+impl fmt::Display for Bass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        super::fmt_bipolar_normal(*self, f)
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        super::fmt_percent(*self, f)
+    }
+}
