@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use iced::{
     widget::{checkbox, column, row, text},
     Alignment, Element,
@@ -17,8 +19,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    UtilitySettings(UtilitySettings),
-    DigitalOutLevel(utility_settings::DigitalOutLevel),
+    UtilitySettings,
+    Parameter(utility_settings::Parameter),
 }
 
 #[derive(Debug)]
@@ -33,13 +35,13 @@ pub enum PrivEvent {
 }
 
 pub struct Panel<'a, Message> {
-    settings: UtilitySettings,
+    settings: Rc<RefCell<UtilitySettings>>,
     midi_channel_changed: bool,
     on_change: Box<dyn 'a + Fn(Event) -> Message>,
 }
 
 impl<'a, Message> Panel<'a, Message> {
-    pub fn new<F>(settings: UtilitySettings, on_change: F) -> Self
+    pub fn new<F>(settings: Rc<RefCell<UtilitySettings>>, on_change: F) -> Self
     where
         F: 'a + Fn(Event) -> Message,
     {
@@ -57,20 +59,21 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
 
     fn update(&mut self, _state: &mut Self::State, event: PrivEvent) -> Option<Message> {
         use PrivEvent::*;
+
+        let mut settings = self.settings.borrow_mut();
         match event {
-            Stereo(is_checked) => self.settings.stereo_mono = is_checked,
-            DryTrack(is_checked) => self.settings.dry_track = is_checked,
+            Stereo(is_checked) => settings.stereo_mono = is_checked,
+            DryTrack(is_checked) => settings.dry_track = is_checked,
             DigitalOutLevel(digital_out_level) => {
-                return self
-                    .settings
+                return settings
                     .digital_out_level
                     .set(digital_out_level)
-                    .map(|new_dol| (self.on_change)(Event::DigitalOutLevel(new_dol)));
+                    .map(|new_dol| (self.on_change)(Event::Parameter(new_dol.into())));
             }
-            GlobalCabinet(is_checked) => self.settings.global_cabinet = is_checked,
-            MidiMerge(is_checked) => self.settings.midi_merge = is_checked,
+            GlobalCabinet(is_checked) => settings.global_cabinet = is_checked,
+            MidiMerge(is_checked) => settings.midi_merge = is_checked,
             MidiChannel(chan) => {
-                self.settings.midi_channel.set(chan)?;
+                settings.midi_channel.set(chan)?;
 
                 self.midi_channel_changed = true;
 
@@ -87,27 +90,25 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             }
         }
 
-        Some((self.on_change)(Event::UtilitySettings(self.settings)))
+        Some((self.on_change)(Event::UtilitySettings))
     }
 
     fn view(&self, _state: &Self::State) -> Element<PrivEvent> {
         use PrivEvent::*;
 
+        let settings = self.settings.borrow_mut();
+
         let content: Element<_> = row![
             column![
-                checkbox("Stereo", self.settings.stereo_mono, Stereo).size(CHECKBOX_SIZE),
-                checkbox("Dry Track", self.settings.dry_track, DryTrack).size(CHECKBOX_SIZE),
+                checkbox("Stereo", settings.stereo_mono, Stereo).size(CHECKBOX_SIZE),
+                checkbox("Dry Track", settings.dry_track, DryTrack).size(CHECKBOX_SIZE),
             ]
             .spacing(10)
             .padding(5),
             column![
-                checkbox(
-                    "Global Cabinet",
-                    self.settings.global_cabinet,
-                    GlobalCabinet,
-                )
-                .size(CHECKBOX_SIZE),
-                checkbox("Midi Merge", self.settings.midi_merge, MidiMerge).size(CHECKBOX_SIZE),
+                checkbox("Global Cabinet", settings.global_cabinet, GlobalCabinet,)
+                    .size(CHECKBOX_SIZE),
+                checkbox("Midi Merge", settings.midi_merge, MidiMerge).size(CHECKBOX_SIZE),
             ]
             .spacing(10)
             .padding(5),
@@ -115,14 +116,14 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
                 text(utility_settings::MidiChannel::NAME)
                     .size(LABEL_TEXT_SIZE)
                     .horizontal_alignment(iced::alignment::Horizontal::Center),
-                Knob::new(to_ui_param(self.settings.midi_channel), |normal| {
+                Knob::new(to_ui_param(settings.midi_channel), |normal| {
                     MidiChannel(utility_settings::MidiChannel::from_snapped(
                         to_jstation_normal(normal),
                     ))
                 })
                 .on_release(|| Some(MidiChannelReleased))
                 .size(KNOB_SIZE),
-                text(self.settings.midi_channel).size(VALUE_TEXT_SIZE),
+                text(settings.midi_channel).size(VALUE_TEXT_SIZE),
             ]
             .spacing(5)
             .align_items(Alignment::Center),
@@ -130,13 +131,13 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
                 text(utility_settings::DigitalOutLevel::NAME)
                     .size(LABEL_TEXT_SIZE)
                     .horizontal_alignment(iced::alignment::Horizontal::Center),
-                Knob::new(to_ui_param(self.settings.digital_out_level), |normal| {
+                Knob::new(to_ui_param(settings.digital_out_level), |normal| {
                     DigitalOutLevel(utility_settings::DigitalOutLevel::from_snapped(
                         to_jstation_normal(normal),
                     ))
                 })
                 .size(KNOB_SIZE),
-                text(self.settings.digital_out_level).size(VALUE_TEXT_SIZE),
+                text(settings.digital_out_level).size(VALUE_TEXT_SIZE),
             ]
             .spacing(5)
             .align_items(Alignment::Center),
