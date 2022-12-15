@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc, sync::Arc};
+
 use iced::{
     widget::{column, pick_list, row, text},
     Alignment, Element, Length,
@@ -5,8 +7,6 @@ use iced::{
 use iced_lazy::{self, Component};
 
 use once_cell::sync::Lazy;
-
-use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use crate::{
     jstation,
@@ -132,25 +132,28 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             ports.ins.list.clone(),
             Some(ports.ins.cur.clone()),
             |port| (In, port).into(),
-        );
+        )
+        .text_size(super::LABEL_TEXT_SIZE);
         let out_pick_list = pick_list(
             ports.outs.list.clone(),
             Some(ports.outs.cur.clone()),
             |port| (Out, port).into(),
-        );
+        )
+        .text_size(super::LABEL_TEXT_SIZE);
 
         // This is to force the labels to occupy the same column
         // whatever the length of the labels. We would need
         // a grid layout here.
         let label_width = Length::Units(40);
-        let in_label = text("In:").width(label_width);
-        let out_label = text("Out:").width(label_width);
+        let in_label = text("In:").width(label_width).size(super::LABEL_TEXT_SIZE);
+        let out_label = text("Out:").width(label_width).size(super::LABEL_TEXT_SIZE);
 
-        let content: Element<_> =
-            column![row![in_label, in_pick_list], row![out_label, out_pick_list]]
-                .align_items(Alignment::Fill)
-                .spacing(10)
-                .into();
+        let content: Element<_> = column![
+            row![in_label, in_pick_list].align_items(Alignment::Center),
+            row![out_label, out_pick_list].align_items(Alignment::Center)
+        ]
+        .spacing(10)
+        .into();
 
         // Set to true to debug layout
         if false {

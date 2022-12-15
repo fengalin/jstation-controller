@@ -1,18 +1,18 @@
+use std::{cell::RefCell, rc::Rc};
+
 use iced::{
-    widget::{column, row, text, toggler},
+    widget::{column, horizontal_space, row, text, toggler},
     Alignment, Element, Length,
 };
 use iced_audio::Knob;
 use iced_lazy::{self, Component};
-
-use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     jstation::data::{
         dsp::{compressor, Compressor},
         BoolParameter, DiscreteParameter,
     },
-    ui::{to_jstation_normal, to_ui_param},
+    ui::{to_jstation_normal, to_ui_param, DSP_TITLE_AREA_WIDTH},
 };
 
 pub struct Panel {
@@ -46,14 +46,15 @@ where
 
         use compressor::Parameter::*;
         let content: Element<_> = row![
-            param_switch!("Compressor", compressor, switch, Switch),
-            param_knob!(compressor, threshold, Threshold),
+            param_switch!(@name "Compressor", compressor, switch, Switch)
+                .width(DSP_TITLE_AREA_WIDTH),
+            param_knob!(@name "Thold", compressor, threshold, Threshold),
+            horizontal_space(Length::Units(2)),
             param_knob!(compressor, ratio, Ratio, compressor.ratio.value()),
             param_knob!(compressor, gain, Gain),
-            param_knob!(compressor, freq, Freq, compressor.freq.value()),
+            param_knob!(@name "Freq.",compressor, freq, Freq, compressor.freq.value()),
         ]
         .spacing(10)
-        .align_items(Alignment::Fill)
         .into();
 
         // Set to true to debug layout

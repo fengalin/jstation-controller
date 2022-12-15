@@ -22,7 +22,7 @@ pub use utility_settings::UtilitySettings;
 
 fn fmt_percent(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.write_fmt(format_args!(
-        "{:3.0}",
+        "{:.0}",
         100.0 * param.into().normal().as_f32()
     ))
 }

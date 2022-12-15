@@ -1,14 +1,17 @@
+use std::{cell::RefCell, rc::Rc};
+
 use iced::{
-    widget::{checkbox, column, pick_list, row, text},
-    Element,
+    widget::{checkbox, column, pick_list, row, text, vertical_space},
+    Element, Length,
 };
 use iced_lazy::{self, Component};
 
-use std::{cell::RefCell, rc::Rc};
-
-use crate::jstation::data::{
-    dsp::{cabinet, Cabinet},
-    DiscreteParameter,
+use crate::{
+    jstation::data::{
+        dsp::{cabinet, Cabinet},
+        DiscreteParameter,
+    },
+    ui::{AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, LABEL_TEXT_SIZE},
 };
 
 #[derive(Debug, Clone)]
@@ -66,26 +69,34 @@ where
     fn view(&self, state: &Self::State) -> Element<Event> {
         let cabinet = self.cabinet.borrow();
 
-        let mut cabinet_types = column![row![
-            text(cabinet::Type::NAME),
-            checkbox("nick", state.show_nick, Event::MustShowNicks),
+        let mut cabinet_types = column![
+            text("Cabinet"),
+            vertical_space(Length::Units(1)),
+            row![
+                text(cabinet::Type::NAME)
+                    .size(LABEL_TEXT_SIZE)
+                    .width(AMP_CABINET_LABEL_WIDTH),
+                checkbox("nick", state.show_nick, Event::MustShowNicks).size(CHECKBOX_SIZE),
+            ],
         ]
-        .spacing(10),]
-        .spacing(10)
+        .width(Length::Units(350))
+        .spacing(5)
         .padding(5);
 
         if state.show_nick {
-            cabinet_types = cabinet_types.push(pick_list(
-                cabinet::Type::nicks(),
-                Some(cabinet.typ.nick()),
-                |nick| nick.param().into(),
-            ));
+            cabinet_types = cabinet_types.push(
+                pick_list(cabinet::Type::nicks(), Some(cabinet.typ.nick()), |nick| {
+                    nick.param().into()
+                })
+                .text_size(COMBO_TEXT_SIZE),
+            );
         } else {
-            cabinet_types = cabinet_types.push(pick_list(
-                cabinet::Type::names(),
-                Some(cabinet.typ.name()),
-                |name| name.param().into(),
-            ));
+            cabinet_types = cabinet_types.push(
+                pick_list(cabinet::Type::names(), Some(cabinet.typ.name()), |name| {
+                    name.param().into()
+                })
+                .text_size(COMBO_TEXT_SIZE),
+            );
         }
 
         let content: Element<_> = cabinet_types.into();

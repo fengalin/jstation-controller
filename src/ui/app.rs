@@ -1,12 +1,12 @@
+use std::{cell::RefCell, future, rc::Rc, sync::Arc};
+
 use iced::{
-    widget::{button, checkbox, column, container, row, text, vertical_space},
+    widget::{button, checkbox, column, container, horizontal_space, row, text, vertical_space},
     Application, Command, Element, Length, Theme,
 };
 use iced_native::command::Action;
 use once_cell::sync::Lazy;
 use smol::future::FutureExt;
-
-use std::{cell::RefCell, future, rc::Rc, sync::Arc};
 
 pub static APP_NAME: Lazy<Arc<str>> = Lazy::new(|| "J-Station Controller".into());
 
@@ -24,6 +24,7 @@ pub enum Message {
     StartScan,
     ShowUtilitySettings(bool),
     ShowMidiPanel(bool),
+    UseDarkTheme(bool),
 }
 
 impl From<dsp::amp::Parameter> for Message {
@@ -84,6 +85,7 @@ pub struct App {
     // FIXME use a Rc<RefCell<_>> ?
     utility_settings: dsp::UtilitySettings,
 
+    use_dark_them: bool,
     output_text: String,
 }
 
@@ -224,6 +226,7 @@ impl Application for App {
             show_utility_settings: false,
             utility_settings: Default::default(),
 
+            use_dark_them: true,
             output_text,
         };
 
@@ -238,7 +241,11 @@ impl Application for App {
     }
 
     fn theme(&self) -> Self::Theme {
-        Theme::Dark
+        if self.use_dark_them {
+            Theme::Dark
+        } else {
+            Theme::Light
+        }
     }
 
     fn update(&mut self, event: Message) -> Command<Message> {
@@ -287,6 +294,7 @@ impl Application for App {
                     }
                 }
             }
+            UseDarkTheme(use_dark) => self.use_dark_them = use_dark,
         }
 
         Command::none()
@@ -331,17 +339,25 @@ impl Application for App {
         }
 
         let content = column![
-            row![utility_settings, midi_panel]
-                .spacing(20)
-                .width(Length::Fill),
+            row![
+                utility_settings,
+                midi_panel,
+                horizontal_space(Length::Fill),
+                checkbox("Dark Theme", self.use_dark_them, UseDarkTheme),
+            ]
+            .spacing(20)
+            .width(Length::Fill),
             ui::compressor::Panel::new(self.compressor.clone()),
             ui::amp::Panel::new(self.amp.clone()),
-            ui::cabinet::Panel::new(self.cabinet.clone()),
-            ui::noise_gate::Panel::new(self.noise_gate.clone()),
+            row![
+                ui::cabinet::Panel::new(self.cabinet.clone()),
+                ui::noise_gate::Panel::new(self.noise_gate.clone()),
+            ]
+            .spacing(30),
             vertical_space(Length::Fill),
-            text(&self.output_text),
+            text(&self.output_text).size(super::LABEL_TEXT_SIZE),
         ]
-        .spacing(20);
+        .spacing(40);
 
         container(content)
             .padding(10)
