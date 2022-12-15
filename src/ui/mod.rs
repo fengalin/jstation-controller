@@ -22,7 +22,7 @@ pub mod app;
 pub use app::{App, APP_NAME};
 
 pub mod jstation;
-pub mod port;
+pub mod midi;
 pub mod utility_settings;
 
 fn to_ui_normal(normal: crate::jstation::data::Normal) -> iced_audio::Normal {
