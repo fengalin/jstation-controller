@@ -19,7 +19,7 @@ use crate::{
 pub enum Message {
     JStation(Result<jstation::Message, jstation::Error>),
     Parameter(dsp::Parameter),
-    UtilitySettings(ui::utility_settings::Event),
+    UtilitySettings,
     Midi(ui::midi::Selection),
     StartScan,
     ShowUtilitySettings(bool),
@@ -53,7 +53,11 @@ impl From<dsp::noise_gate::Parameter> for Message {
 
 impl From<ui::utility_settings::Event> for Message {
     fn from(evt: ui::utility_settings::Event) -> Self {
-        Message::UtilitySettings(evt)
+        use ui::utility_settings::Event::*;
+        match evt {
+            UtilitySettings => Message::UtilitySettings,
+            Parameter(param) => Message::Parameter(param.into()),
+        }
     }
 }
 
@@ -82,8 +86,7 @@ pub struct App {
     scanner_ctx: Option<midi::scanner::Context>,
 
     show_utility_settings: bool,
-    // FIXME use a Rc<RefCell<_>> ?
-    utility_settings: dsp::UtilitySettings,
+    utility_settings: Rc<RefCell<dsp::UtilitySettings>>,
 
     use_dark_them: bool,
     output_text: String,
@@ -119,7 +122,7 @@ impl App {
                         self.ports.borrow_mut().set_ports(port_in, port_out);
                     }
                     UtilitySettingsResp(resp) => {
-                        self.utility_settings = resp.try_into()?;
+                        *self.utility_settings.borrow_mut() = resp.try_into()?;
 
                         // FIXME handle ui consequence of the error
                         self.jstation.bank_dump()?;
@@ -260,6 +263,7 @@ impl Application for App {
                 use jstation::data::CCParameter;
                 if let Some(cc) = param.to_cc() {
                     // FIXME handle the error
+                    dbg!(&cc);
                     let _ = self.jstation.send_cc(cc);
                 } else {
                     log::error!("No CC impl for {:?}", param);
@@ -283,16 +287,9 @@ impl Application for App {
                 }
             }
             ShowUtilitySettings(must_show) => self.show_utility_settings = must_show,
-            UtilitySettings(event) => {
-                use ui::utility_settings::Event::*;
-                dbg!(&event);
-                match event {
-                    UtilitySettings(settings) => self.utility_settings = settings,
-                    DigitalOutLevel(param) => {
-                        // FIXME send to device
-                        self.utility_settings.digital_out_level = param;
-                    }
-                }
+            UtilitySettings => {
+                log::debug!("Got UtilitySettings UI update");
+                // FIXME send message to device
             }
             UseDarkTheme(use_dark) => self.use_dark_them = use_dark,
         }
@@ -331,8 +328,8 @@ impl Application for App {
         if self.show_utility_settings {
             utility_settings = utility_settings.push(
                 container(ui::utility_settings::Panel::new(
-                    self.utility_settings,
-                    UtilitySettings,
+                    self.utility_settings.clone(),
+                    Message::from,
                 ))
                 .padding(5),
             );
