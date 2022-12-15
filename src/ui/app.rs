@@ -20,7 +20,7 @@ pub enum Message {
     JStation(Result<jstation::Message, jstation::Error>),
     Parameter(dsp::Parameter),
     UtilitySettings(ui::utility_settings::Event),
-    Ports(ui::port::Selection),
+    Midi(ui::midi::Selection),
     StartScan,
     ShowUtilitySettings(bool),
     ShowMidiPanel(bool),
@@ -78,7 +78,7 @@ pub struct App {
     noise_gate: Rc<RefCell<dsp::NoiseGate>>,
 
     show_midi_panel: bool,
-    ports: Rc<RefCell<ui::port::Ports>>,
+    ports: Rc<RefCell<ui::midi::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
 
     show_utility_settings: bool,
@@ -199,7 +199,7 @@ impl Application for App {
         let mut output_text = " ".to_string();
 
         let mut jstation = ui::jstation::Interface::new();
-        let mut ports = ui::port::Ports::default();
+        let mut ports = ui::midi::Ports::default();
 
         match jstation.refresh() {
             Ok(()) => ports.update_from(jstation.iface()),
@@ -266,7 +266,7 @@ impl Application for App {
                 }
             }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
-            Ports(ui::port::Selection { port_in, port_out }) => {
+            Midi(ui::midi::Selection { port_in, port_out }) => {
                 use midi::Scannable;
                 if let Err(err) = self.jstation.connect(port_in, port_out) {
                     self.jstation.clear();
@@ -315,7 +315,7 @@ impl Application for App {
         if self.show_midi_panel {
             midi_panel = midi_panel.push(
                 column![
-                    ui::port::Panel::new(self.ports.clone(), Ports),
+                    ui::midi::Panel::new(self.ports.clone(), Midi),
                     button(text("Scan")).on_press(StartScan),
                 ]
                 .spacing(10)
