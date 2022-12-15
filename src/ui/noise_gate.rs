@@ -1,11 +1,11 @@
+use std::{cell::RefCell, rc::Rc};
+
 use iced::{
-    widget::{column, row, text, toggler},
+    widget::{column, horizontal_space, row, text, toggler},
     Alignment, Element, Length,
 };
 use iced_audio::Knob;
 use iced_lazy::{self, Component};
-
-use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     jstation::data::{
@@ -46,9 +46,10 @@ where
 
         use noise_gate::Parameter::*;
         let content: Element<_> = row![
-            param_switch!("Noise Gate", noise_gate, switch, Switch),
-            param_knob!(noise_gate, attack_time, AttackTime),
-            param_knob!(noise_gate, threshold, Threshold),
+            param_switch!(@name "Noise Gate", noise_gate, switch, Switch).width(Length::Units(100)),
+            horizontal_space(Length::Units(5)),
+            param_knob!(@name "Attack", noise_gate, attack_time, AttackTime),
+            param_knob!(@name "Thold", noise_gate, threshold, Threshold),
         ]
         .spacing(10)
         .align_items(Alignment::Fill)

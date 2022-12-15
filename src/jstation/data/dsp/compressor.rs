@@ -47,24 +47,7 @@ impl fmt::Display for Gain {
 }
 
 const FREQ_VALUES: [&str; 20] = [
-    "50 Hz",
-    "63 Hz",
-    "80 Hz",
-    "100 Hz",
-    "125 Hz",
-    "160 Hz",
-    "200 Hz",
-    "250 Hz",
-    "315 Hz",
-    "400 Hz",
-    "500 Hz",
-    "630 Hz",
-    "800 Hz",
-    "1 kHz",
-    "1.25 kHz",
-    "1.6 kHz",
-    "2 kHz",
-    "2.5 kHz",
-    "3.15 kHz",
-    "Full Range",
+    "50 Hz", "63 Hz", "80 Hz", "100 Hz", "125 Hz", "160 Hz", "200 Hz", "250 Hz", "315 Hz",
+    "400 Hz", "500 Hz", "630 Hz", "800 Hz", "1 kHz", "1.25 kHz", "1.6 kHz", "2 kHz", "2.5 kHz",
+    "3.15 kHz", "full",
 ];

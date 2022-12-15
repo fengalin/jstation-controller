@@ -1,18 +1,21 @@
+use std::{cell::RefCell, rc::Rc};
+
 use iced::{
-    widget::{checkbox, column, pick_list, row, text},
-    Alignment, Element,
+    widget::{checkbox, column, horizontal_space, pick_list, row, text, vertical_space},
+    Alignment, Element, Length,
 };
 use iced_audio::Knob;
 use iced_lazy::{self, Component};
-
-use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     jstation::data::{
         dsp::{amp, Amp},
         DiscreteParameter,
     },
-    ui::{to_jstation_normal, to_ui_param},
+    ui::{
+        to_jstation_normal, to_ui_param, AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE,
+        DSP_TITLE_AREA_WIDTH, LABEL_TEXT_SIZE,
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -66,39 +69,49 @@ where
     fn view(&self, state: &Self::State) -> Element<Event> {
         let amp = self.amp.borrow();
 
-        let mut modelings = column![row![
-            text(amp::Modeling::NAME),
-            checkbox("nick", state.show_nick, Event::MustShowNicks),
+        let mut modelings = column![
+            text("Amp"),
+            vertical_space(Length::Units(1)),
+            row![
+                text(amp::Modeling::NAME)
+                    .size(LABEL_TEXT_SIZE)
+                    .width(AMP_CABINET_LABEL_WIDTH),
+                checkbox("nick", state.show_nick, Event::MustShowNicks).size(CHECKBOX_SIZE),
+            ],
         ]
-        .spacing(10),]
-        .spacing(10)
+        .width(DSP_TITLE_AREA_WIDTH)
+        .spacing(5)
         .padding(5);
 
         if state.show_nick {
-            modelings = modelings.push(pick_list(
-                amp::Modeling::nicks(),
-                Some(amp.modeling.nick()),
-                |nick| amp::Parameter::from(nick.param()).into(),
-            ));
+            modelings = modelings.push(
+                pick_list(amp::Modeling::nicks(), Some(amp.modeling.nick()), |nick| {
+                    amp::Parameter::from(nick.param()).into()
+                })
+                .text_size(COMBO_TEXT_SIZE),
+            );
         } else {
-            modelings = modelings.push(pick_list(
-                amp::Modeling::names(),
-                Some(amp.modeling.name()),
-                |name| amp::Parameter::from(name.param()).into(),
-            ));
+            modelings = modelings.push(
+                pick_list(amp::Modeling::names(), Some(amp.modeling.name()), |name| {
+                    amp::Parameter::from(name.param()).into()
+                })
+                .text_size(COMBO_TEXT_SIZE),
+            );
         }
 
         use amp::Parameter::*;
         let content: Element<_> = row![
             modelings,
             param_knob!(amp, gain, Gain),
+            horizontal_space(Length::Units(2)),
             param_knob!(amp, bass, Bass),
             param_knob!(amp, middle, Middle),
             param_knob!(amp, treble, Treble),
+            horizontal_space(Length::Units(2)),
             param_knob!(amp, level, Level),
         ]
         .spacing(10)
-        .align_items(Alignment::Fill)
+        .align_items(Alignment::End)
         .into();
 
         // Set to true to debug layout

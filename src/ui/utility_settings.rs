@@ -1,6 +1,6 @@
 use iced::{
     widget::{checkbox, column, row, text},
-    Alignment, Element, Length,
+    Alignment, Element,
 };
 use iced_audio::Knob;
 use iced_lazy::{self, Component};
@@ -10,10 +10,10 @@ use crate::{
         dsp::{utility_settings, UtilitySettings},
         DiscreteParameter,
     },
-    ui::{to_jstation_normal, to_ui_param},
+    ui::{
+        to_jstation_normal, to_ui_param, CHECKBOX_SIZE, KNOB_SIZE, LABEL_TEXT_SIZE, VALUE_TEXT_SIZE,
+    },
 };
-
-const KNOB_SIZE: Length = Length::Units(35);
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -95,8 +95,8 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
 
         let content: Element<_> = row![
             column![
-                checkbox("Stereo", self.settings.stereo_mono, Stereo),
-                checkbox("Dry Track", self.settings.dry_track, DryTrack),
+                checkbox("Stereo", self.settings.stereo_mono, Stereo).size(CHECKBOX_SIZE),
+                checkbox("Dry Track", self.settings.dry_track, DryTrack).size(CHECKBOX_SIZE),
             ]
             .spacing(10)
             .padding(5),
@@ -105,41 +105,40 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
                     "Global Cabinet",
                     self.settings.global_cabinet,
                     GlobalCabinet,
-                ),
-                checkbox("Midi Merge", self.settings.midi_merge, MidiMerge),
+                )
+                .size(CHECKBOX_SIZE),
+                checkbox("Midi Merge", self.settings.midi_merge, MidiMerge).size(CHECKBOX_SIZE),
             ]
             .spacing(10)
             .padding(5),
             column![
-                text(utility_settings::MidiChannel::NAME),
-                row![
-                    Knob::new(to_ui_param(self.settings.midi_channel), |normal| {
-                        MidiChannel(utility_settings::MidiChannel::from_snapped(
-                            to_jstation_normal(normal),
-                        ))
-                    })
-                    .on_release(|| Some(MidiChannelReleased))
-                    .size(KNOB_SIZE),
-                    text(format!("{:02}", self.settings.midi_channel)),
-                ]
-                .spacing(5)
-                .align_items(Alignment::Center),
+                text(utility_settings::MidiChannel::NAME)
+                    .size(LABEL_TEXT_SIZE)
+                    .horizontal_alignment(iced::alignment::Horizontal::Center),
+                Knob::new(to_ui_param(self.settings.midi_channel), |normal| {
+                    MidiChannel(utility_settings::MidiChannel::from_snapped(
+                        to_jstation_normal(normal),
+                    ))
+                })
+                .on_release(|| Some(MidiChannelReleased))
+                .size(KNOB_SIZE),
+                text(self.settings.midi_channel).size(VALUE_TEXT_SIZE),
             ]
+            .spacing(5)
             .align_items(Alignment::Center),
             column![
-                text(utility_settings::DigitalOutLevel::NAME),
-                row![
-                    Knob::new(to_ui_param(self.settings.digital_out_level), |normal| {
-                        DigitalOutLevel(utility_settings::DigitalOutLevel::from_snapped(
-                            to_jstation_normal(normal),
-                        ))
-                    })
-                    .size(KNOB_SIZE),
-                    text(format!("{:02}", self.settings.digital_out_level)),
-                ]
-                .spacing(5)
-                .align_items(Alignment::Center),
+                text(utility_settings::DigitalOutLevel::NAME)
+                    .size(LABEL_TEXT_SIZE)
+                    .horizontal_alignment(iced::alignment::Horizontal::Center),
+                Knob::new(to_ui_param(self.settings.digital_out_level), |normal| {
+                    DigitalOutLevel(utility_settings::DigitalOutLevel::from_snapped(
+                        to_jstation_normal(normal),
+                    ))
+                })
+                .size(KNOB_SIZE),
+                text(self.settings.digital_out_level).size(VALUE_TEXT_SIZE),
             ]
+            .spacing(5)
             .align_items(Alignment::Center),
         ]
         .spacing(10)

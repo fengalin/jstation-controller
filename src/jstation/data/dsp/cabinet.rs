@@ -2,7 +2,7 @@ use jstation_derive::ParamGroup;
 
 #[derive(Debug, Default, ParamGroup)]
 pub struct Cabinet {
-    #[discrete(max = 18, param_nb = 15, cc_nb = 66, name = "Cabinet Type", display_map = name, display_map = nick)]
+    #[discrete(max = 18, param_nb = 15, cc_nb = 66, display_map = name, display_map = nick)]
     pub typ: Type,
 }
 

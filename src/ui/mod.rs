@@ -1,5 +1,17 @@
+use iced::Length;
+
 #[macro_use]
 mod macros;
+
+// FIXME impl styles
+pub const AMP_CABINET_LABEL_WIDTH: Length = Length::Units(85);
+pub const CHECKBOX_SIZE: u16 = 16;
+pub const COMBO_TEXT_SIZE: u16 = 15;
+pub const DSP_TITLE_AREA_WIDTH: Length = Length::Units(276);
+pub const KNOB_SIZE: Length = Length::Units(35);
+pub const LABEL_TEXT_SIZE: u16 = 18;
+pub const LABEL_WIDTH: Length = Length::Units(55);
+pub const VALUE_TEXT_SIZE: u16 = 14;
 
 pub mod amp;
 pub mod cabinet;
@@ -14,7 +26,7 @@ pub mod port;
 pub mod utility_settings;
 
 fn to_ui_normal(normal: crate::jstation::data::Normal) -> iced_audio::Normal {
-    // Safety these two `Normal`s are both wrappers on `f32`
+    // Safety: these two `Normal`s are both wrappers on `f32`
     // and they observe the same invariants: the inner `f32` is constrained
     // to (0.0..=1.0).
     unsafe { std::mem::transmute(normal) }
@@ -31,7 +43,7 @@ where
 }
 
 fn to_jstation_normal(normal: iced_audio::Normal) -> crate::jstation::data::Normal {
-    // Safety these two `Normal`s are both wrappers on `f32`
+    // Safety: these two `Normal`s are both wrappers on `f32`
     // and they observe the same invariants: the inner `f32` is constrained
     // to (0.0..=1.0).
     unsafe { std::mem::transmute(normal) }
