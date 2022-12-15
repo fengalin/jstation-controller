@@ -47,8 +47,8 @@ where
         use noise_gate::Parameter::*;
         let content: Element<_> = row![
             param_switch!("Noise Gate", noise_gate, switch, Switch),
-            param_knob!(noise_gate, attack_time, AttackTime, display_raw),
-            param_knob!(noise_gate, threshold, Threshold, display_raw),
+            param_knob!(noise_gate, attack_time, AttackTime),
+            param_knob!(noise_gate, threshold, Threshold),
         ]
         .spacing(10)
         .align_items(Alignment::Fill)

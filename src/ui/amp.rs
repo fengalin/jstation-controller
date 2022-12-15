@@ -91,11 +91,11 @@ where
         use amp::Parameter::*;
         let content: Element<_> = row![
             modelings,
-            param_knob!(amp, gain, Gain, display_raw),
-            param_knob!(amp, treble, Treble, display_raw),
-            param_knob!(amp, middle, Middle, display_raw),
-            param_knob!(amp, bass, Bass, display_raw),
-            param_knob!(amp, level, Level, display_raw),
+            param_knob!(amp, gain, Gain),
+            param_knob!(amp, bass, Bass),
+            param_knob!(amp, middle, Middle),
+            param_knob!(amp, treble, Treble),
+            param_knob!(amp, level, Level),
         ]
         .spacing(10)
         .align_items(Alignment::Fill)

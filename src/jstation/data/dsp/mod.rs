@@ -1,4 +1,9 @@
-use crate::{jstation::CCParameter, midi};
+use std::fmt;
+
+use crate::{
+    jstation::{data::DiscreteParameter, CCParameter},
+    midi,
+};
 
 pub mod amp;
 pub use amp::Amp;
@@ -14,6 +19,18 @@ pub use noise_gate::NoiseGate;
 
 pub mod utility_settings;
 pub use utility_settings::UtilitySettings;
+
+fn fmt_percent(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.write_fmt(format_args!(
+        "{:3.0}",
+        100.0 * param.into().normal().as_f32()
+    ))
+}
+
+fn fmt_bipolar_normal(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let bipolar = 2.0 * param.into().normal().as_f32() - 1.0;
+    f.write_fmt(format_args!("{:0.2}", bipolar))
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum Parameter {
