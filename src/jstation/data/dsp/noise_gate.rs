@@ -1,6 +1,6 @@
-use jstation_derive::ParameterGroup;
+use jstation_derive::ParameterSetter;
 
-#[derive(Clone, Copy, Debug, Default, ParameterGroup)]
+#[derive(Clone, Copy, Debug, Default, ParameterSetter)]
 pub struct NoiseGate {
     #[boolean(param_nb = 16, cc_nb = 41)]
     pub switch: Switch,

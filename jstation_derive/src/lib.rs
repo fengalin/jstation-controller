@@ -16,7 +16,7 @@ pub(crate) use param::Param;
 
 mod param_group;
 
-#[proc_macro_derive(ParameterGroup, attributes(boolean, const_range, variable_range))]
+#[proc_macro_derive(ParameterSetter, attributes(boolean, const_range, variable_range))]
 #[proc_macro_error]
 pub fn param_group(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);

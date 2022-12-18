@@ -1,8 +1,8 @@
 use std::fmt;
 
-use jstation_derive::ParameterGroup;
+use jstation_derive::ParameterSetter;
 
-#[derive(Clone, Copy, Debug, Default, ParameterGroup)]
+#[derive(Clone, Copy, Debug, Default, ParameterSetter)]
 pub struct Reverb {
     #[boolean(param_nb = 32, cc_nb = 59)]
     pub switch: Switch,
