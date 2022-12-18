@@ -26,14 +26,18 @@ pub use noise_gate::NoiseGate;
 pub mod utility_settings;
 pub use utility_settings::UtilitySettings;
 
+pub mod wah_expr;
+pub use wah_expr::WahExpr;
+
 #[derive(Debug, Default)]
 pub struct Dsp {
-    pub amp: amp::Amp,
-    pub cabinet: cabinet::Cabinet,
-    pub compressor: compressor::Compressor,
-    pub effect: effect::Effect,
-    pub noise_gate: noise_gate::NoiseGate,
-    pub utility_settings: utility_settings::UtilitySettings,
+    pub amp: Amp,
+    pub cabinet: Cabinet,
+    pub compressor: Compressor,
+    pub effect: Effect,
+    pub noise_gate: NoiseGate,
+    pub wah_expr: WahExpr,
+    pub utility_settings: UtilitySettings,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -43,6 +47,7 @@ pub enum Parameter {
     Compressor(compressor::Parameter),
     Effect(effect::Parameter),
     NoiseGate(noise_gate::Parameter),
+    WahExpr(wah_expr::Parameter),
     UtilitySettings(utility_settings::Parameter),
 }
 
@@ -57,6 +62,7 @@ impl ParameterSetter for Dsp {
             Compressor(param) => self.compressor.set(param).map(Parameter::from),
             Effect(param) => self.effect.set(param).map(Parameter::from),
             NoiseGate(param) => self.noise_gate.set(param).map(Parameter::from),
+            WahExpr(param) => self.wah_expr.set(param).map(Parameter::from),
             UtilitySettings(param) => self.utility_settings.set(param).map(Parameter::from),
         }
     }
@@ -70,6 +76,7 @@ impl CCParameter for Parameter {
             Parameter::Compressor(param) => param.to_cc(),
             Parameter::Effect(param) => param.to_cc(),
             Parameter::NoiseGate(param) => param.to_cc(),
+            Parameter::WahExpr(param) => param.to_cc(),
             Parameter::UtilitySettings(param) => param.to_cc(),
         }
     }
@@ -95,6 +102,7 @@ impl CCParameterSetter for Dsp {
         try_set_cc!(self.compressor, cc, Compressor);
         try_set_cc!(self.effect, cc, Effect);
         try_set_cc!(self.noise_gate, cc, NoiseGate);
+        try_set_cc!(self.wah_expr, cc, WahExpr);
         try_set_cc!(self.utility_settings, cc, UtilitySettings);
 
         Err(Error::CCNumberUnknown(cc.nb.as_u8()))

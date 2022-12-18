@@ -280,6 +280,7 @@ impl Application for App {
             .spacing(20)
             .width(Length::Fill),
             ui::compressor::Panel::new(self.dsp.compressor),
+            ui::wah_expr::Panel::new(self.dsp.wah_expr),
         ]
         .spacing(40);
 
@@ -360,6 +361,12 @@ impl From<ui::utility_settings::Event> for Message {
             UtilitySettings(settings) => Message::UtilitySettings(settings),
             Parameter(param) => Message::Parameter(param.into()),
         }
+    }
+}
+
+impl From<dsp::wah_expr::Parameter> for Message {
+    fn from(param: dsp::wah_expr::Parameter) -> Self {
+        Message::Parameter(param.into())
     }
 }
 
