@@ -45,7 +45,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
         // param structs declarations and traits
         tokens.extend(self.params.iter().map(|p| p.to_token_stream()));
 
-        // ParameterGroup specifics
+        // ParameterSetter specifics
         let group_name = &self.name;
 
         tokens.extend({

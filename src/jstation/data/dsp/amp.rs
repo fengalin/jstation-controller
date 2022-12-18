@@ -1,8 +1,8 @@
 use std::fmt;
 
-use jstation_derive::ParameterGroup;
+use jstation_derive::ParameterSetter;
 
-#[derive(Clone, Copy, Debug, Default, ParameterGroup)]
+#[derive(Clone, Copy, Debug, Default, ParameterSetter)]
 pub struct Amp {
     #[const_range(max = 24, param_nb = 9, cc_nb = 34, display_map = name, display_map = nick)]
     pub modeling: Modeling,

@@ -1,8 +1,8 @@
 use crate::jstation::procedure::UtilitySettingsResp;
-use jstation_derive::ParameterGroup;
+use jstation_derive::ParameterSetter;
 
 // FIXME might be easier not to auto implement ParameterSetter
-#[derive(Clone, Copy, Debug, Default, ParameterGroup)]
+#[derive(Clone, Copy, Debug, Default, ParameterSetter)]
 pub struct UtilitySettings {
     pub stereo_mono: bool,
     pub dry_track: bool,

@@ -1,13 +1,13 @@
 use std::fmt;
 
-use jstation_derive::ParameterGroup;
+use jstation_derive::ParameterSetter;
 
 use crate::jstation::data::{
     DiscreteParameter, DiscreteRange, Normal, ParameterSetter, RawValue, VariableRange,
     VariableRangeParameter,
 };
 
-#[derive(Clone, Copy, Debug, Default, ParameterGroup)]
+#[derive(Clone, Copy, Debug, Default, ParameterSetter)]
 pub struct Effect {
     #[boolean(param_nb = 19, cc_nb = 44)]
     pub switch: Switch,

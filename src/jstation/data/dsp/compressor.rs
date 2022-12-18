@@ -1,9 +1,9 @@
 use std::fmt;
 
 use crate::jstation::data::DiscreteParameter;
-use jstation_derive::ParameterGroup;
+use jstation_derive::ParameterSetter;
 
-#[derive(Clone, Copy, Debug, Default, ParameterGroup)]
+#[derive(Clone, Copy, Debug, Default, ParameterSetter)]
 pub struct Compressor {
     #[boolean(param_nb = 0, cc_nb = 1)]
     pub switch: Switch,
