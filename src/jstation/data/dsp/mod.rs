@@ -17,6 +17,9 @@ pub use cabinet::Cabinet;
 pub mod compressor;
 pub use compressor::Compressor;
 
+pub mod delay;
+pub use delay::Delay;
+
 pub mod effect;
 pub use effect::Effect;
 
@@ -34,6 +37,7 @@ pub struct Dsp {
     pub amp: Amp,
     pub cabinet: Cabinet,
     pub compressor: Compressor,
+    pub delay: Delay,
     pub effect: Effect,
     pub noise_gate: NoiseGate,
     pub wah_expr: WahExpr,
@@ -45,6 +49,7 @@ pub enum Parameter {
     Amp(amp::Parameter),
     Cabinet(cabinet::Parameter),
     Compressor(compressor::Parameter),
+    Delay(delay::Parameter),
     Effect(effect::Parameter),
     NoiseGate(noise_gate::Parameter),
     WahExpr(wah_expr::Parameter),
@@ -60,6 +65,7 @@ impl ParameterSetter for Dsp {
             Amp(param) => self.amp.set(param).map(Parameter::from),
             Cabinet(param) => self.cabinet.set(param).map(Parameter::from),
             Compressor(param) => self.compressor.set(param).map(Parameter::from),
+            Delay(param) => self.delay.set(param).map(Parameter::from),
             Effect(param) => self.effect.set(param).map(Parameter::from),
             NoiseGate(param) => self.noise_gate.set(param).map(Parameter::from),
             WahExpr(param) => self.wah_expr.set(param).map(Parameter::from),
@@ -74,6 +80,7 @@ impl CCParameter for Parameter {
             Parameter::Amp(param) => param.to_cc(),
             Parameter::Cabinet(param) => param.to_cc(),
             Parameter::Compressor(param) => param.to_cc(),
+            Parameter::Delay(param) => param.to_cc(),
             Parameter::Effect(param) => param.to_cc(),
             Parameter::NoiseGate(param) => param.to_cc(),
             Parameter::WahExpr(param) => param.to_cc(),
@@ -100,6 +107,7 @@ impl CCParameterSetter for Dsp {
         try_set_cc!(self.amp, cc, Amp);
         try_set_cc!(self.cabinet, cc, Cabinet);
         try_set_cc!(self.compressor, cc, Compressor);
+        try_set_cc!(self.delay, cc, Delay);
         try_set_cc!(self.effect, cc, Effect);
         try_set_cc!(self.noise_gate, cc, NoiseGate);
         try_set_cc!(self.wah_expr, cc, WahExpr);

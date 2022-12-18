@@ -301,6 +301,8 @@ impl Application for App {
             content = content.push(ui::effect::Panel::new(self.dsp.effect));
         }
 
+        content = content.push(ui::delay::Panel::new(self.dsp.delay));
+
         content = content.push(vertical_space(Length::Fill));
         content = content.push(text(&self.output_text).size(super::LABEL_TEXT_SIZE));
 
@@ -338,6 +340,12 @@ impl From<dsp::cabinet::Parameter> for Message {
 
 impl From<dsp::compressor::Parameter> for Message {
     fn from(param: dsp::compressor::Parameter) -> Self {
+        Message::Parameter(param.into())
+    }
+}
+
+impl From<dsp::delay::Parameter> for Message {
+    fn from(param: dsp::delay::Parameter) -> Self {
         Message::Parameter(param.into())
     }
 }
