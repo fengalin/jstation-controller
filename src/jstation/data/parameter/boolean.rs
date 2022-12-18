@@ -1,10 +1,12 @@
-use crate::jstation::data::{ParameterNumber, RawParameter, RawValue};
+use crate::jstation::data::{ParameterNumber, ParameterSetter, RawParameter, RawValue};
 
 pub trait BoolParameter:
-    From<bool> + Into<bool> + PartialEq + Copy + Clone + std::fmt::Debug + Sized
+    From<bool> + Into<bool> + ParameterSetter<Parameter = Self> + Clone + Copy + Eq + PartialEq
 {
     const NAME: &'static str;
     const DEFAULT: bool;
+    const TRUE: Self;
+    const FALSE: Self;
 
     fn from_raw(raw: RawValue) -> Self {
         (raw.as_u8() == 0).into()
@@ -14,24 +16,13 @@ pub trait BoolParameter:
         RawValue::new(if self.into() { 0 } else { u8::MAX })
     }
 
-    fn is_active(self) -> bool {
-        self.into()
+    fn is_true(&self) -> bool {
+        (*self).into()
     }
 
     /// Resets the parameter to its default value.
     fn reset(&mut self) -> Option<Self> {
         self.set(Self::DEFAULT.into())
-    }
-
-    /// Sets the value if it is different than current.
-    fn set(&mut self, new: Self) -> Option<Self> {
-        if new == *self {
-            return None;
-        }
-
-        *self = new;
-
-        Some(new)
     }
 }
 

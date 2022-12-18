@@ -6,33 +6,35 @@ use syn::{self, punctuated::Punctuated, Attribute, Expr, Field, Ident, Token, Ty
 
 use crate::param::Arg;
 
-pub struct Discrete<'a> {
+pub struct ConstRange<'a> {
     field: &'a Field,
+    is_discr: bool,
     name: Option<String>,
     default: TokenStream,
     displays: Vec<Display>,
     min: TokenStream,
     max: TokenStream,
     param_nb: Option<Expr>,
-    cc_nb: Option<Expr>,
+    cc_nb: Option<u8>,
 }
 
-impl<'a> Discrete<'a> {
+impl<'a> ConstRange<'a> {
     fn new(field: &'a Field) -> Self {
-        Discrete {
+        ConstRange {
             field,
+            is_discr: false,
             name: None,
             default: quote! { crate::jstation::data::Normal::MIN },
             displays: Vec::new(),
             min: quote! { crate::jstation::data::RawValue::new(0) },
-            max: quote! { crate::jstation::data::RawValue::new(0x7f) },
+            max: quote! { crate::jstation::data::RawValue::new(0) },
             param_nb: None,
             cc_nb: None,
         }
     }
 
     pub fn from_attrs(field: &'a Field, attr: &Attribute) -> Self {
-        let mut param = Discrete::new(field);
+        let mut param = ConstRange::new(field);
 
         let args = attr
             .parse_args_with(Punctuated::<Arg, Token![,]>::parse_terminated)
@@ -85,7 +87,24 @@ impl<'a> Discrete<'a> {
                     param.displays.push(Display::Map(name.ident.clone()));
                 }
                 "param_nb" => param.param_nb = Some(arg.value_or_abort(field)),
-                "cc_nb" => param.cc_nb = Some(arg.value_or_abort(field)),
+                "cc_nb" => {
+                    let cc_nb = match arg.value_or_abort(field) {
+                        Expr::Lit(syn::ExprLit {
+                            lit: syn::Lit::Int(lit_int),
+                            ..
+                        }) => lit_int.base10_parse::<u8>().unwrap_or_else(|err| {
+                            abort!(field, "Expected an `u8` for `cc_nb`: {:?}", err);
+                        }),
+                        other => {
+                            abort!(
+                                field,
+                                "Expected a literal int for `cc_nb` found {}",
+                                other.to_token_stream(),
+                            )
+                        }
+                    };
+                    param.cc_nb = Some(cc_nb)
+                }
                 "name" => {
                     let name = match arg.value_or_abort(field) {
                         Expr::Lit(syn::ExprLit {
@@ -96,10 +115,14 @@ impl<'a> Discrete<'a> {
                     };
                     param.name = Some(name);
                 }
+                "discriminant" => {
+                    arg.no_value_or_abort(field);
+                    param.is_discr = true;
+                }
                 other => {
                     abort!(
                         field,
-                        "Incompatible arg `{other}` for discrete param {}",
+                        "Incompatible arg `{other}` for `const_range` param {}",
                         field.ty.to_token_stream(),
                     );
                 }
@@ -117,12 +140,16 @@ impl<'a> Discrete<'a> {
         self.field.ident.as_ref().expect("name field")
     }
 
-    pub fn cc_nb(&self) -> Option<&Expr> {
-        self.cc_nb.as_ref()
+    pub fn cc_nb(&self) -> Option<u8> {
+        self.cc_nb
+    }
+
+    pub fn is_discriminant(&self) -> bool {
+        self.is_discr
     }
 }
 
-impl<'a> ToTokens for Discrete<'a> {
+impl<'a> ToTokens for ConstRange<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let param = self.typ();
         let param_name = self.name.clone().unwrap_or_else(|| {
@@ -137,45 +164,75 @@ impl<'a> ToTokens for Discrete<'a> {
             #[derive(Clone, Copy, Debug, PartialEq)]
             pub struct #param(crate::jstation::data::DiscreteValue);
 
-            impl crate::jstation::data::DiscreteParameter for #param {
+            impl crate::jstation::data::ConstRangeParameter for #param {
                 const NAME: &'static str = #param_name;
                 const DEFAULT: crate::jstation::data::Normal = #param_default;
                 const MIN_RAW: crate::jstation::data::RawValue = #param_min;
                 const MAX_RAW: crate::jstation::data::RawValue = #param_max;
                 const RANGE: crate::jstation::data::DiscreteRange =
                     crate::jstation::data::DiscreteRange::new(Self::MIN_RAW, Self::MAX_RAW);
+
+                fn from_snapped(normal: crate::jstation::data::Normal) -> Self {
+                    #param(crate::jstation::data::DiscreteValue::new(normal, Self::RANGE))
+                }
+
+                fn try_from_raw(
+                    raw: crate::jstation::data::RawValue,
+                ) -> Result<Self, crate::jstation::Error> {
+                    let value = crate::jstation::data::DiscreteValue::try_from_raw(
+                        raw,
+                        Self::RANGE,
+                    )
+                    .map_err(|err| crate::jstation::Error::with_context(Self::NAME, err))?;
+
+                    Ok(#param(value))
+                }
+            }
+
+            impl crate::jstation::data::DiscreteParameter for #param {
+                fn name(self) -> &'static str {
+                    use crate::jstation::data::ConstRangeParameter;
+                    Self::NAME
+                }
+
+                fn normal_default(self) -> Option<crate::jstation::data::Normal> {
+                    use crate::jstation::data::ConstRangeParameter;
+                    Some(Self::DEFAULT)
+                }
+
+                fn normal(self) -> Option<crate::jstation::data::Normal> {
+                    Some(self.0.normal())
+                }
+
+                fn to_raw_value(self) -> Option<crate::jstation::data::RawValue> {
+                    use crate::jstation::data::ConstRangeParameter;
+                    Some(self.0.get_raw(Self::RANGE))
+                }
+
+                fn reset(&mut self) -> Option<Self> {
+                    use crate::jstation::data::{ConstRangeParameter, ParameterSetter};
+                    self.set(Self::from_snapped(Self::DEFAULT))
+                }
             }
 
             impl crate::jstation::data::ParameterSetter for #param {
                 type Parameter = Self;
 
-                fn set(&mut self, param: Self) -> Option<Self::Parameter> {
-                    crate::jstation::data::DiscreteParameter::set(self, param)
+                fn set(&mut self, new: Self) -> Option<Self> {
+                    if self.0 == new.0 {
+                        return None;
+                    }
+
+                    *self = new;
+
+                    Some(new)
                 }
             }
 
             impl Default for #param {
                 fn default() -> Self {
-                    use crate::jstation::data::DiscreteParameter;
+                    use crate::jstation::data::ConstRangeParameter;
                     Self::from_snapped(Self::DEFAULT)
-                }
-            }
-
-            impl From<crate::jstation::data::DiscreteValue> for #param {
-                fn from(value: crate::jstation::data::DiscreteValue) -> Self {
-                    #param(value)
-                }
-            }
-
-            impl From<#param> for crate::jstation::data::DiscreteValue {
-                fn from(param: #param) -> Self {
-                    param.0
-                }
-            }
-
-            impl From<#param> for crate::jstation::data::Normal {
-                fn from(param: #param) -> Self {
-                    param.0.normal()
                 }
             }
         });
@@ -192,24 +249,35 @@ impl<'a> ToTokens for Discrete<'a> {
         if let Some(cc_nb) = &self.cc_nb {
             tokens.extend(quote! {
                 impl crate::jstation::data::CCParameter for #param {
-                    fn from_cc(cc: crate::midi::CC) -> Option<Self> {
-                        use crate::jstation::data::{DiscreteParameter, DiscreteValue};
-
-                        if cc.nb.as_u8() != #cc_nb {
-                            return None;
-                        }
-
-                        Some(#param(DiscreteValue::new(
-                            cc.value.into(),
-                            Self::RANGE,
-                        )))
-                    }
-
                     fn to_cc(self) -> Option<crate::midi::CC> {
                         Some(crate::midi::CC::new(
                             crate::midi::CCNumber::new(#cc_nb),
                             self.0.normal().into(),
                         ))
+                    }
+                }
+
+                impl crate::jstation::data::CCParameterSetter for #param {
+                    type Parameter = Self;
+
+                    fn set_cc(
+                        &mut self,
+                        cc: crate::midi::CC,
+                    ) -> Result<Option<Self>, crate::jstation::Error>
+                    {
+                        use crate::jstation::data::ConstRangeParameter;
+
+                        assert_eq!(cc.nb.as_u8(), #cc_nb);
+
+                        let value =
+                            crate::jstation::data::DiscreteValue::new(cc.value.into(), Self::RANGE);
+                        if self.0 == value {
+                            return Ok(None);
+                        }
+
+                        *self = #param(value);
+
+                        Ok(Some(*self))
                     }
                 }
             });
@@ -221,7 +289,7 @@ impl<'a> ToTokens for Discrete<'a> {
                     impl std::fmt::Display for #param {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                             use crate::jstation::data::DiscreteParameter;
-                            std::fmt::Display::fmt(&(self.to_raw_value().as_u8()), f)
+                            std::fmt::Display::fmt(&(self.to_raw_value().unwrap().as_u8()), f)
                         }
                     }
                 }),
@@ -276,7 +344,7 @@ impl<'a> ToTokens for Discrete<'a> {
                             pub fn #names_method() -> &'static [#named_param] {
                                 static LIST: once_cell::sync::Lazy<Vec<#named_param>> =
                                     once_cell::sync::Lazy::new(|| {
-                                        use crate::jstation::data::DiscreteParameter;
+                                        use crate::jstation::data::ConstRangeParameter;
 
                                         assert_eq!(
                                             #named_list.len(),
@@ -306,7 +374,7 @@ impl<'a> ToTokens for Discrete<'a> {
 
                             pub fn #name_method(self) -> #named_param {
                                 use crate::jstation::data::DiscreteParameter;
-                                Self::#names_method()[self.to_raw_value().as_u8() as usize]
+                                Self::#names_method()[self.to_raw_value().unwrap().as_u8() as usize]
                             }
                         }
                     });

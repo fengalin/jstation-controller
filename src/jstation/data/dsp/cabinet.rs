@@ -1,8 +1,8 @@
-use jstation_derive::ParamGroup;
+use jstation_derive::ParameterGroup;
 
-#[derive(Debug, Default, ParamGroup)]
+#[derive(Clone, Copy, Debug, Default, ParameterGroup)]
 pub struct Cabinet {
-    #[discrete(max = 18, param_nb = 15, cc_nb = 66, display_map = name, display_map = nick)]
+    #[const_range(max = 18, param_nb = 15, cc_nb = 66, display_map = name, display_map = nick)]
     pub typ: Type,
 }
 

@@ -1,20 +1,17 @@
-use std::{cell::RefCell, rc::Rc};
-
 use iced::{
     widget::{checkbox, column, horizontal_space, pick_list, row, text, vertical_space},
     Alignment, Element, Length,
 };
-use iced_audio::Knob;
 use iced_lazy::{self, Component};
 
 use crate::{
     jstation::data::{
         dsp::{amp, Amp},
-        DiscreteParameter,
+        ConstRangeParameter,
     },
     ui::{
-        to_jstation_normal, to_ui_param, AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE,
-        DSP_TITLE_AREA_WIDTH, LABEL_TEXT_SIZE,
+        self, AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, DSP_TITLE_AREA_WIDTH,
+        LABEL_TEXT_SIZE,
     },
 };
 
@@ -31,11 +28,11 @@ impl From<amp::Parameter> for Event {
 }
 
 pub struct Panel {
-    amp: Rc<RefCell<Amp>>,
+    amp: Amp,
 }
 
 impl Panel {
-    pub fn new(amp: Rc<RefCell<Amp>>) -> Self {
+    pub fn new(amp: Amp) -> Self {
         Self { amp }
     }
 }
@@ -57,7 +54,7 @@ where
         match event {
             Parameter(param) => {
                 use crate::jstation::data::ParameterSetter;
-                return self.amp.borrow_mut().set(param).map(Message::from);
+                self.amp.set(param).map(Message::from)
             }
             MustShowNicks(show_nick) => {
                 state.show_nick = show_nick;
@@ -67,48 +64,65 @@ where
     }
 
     fn view(&self, state: &Self::State) -> Element<Event> {
-        let amp = self.amp.borrow();
-
-        let mut modelings = column![
-            text("Amp"),
-            vertical_space(Length::Units(1)),
+        let mut modeling = column![
             row![
                 text(amp::Modeling::NAME)
                     .size(LABEL_TEXT_SIZE)
                     .width(AMP_CABINET_LABEL_WIDTH),
                 checkbox("nick", state.show_nick, Event::MustShowNicks).size(CHECKBOX_SIZE),
             ],
-        ]
-        .width(DSP_TITLE_AREA_WIDTH)
-        .spacing(5)
-        .padding(5);
+            vertical_space(Length::Units(5)),
+        ];
 
         if state.show_nick {
-            modelings = modelings.push(
-                pick_list(amp::Modeling::nicks(), Some(amp.modeling.nick()), |nick| {
-                    amp::Parameter::from(nick.param()).into()
-                })
+            modeling = modeling.push(
+                pick_list(
+                    amp::Modeling::nicks(),
+                    Some(self.amp.modeling.nick()),
+                    |nick| amp::Parameter::from(nick.param()).into(),
+                )
                 .text_size(COMBO_TEXT_SIZE),
             );
         } else {
-            modelings = modelings.push(
-                pick_list(amp::Modeling::names(), Some(amp.modeling.name()), |name| {
-                    amp::Parameter::from(name.param()).into()
-                })
+            modeling = modeling.push(
+                pick_list(
+                    amp::Modeling::names(),
+                    Some(self.amp.modeling.name()),
+                    |name| amp::Parameter::from(name.param()).into(),
+                )
                 .text_size(COMBO_TEXT_SIZE),
             );
         }
 
+        let title_area = column![text("Amp"), vertical_space(Length::Units(10)), modeling]
+            .width(DSP_TITLE_AREA_WIDTH)
+            .padding(5);
+
         use amp::Parameter::*;
         let content: Element<_> = row![
-            modelings,
-            param_knob!(amp, gain, Gain),
+            title_area,
+            ui::knob(self.amp.gain, |normal| Gain(amp::Gain::from_snapped(
+                normal
+            )))
+            .build(),
             horizontal_space(Length::Units(2)),
-            param_knob!(amp, bass, Bass),
-            param_knob!(amp, middle, Middle),
-            param_knob!(amp, treble, Treble),
+            ui::knob(self.amp.bass, |normal| Bass(amp::Bass::from_snapped(
+                normal
+            )))
+            .build(),
+            ui::knob(self.amp.middle, |normal| Middle(amp::Middle::from_snapped(
+                normal
+            )))
+            .build(),
+            ui::knob(self.amp.treble, |normal| Treble(amp::Treble::from_snapped(
+                normal
+            )))
+            .build(),
             horizontal_space(Length::Units(2)),
-            param_knob!(amp, level, Level),
+            ui::knob(self.amp.level, |normal| Level(amp::Level::from_snapped(
+                normal
+            )))
+            .build(),
         ]
         .spacing(10)
         .align_items(Alignment::End)

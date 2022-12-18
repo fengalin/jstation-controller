@@ -4,8 +4,11 @@ use crate::{jstation::data::RawValue, midi};
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Unknown J-Station CC number x{:02x}", .0)]
+    #[error("Unknown J-Station CC number {}", .0)]
     CCNumberUnknown(u8),
+
+    #[error("Inactive Parameter {}", .0)]
+    ParameterInactive(String),
 
     #[error("Parameter number {} out of range", .0)]
     ParameterNumberOutOfRange(u8),
@@ -65,5 +68,9 @@ impl Error {
 
     pub fn is_handshake_timeout(&self) -> bool {
         matches!(self, Error::HandshakeTimeout)
+    }
+
+    pub fn is_unknown_cc(&self) -> bool {
+        matches!(self, Error::CCNumberUnknown(_))
     }
 }

@@ -1,52 +1,22 @@
 use crate::jstation::{
-    data::{Normal, ParameterNumber, RawParameter, RawValue},
+    data::{Normal, ParameterNumber, ParameterSetter, RawParameter, RawValue},
     Error,
 };
 
-pub trait DiscreteParameter:
-    From<DiscreteValue> + Into<DiscreteValue> + PartialEq + Copy + Clone + std::fmt::Debug + Sized
-{
-    const NAME: &'static str;
-    const DEFAULT: Normal;
-    const MIN_RAW: RawValue;
-    const MAX_RAW: RawValue;
-    const RANGE: crate::jstation::data::DiscreteRange;
+pub trait DiscreteParameter: ParameterSetter<Parameter = Self> + Clone + Copy {
+    fn name(self) -> &'static str;
 
-    fn from_snapped(normal: Normal) -> Self {
-        DiscreteValue::new(normal, Self::RANGE).into()
-    }
+    fn normal_default(self) -> Option<Normal>;
 
-    fn try_from_raw(raw: RawValue) -> Result<Self, Error> {
-        let value = DiscreteValue::try_from_raw(raw, Self::RANGE)
-            .map_err(|err| Error::with_context(Self::NAME, err))?;
+    fn normal(self) -> Option<Normal>;
 
-        Ok(value.into())
-    }
-
-    fn to_raw_value(self) -> RawValue {
-        self.into().get_raw(Self::RANGE)
-    }
-
-    fn normal(self) -> Normal {
-        self.into().normal()
-    }
+    fn to_raw_value(self) -> Option<RawValue>;
 
     /// Resets the parameter to its default value.
-    fn reset(&mut self) -> Option<Self> {
-        self.set(Self::from_snapped(Self::DEFAULT))
-    }
+    fn reset(&mut self) -> Option<Self>;
 
-    /// Sets the value if it is different than current.
-    ///
-    /// Returns the new value if it as changed.
-    fn set(&mut self, new: Self) -> Option<Self> {
-        if new == *self {
-            return None;
-        }
-
-        *self = new;
-
-        Some(new)
+    fn is_active(self) -> bool {
+        true
     }
 }
 
@@ -55,13 +25,14 @@ pub trait DiscreteParameter:
 pub trait DiscreteRawParameter: DiscreteParameter {
     const PARAMETER_NB: ParameterNumber;
 
-    fn to_raw_parameter(self) -> RawParameter {
-        RawParameter::new(Self::PARAMETER_NB, self.to_raw_value())
+    fn to_raw_parameter(self) -> Option<RawParameter> {
+        self.to_raw_value()
+            .map(|value| RawParameter::new(Self::PARAMETER_NB, value))
     }
 }
 
 // A discrete value which is guaranteed to be snapped to the provided [`DiscreteRange`].
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
 pub struct DiscreteValue {
     normal: Normal,
 }

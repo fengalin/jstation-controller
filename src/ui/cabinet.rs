@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use iced::{
     widget::{checkbox, column, pick_list, row, text, vertical_space},
     Element, Length,
@@ -9,7 +7,7 @@ use iced_lazy::{self, Component};
 use crate::{
     jstation::data::{
         dsp::{cabinet, Cabinet},
-        DiscreteParameter,
+        ConstRangeParameter,
     },
     ui::{AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, LABEL_TEXT_SIZE},
 };
@@ -27,11 +25,11 @@ impl From<cabinet::Type> for Event {
 }
 
 pub struct Panel {
-    cabinet: Rc<RefCell<Cabinet>>,
+    cabinet: Cabinet,
 }
 
 impl Panel {
-    pub fn new(cabinet: Rc<RefCell<Cabinet>>) -> Self {
+    pub fn new(cabinet: Cabinet) -> Self {
         Self { cabinet }
     }
 }
@@ -54,11 +52,7 @@ where
             Parameter(cabinet_param) => {
                 use crate::jstation::data::ParameterSetter;
 
-                return self
-                    .cabinet
-                    .borrow_mut()
-                    .set(cabinet_param)
-                    .map(Message::from);
+                return self.cabinet.set(cabinet_param).map(Message::from);
             }
             MustShowNicks(show_nick) => state.show_nick = show_nick,
         }
@@ -67,34 +61,36 @@ where
     }
 
     fn view(&self, state: &Self::State) -> Element<Event> {
-        let cabinet = self.cabinet.borrow();
-
         let mut cabinet_types = column![
             text("Cabinet"),
-            vertical_space(Length::Units(1)),
+            vertical_space(Length::Units(10)),
             row![
                 text(cabinet::Type::NAME)
                     .size(LABEL_TEXT_SIZE)
                     .width(AMP_CABINET_LABEL_WIDTH),
                 checkbox("nick", state.show_nick, Event::MustShowNicks).size(CHECKBOX_SIZE),
             ],
+            vertical_space(Length::Units(5)),
         ]
         .width(Length::Units(350))
-        .spacing(5)
         .padding(5);
 
         if state.show_nick {
             cabinet_types = cabinet_types.push(
-                pick_list(cabinet::Type::nicks(), Some(cabinet.typ.nick()), |nick| {
-                    nick.param().into()
-                })
+                pick_list(
+                    cabinet::Type::nicks(),
+                    Some(self.cabinet.typ.nick()),
+                    |nick| nick.param().into(),
+                )
                 .text_size(COMBO_TEXT_SIZE),
             );
         } else {
             cabinet_types = cabinet_types.push(
-                pick_list(cabinet::Type::names(), Some(cabinet.typ.name()), |name| {
-                    name.param().into()
-                })
+                pick_list(
+                    cabinet::Type::names(),
+                    Some(self.cabinet.typ.name()),
+                    |name| name.param().into(),
+                )
                 .text_size(COMBO_TEXT_SIZE),
             );
         }

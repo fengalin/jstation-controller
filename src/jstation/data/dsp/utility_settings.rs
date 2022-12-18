@@ -1,15 +1,16 @@
 use crate::jstation::procedure::UtilitySettingsResp;
-use jstation_derive::ParamGroup;
+use jstation_derive::ParameterGroup;
 
-#[derive(Copy, Clone, Debug, Default, ParamGroup)]
+// FIXME might be easier not to auto implement ParameterSetter
+#[derive(Clone, Copy, Debug, Default, ParameterGroup)]
 pub struct UtilitySettings {
     pub stereo_mono: bool,
     pub dry_track: bool,
-    #[discrete(max = 24, cc_nb = 14, display_raw)]
+    #[const_range(max = 24, cc_nb = 14, display_raw)]
     pub digital_out_level: DigitalOutLevel,
     pub global_cabinet: bool,
     pub midi_merge: bool,
-    #[discrete(min = 1, max = 15, display_raw)]
+    #[const_range(min = 1, max = 15, display_raw)]
     pub midi_channel: MidiChannel,
 }
 
@@ -17,7 +18,7 @@ impl TryFrom<UtilitySettingsResp> for UtilitySettings {
     type Error = crate::jstation::Error;
 
     fn try_from(proc: UtilitySettingsResp) -> Result<Self, Self::Error> {
-        use crate::jstation::data::DiscreteParameter;
+        use crate::jstation::data::ConstRangeParameter;
 
         Ok(UtilitySettings {
             stereo_mono: proc.stereo_mono,

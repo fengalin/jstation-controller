@@ -1,26 +1,20 @@
-use std::{cell::RefCell, rc::Rc};
-
-use iced::{
-    widget::{column, horizontal_space, row, text, toggler},
-    Alignment, Element, Length,
-};
-use iced_audio::Knob;
+use iced::{widget::row, Element};
 use iced_lazy::{self, Component};
 
 use crate::{
     jstation::data::{
         dsp::{compressor, Compressor},
-        BoolParameter, DiscreteParameter,
+        ConstRangeParameter,
     },
-    ui::{to_jstation_normal, to_ui_param, DSP_TITLE_AREA_WIDTH},
+    ui::{self, DSP_TITLE_AREA_WIDTH},
 };
 
 pub struct Panel {
-    compressor: Rc<RefCell<Compressor>>,
+    compressor: Compressor,
 }
 
 impl Panel {
-    pub fn new(compressor: Rc<RefCell<Compressor>>) -> Self {
+    pub fn new(compressor: Compressor) -> Self {
         Self { compressor }
     }
 }
@@ -38,21 +32,35 @@ where
         event: compressor::Parameter,
     ) -> Option<Message> {
         use crate::jstation::data::ParameterSetter;
-        self.compressor.borrow_mut().set(event).map(Message::from)
+        self.compressor.set(event).map(Message::from)
     }
 
     fn view(&self, _state: &Self::State) -> Element<compressor::Parameter> {
-        let compressor = self.compressor.borrow();
-
         use compressor::Parameter::*;
+
         let content: Element<_> = row![
-            param_switch!(@name "Compressor", compressor, switch, Switch)
-                .width(DSP_TITLE_AREA_WIDTH),
-            param_knob!(@name "Thold", compressor, threshold, Threshold),
-            horizontal_space(Length::Units(2)),
-            param_knob!(compressor, ratio, Ratio, compressor.ratio.value()),
-            param_knob!(compressor, gain, Gain),
-            param_knob!(@name "Freq.",compressor, freq, Freq, compressor.freq.value()),
+            ui::switch("Compressor", self.compressor.switch, |is_on| {
+                compressor::Switch::from(is_on)
+            })
+            .width(DSP_TITLE_AREA_WIDTH),
+            ui::knob(self.compressor.threshold, |normal| Threshold(
+                compressor::Threshold::from_snapped(normal)
+            ))
+            .name("Thold")
+            .build(),
+            ui::knob(self.compressor.ratio, |normal| {
+                Ratio(compressor::Ratio::from_snapped(normal))
+            })
+            .build(),
+            ui::knob(self.compressor.gain, |normal| Gain(
+                compressor::Gain::from_snapped(normal)
+            ))
+            .build(),
+            ui::knob(self.compressor.freq, |normal| {
+                Freq(compressor::Freq::from_snapped(normal))
+            })
+            .name("Freq")
+            .build(),
         ]
         .spacing(10)
         .into();
