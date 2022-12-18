@@ -20,10 +20,11 @@ pub mod cabinet;
 pub mod compressor;
 pub mod effect;
 pub mod noise_gate;
+pub mod utility_settings;
+pub mod wah_expr;
 
 pub mod app;
 pub use app::{App, APP_NAME};
 
 pub mod jstation;
 pub mod midi;
-pub mod utility_settings;
