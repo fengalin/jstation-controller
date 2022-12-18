@@ -21,6 +21,7 @@ pub mod compressor;
 pub mod delay;
 pub mod effect;
 pub mod noise_gate;
+pub mod reverb;
 pub mod utility_settings;
 pub mod wah_expr;
 
