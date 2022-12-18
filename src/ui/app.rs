@@ -243,14 +243,11 @@ impl Application for App {
             ShowMidiPanel
         )];
         if self.show_midi_panel {
-            midi_panel = midi_panel.push(
-                column![
-                    ui::midi::Panel::new(self.ports.clone(), Midi),
-                    button(text("Scan")).on_press(StartScan),
-                ]
-                .spacing(10)
-                .padding(5),
-            );
+            midi_panel = midi_panel.push(column![
+                ui::midi::Panel::new(self.ports.clone(), Midi),
+                vertical_space(Length::Units(10)),
+                button(text("Scan")).on_press(StartScan),
+            ]);
         }
 
         let mut utility_settings = column![checkbox(
@@ -259,58 +256,64 @@ impl Application for App {
             ShowUtilitySettings
         ),];
         if self.show_utility_settings {
-            utility_settings = utility_settings.push(
-                container(ui::utility_settings::Panel::new(
-                    self.dsp.utility_settings,
-                    Message::from,
-                ))
-                .padding(5),
-            );
+            utility_settings = utility_settings.push(container(ui::utility_settings::Panel::new(
+                self.dsp.utility_settings,
+                Message::from,
+            )));
         }
 
         let effect_post = self.dsp.effect.post;
 
-        let mut content = column![
+        let mut dsp = column![
+            ui::compressor::Panel::new(self.dsp.compressor),
+            ui::wah_expr::Panel::new(self.dsp.wah_expr),
+        ]
+        .spacing(30);
+
+        if !effect_post.is_true() {
+            dsp = dsp.push(ui::effect::Panel::new(self.dsp.effect));
+        }
+
+        dsp = dsp.push(ui::amp::Panel::new(self.dsp.amp));
+
+        dsp = dsp.push(row![
+            ui::cabinet::Panel::new(self.dsp.cabinet),
+            horizontal_space(Length::Units(30)),
+            ui::noise_gate::Panel::new(self.dsp.noise_gate),
+        ]);
+
+        if effect_post.is_true() {
+            dsp = dsp.push(ui::effect::Panel::new(self.dsp.effect));
+        }
+
+        dsp = dsp.push(ui::delay::Panel::new(self.dsp.delay));
+        dsp = dsp.push(ui::reverb::Panel::new(self.dsp.reverb));
+
+        let container: Element<_> = container(column![
             row![
                 utility_settings,
+                horizontal_space(Length::Units(20)),
                 midi_panel,
                 horizontal_space(Length::Fill),
                 checkbox("Dark Theme", self.use_dark_them, UseDarkTheme),
             ]
-            .spacing(20)
             .width(Length::Fill),
-            ui::compressor::Panel::new(self.dsp.compressor),
-            ui::wah_expr::Panel::new(self.dsp.wah_expr),
-        ]
-        .spacing(40);
+            vertical_space(Length::Units(30)),
+            dsp,
+            vertical_space(Length::Fill),
+            text(&self.output_text).size(super::LABEL_TEXT_SIZE),
+        ])
+        .padding(10)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into();
 
-        if !effect_post.is_true() {
-            content = content.push(ui::effect::Panel::new(self.dsp.effect));
+        // Set to true to debug layout
+        if false {
+            container.explain(iced::Color::WHITE)
+        } else {
+            container
         }
-
-        content = content.push(ui::amp::Panel::new(self.dsp.amp));
-        content = content.push(
-            row![
-                ui::cabinet::Panel::new(self.dsp.cabinet),
-                ui::noise_gate::Panel::new(self.dsp.noise_gate),
-            ]
-            .spacing(30),
-        );
-
-        if effect_post.is_true() {
-            content = content.push(ui::effect::Panel::new(self.dsp.effect));
-        }
-
-        content = content.push(ui::delay::Panel::new(self.dsp.delay));
-
-        content = content.push(vertical_space(Length::Fill));
-        content = content.push(text(&self.output_text).size(super::LABEL_TEXT_SIZE));
-
-        container(content)
-            .padding(10)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
     }
 }
 
@@ -358,6 +361,12 @@ impl From<dsp::effect::Parameter> for Message {
 
 impl From<dsp::noise_gate::Parameter> for Message {
     fn from(param: dsp::noise_gate::Parameter) -> Self {
+        Message::Parameter(param.into())
+    }
+}
+
+impl From<dsp::reverb::Parameter> for Message {
+    fn from(param: dsp::reverb::Parameter) -> Self {
         Message::Parameter(param.into())
     }
 }

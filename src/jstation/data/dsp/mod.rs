@@ -26,6 +26,9 @@ pub use effect::Effect;
 pub mod noise_gate;
 pub use noise_gate::NoiseGate;
 
+pub mod reverb;
+pub use reverb::Reverb;
+
 pub mod utility_settings;
 pub use utility_settings::UtilitySettings;
 
@@ -40,6 +43,7 @@ pub struct Dsp {
     pub delay: Delay,
     pub effect: Effect,
     pub noise_gate: NoiseGate,
+    pub reverb: Reverb,
     pub wah_expr: WahExpr,
     pub utility_settings: UtilitySettings,
 }
@@ -52,8 +56,9 @@ pub enum Parameter {
     Delay(delay::Parameter),
     Effect(effect::Parameter),
     NoiseGate(noise_gate::Parameter),
-    WahExpr(wah_expr::Parameter),
+    Reverb(reverb::Parameter),
     UtilitySettings(utility_settings::Parameter),
+    WahExpr(wah_expr::Parameter),
 }
 
 impl ParameterSetter for Dsp {
@@ -68,6 +73,7 @@ impl ParameterSetter for Dsp {
             Delay(param) => self.delay.set(param).map(Parameter::from),
             Effect(param) => self.effect.set(param).map(Parameter::from),
             NoiseGate(param) => self.noise_gate.set(param).map(Parameter::from),
+            Reverb(param) => self.reverb.set(param).map(Parameter::from),
             WahExpr(param) => self.wah_expr.set(param).map(Parameter::from),
             UtilitySettings(param) => self.utility_settings.set(param).map(Parameter::from),
         }
@@ -83,6 +89,7 @@ impl CCParameter for Parameter {
             Parameter::Delay(param) => param.to_cc(),
             Parameter::Effect(param) => param.to_cc(),
             Parameter::NoiseGate(param) => param.to_cc(),
+            Parameter::Reverb(param) => param.to_cc(),
             Parameter::WahExpr(param) => param.to_cc(),
             Parameter::UtilitySettings(param) => param.to_cc(),
         }
@@ -110,6 +117,7 @@ impl CCParameterSetter for Dsp {
         try_set_cc!(self.delay, cc, Delay);
         try_set_cc!(self.effect, cc, Effect);
         try_set_cc!(self.noise_gate, cc, NoiseGate);
+        try_set_cc!(self.reverb, cc, Reverb);
         try_set_cc!(self.wah_expr, cc, WahExpr);
         try_set_cc!(self.utility_settings, cc, UtilitySettings);
 
