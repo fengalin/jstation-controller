@@ -15,57 +15,6 @@ use crate::{
     midi, ui,
 };
 
-#[derive(Debug, Clone)]
-pub enum Message {
-    JStation(Result<jstation::Message, jstation::Error>),
-    Parameter(dsp::Parameter),
-    UtilitySettings,
-    Midi(ui::midi::Selection),
-    StartScan,
-    ShowUtilitySettings(bool),
-    ShowMidiPanel(bool),
-    UseDarkTheme(bool),
-}
-
-impl From<dsp::amp::Parameter> for Message {
-    fn from(param: dsp::amp::Parameter) -> Self {
-        Message::Parameter(param.into())
-    }
-}
-
-impl From<dsp::cabinet::Parameter> for Message {
-    fn from(param: dsp::cabinet::Parameter) -> Self {
-        Message::Parameter(param.into())
-    }
-}
-
-impl From<dsp::compressor::Parameter> for Message {
-    fn from(param: dsp::compressor::Parameter) -> Self {
-        Message::Parameter(param.into())
-    }
-}
-
-impl From<dsp::noise_gate::Parameter> for Message {
-    fn from(param: dsp::noise_gate::Parameter) -> Self {
-        Message::Parameter(param.into())
-    }
-}
-
-impl From<ui::utility_settings::Event> for Message {
-    fn from(evt: ui::utility_settings::Event) -> Self {
-        use ui::utility_settings::Event::*;
-        match evt {
-            UtilitySettings => Message::UtilitySettings,
-            Parameter(param) => Message::Parameter(param.into()),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash)]
-pub enum Subscription {
-    JStation(usize),
-}
-
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum Error {
     #[error("Couldn't find J-Station")]
@@ -76,17 +25,13 @@ pub enum Error {
 
 pub struct App {
     jstation: ui::jstation::Interface,
-    amp: Rc<RefCell<dsp::Amp>>,
-    cabinet: Rc<RefCell<dsp::Cabinet>>,
-    compressor: Rc<RefCell<dsp::Compressor>>,
-    noise_gate: Rc<RefCell<dsp::NoiseGate>>,
+    dsp: dsp::Dsp,
 
     show_midi_panel: bool,
     ports: Rc<RefCell<ui::midi::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
 
     show_utility_settings: bool,
-    utility_settings: Rc<RefCell<dsp::UtilitySettings>>,
 
     use_dark_them: bool,
     output_text: String,
@@ -122,7 +67,7 @@ impl App {
                         self.ports.borrow_mut().set_ports(port_in, port_out);
                     }
                     UtilitySettingsResp(resp) => {
-                        *self.utility_settings.borrow_mut() = resp.try_into()?;
+                        self.dsp.utility_settings = resp.try_into()?;
 
                         // FIXME handle ui consequence of the error
                         self.jstation.bank_dump()?;
@@ -140,29 +85,14 @@ impl App {
             }
             Ok(ChannelVoice(cv)) => {
                 use jstation::channel_voice::Message::*;
-                use jstation::data::ParameterSetter;
-                use jstation::Parameter::*;
+                use jstation::data::CCParameterSetter;
                 match cv.msg {
-                    CC(Amp(param)) => {
-                        log::info!("Got {param:?}");
-                        let _ = self.amp.borrow_mut().set(param);
-                    }
-                    CC(Compressor(param)) => {
-                        log::info!("Got {param:?}");
-                        let _ = self.compressor.borrow_mut().set(param);
-                    }
-                    CC(Cabinet(param)) => {
-                        log::info!("Got {param:?}");
-                        let _ = self.cabinet.borrow_mut().set(param);
-                    }
-                    CC(NoiseGate(param)) => {
-                        log::info!("Got {param:?}");
-                        let _ = self.noise_gate.borrow_mut().set(param);
-                    }
-                    CC(UtilitySettings(util_settings)) => log::info!("Got {util_settings:?}"),
-                    ProgramChange(pc) => {
-                        log::info!("Unhandled {pc:?}");
-                    }
+                    CC(cc) => match self.dsp.set_cc(cc) {
+                        Ok(Some(param)) => log::debug!("Updated {param:?} from {cc:?}"),
+                        Ok(None) => log::debug!("Unchanged param for {cc:?}"),
+                        Err(err) => log::warn!("{err}"),
+                    },
+                    ProgramChange(pc) => log::debug!("Got {pc:?}"),
                 }
             }
             Err(err) if err.is_handshake_timeout() => {
@@ -217,17 +147,13 @@ impl Application for App {
         let app = App {
             jstation,
 
-            amp: Rc::new(RefCell::new(dsp::Amp::default())),
-            cabinet: Rc::new(RefCell::new(dsp::Cabinet::default())),
-            compressor: Rc::new(RefCell::new(dsp::Compressor::default())),
-            noise_gate: Rc::new(RefCell::new(dsp::NoiseGate::default())),
+            dsp: dsp::Dsp::default(),
 
             show_midi_panel: false,
             ports: RefCell::new(ports).into(),
             scanner_ctx: None,
 
             show_utility_settings: false,
-            utility_settings: Default::default(),
 
             use_dark_them: true,
             output_text,
@@ -260,13 +186,18 @@ impl Application for App {
                 }
             }
             Parameter(param) => {
-                use jstation::data::CCParameter;
+                use jstation::data::{CCParameter, ParameterSetter};
+
+                if self.dsp.set(param).is_some() {
+                    log::debug!("Set {param:?}");
+                }
+
                 if let Some(cc) = param.to_cc() {
                     // FIXME handle the error
                     dbg!(&cc);
                     let _ = self.jstation.send_cc(cc);
                 } else {
-                    log::error!("No CC impl for {:?}", param);
+                    log::error!("No CC for {:?}", param);
                 }
             }
             ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
@@ -287,8 +218,9 @@ impl Application for App {
                 }
             }
             ShowUtilitySettings(must_show) => self.show_utility_settings = must_show,
-            UtilitySettings => {
+            UtilitySettings(settings) => {
                 log::debug!("Got UtilitySettings UI update");
+                self.dsp.utility_settings = settings;
                 // FIXME send message to device
             }
             UseDarkTheme(use_dark) => self.use_dark_them = use_dark,
@@ -302,6 +234,7 @@ impl Application for App {
     }
 
     fn view(&self) -> Element<Message> {
+        use jstation::data::BoolParameter;
         use Message::*;
 
         let mut midi_panel = column![checkbox(
@@ -328,14 +261,16 @@ impl Application for App {
         if self.show_utility_settings {
             utility_settings = utility_settings.push(
                 container(ui::utility_settings::Panel::new(
-                    self.utility_settings.clone(),
+                    self.dsp.utility_settings,
                     Message::from,
                 ))
                 .padding(5),
             );
         }
 
-        let content = column![
+        let effect_post = self.dsp.effect.post;
+
+        let mut content = column![
             row![
                 utility_settings,
                 midi_panel,
@@ -344,17 +279,29 @@ impl Application for App {
             ]
             .spacing(20)
             .width(Length::Fill),
-            ui::compressor::Panel::new(self.compressor.clone()),
-            ui::amp::Panel::new(self.amp.clone()),
-            row![
-                ui::cabinet::Panel::new(self.cabinet.clone()),
-                ui::noise_gate::Panel::new(self.noise_gate.clone()),
-            ]
-            .spacing(30),
-            vertical_space(Length::Fill),
-            text(&self.output_text).size(super::LABEL_TEXT_SIZE),
+            ui::compressor::Panel::new(self.dsp.compressor),
         ]
         .spacing(40);
+
+        if !effect_post.is_true() {
+            content = content.push(ui::effect::Panel::new(self.dsp.effect));
+        }
+
+        content = content.push(ui::amp::Panel::new(self.dsp.amp));
+        content = content.push(
+            row![
+                ui::cabinet::Panel::new(self.dsp.cabinet),
+                ui::noise_gate::Panel::new(self.dsp.noise_gate),
+            ]
+            .spacing(30),
+        );
+
+        if effect_post.is_true() {
+            content = content.push(ui::effect::Panel::new(self.dsp.effect));
+        }
+
+        content = content.push(vertical_space(Length::Fill));
+        content = content.push(text(&self.output_text).size(super::LABEL_TEXT_SIZE));
 
         container(content)
             .padding(10)
@@ -362,4 +309,61 @@ impl Application for App {
             .height(Length::Fill)
             .into()
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    JStation(Result<jstation::Message, jstation::Error>),
+    Parameter(dsp::Parameter),
+    UtilitySettings(dsp::UtilitySettings),
+    Midi(ui::midi::Selection),
+    StartScan,
+    ShowUtilitySettings(bool),
+    ShowMidiPanel(bool),
+    UseDarkTheme(bool),
+}
+
+impl From<dsp::amp::Parameter> for Message {
+    fn from(param: dsp::amp::Parameter) -> Self {
+        Message::Parameter(param.into())
+    }
+}
+
+impl From<dsp::cabinet::Parameter> for Message {
+    fn from(param: dsp::cabinet::Parameter) -> Self {
+        Message::Parameter(param.into())
+    }
+}
+
+impl From<dsp::compressor::Parameter> for Message {
+    fn from(param: dsp::compressor::Parameter) -> Self {
+        Message::Parameter(param.into())
+    }
+}
+
+impl From<dsp::effect::Parameter> for Message {
+    fn from(param: dsp::effect::Parameter) -> Self {
+        Message::Parameter(param.into())
+    }
+}
+
+impl From<dsp::noise_gate::Parameter> for Message {
+    fn from(param: dsp::noise_gate::Parameter) -> Self {
+        Message::Parameter(param.into())
+    }
+}
+
+impl From<ui::utility_settings::Event> for Message {
+    fn from(evt: ui::utility_settings::Event) -> Self {
+        use ui::utility_settings::Event::*;
+        match evt {
+            UtilitySettings(settings) => Message::UtilitySettings(settings),
+            Parameter(param) => Message::Parameter(param.into()),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash)]
+pub enum Subscription {
+    JStation(usize),
 }

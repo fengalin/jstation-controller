@@ -1,6 +1,9 @@
 mod boolean;
 pub use boolean::{BoolParameter, BoolRawParameter};
 
+mod const_range;
+pub use const_range::ConstRangeParameter;
+
 mod discrete;
 pub use discrete::{DiscreteParameter, DiscreteRange, DiscreteRawParameter, DiscreteValue};
 
@@ -9,6 +12,9 @@ pub use normal::Normal;
 
 mod raw;
 pub use raw::{RawParameter, RawValue};
+
+mod variable_range;
+pub use variable_range::{VariableRange, VariableRangeParameter};
 
 use std::fmt;
 
@@ -57,19 +63,26 @@ impl fmt::Display for ParameterNumber {
 pub trait ParameterSetter {
     type Parameter: Clone + Copy;
 
-    // Sets the parameter group with the provided parameter.
-    //
-    // Returns the updated parameter if its value has changed.
-    fn set(&mut self, param: Self::Parameter) -> Option<Self::Parameter>;
+    /// Sets `Self` with the provided value.
+    ///
+    /// Returns the updated parameter if its value has changed.
+    fn set(&mut self, new: Self::Parameter) -> Option<Self::Parameter>;
+}
+
+pub trait CCParameterSetter {
+    type Parameter: Clone + Copy;
+
+    /// Sets `Self` with the provided `CC` value.
+    ///
+    /// # Returns:
+    ///
+    /// - An `Err` if the no `Parameter` could be built from this `cc`.
+    /// - `Ok(None)` if the `Parameter` is unchanged.
+    fn set_cc(&mut self, cc: midi::CC) -> Result<Option<Self::Parameter>, Error>;
 }
 
 /// A `CCParameter`, e.g. which can be received or sent as a `CC` midi message.
 pub trait CCParameter: Sized {
-    // Build a Parameter from a `CC` midi message.
-    //
-    // Returns `None` if the Parameter could not be built from this `cc`.
-    fn from_cc(cc: midi::CC) -> Option<Self>;
-
     fn to_cc(self) -> Option<midi::CC>;
 }
 

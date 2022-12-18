@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use proc_macro_error::abort_call_site;
+use proc_macro_error::{abort, abort_call_site};
 use quote::{quote, ToTokens};
 use syn::{Data, DataStruct, DeriveInput, Fields, Ident};
 
@@ -12,7 +12,7 @@ pub fn derive_struct(input: &DeriveInput) -> TokenStream {
             ..
         }) => {
             let param_group = ParamGroup::from_struct(
-                &input.ident,
+                input,
                 fields.named.iter().filter_map(Param::from_param_field),
             );
 
@@ -28,17 +28,21 @@ pub struct ParamGroup<'a> {
 }
 
 impl<'a> ParamGroup<'a> {
-    fn from_struct(name: &'a Ident, params: impl Iterator<Item = Param<'a>>) -> Self {
+    fn from_struct(input: &'a DeriveInput, params: impl Iterator<Item = Param<'a>>) -> Self {
         Self {
-            name,
+            name: &input.ident,
             params: Vec::from_iter(params),
         }
+    }
+
+    fn variable_range_fields(&self) -> impl Iterator<Item = &Param<'a>> {
+        self.params.iter().filter(|param| param.is_variable_range())
     }
 }
 
 impl<'a> ToTokens for ParamGroup<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        // param struct declarations and traits
+        // param structs declarations and traits
         tokens.extend(self.params.iter().map(|p| p.to_token_stream()));
 
         // ParameterGroup specifics
@@ -82,17 +86,43 @@ impl<'a> ToTokens for ParamGroup<'a> {
             }
         });
 
+        let mut found_discriminant = false;
+
         tokens.extend({
             let variant_set_field = self.params.iter().map(|p| {
                 let variant = p.typ();
                 let field = p.field();
 
-                quote! {
-                    Parameter::#variant(param) => {
-                        crate::jstation::data::ParameterSetter::set(
-                            &mut self.#field,
-                            param,
-                        ).map(Parameter::#variant)
+                if p.is_discriminant() {
+                    if found_discriminant {
+                        abort!(field, "Multiple discriminants for {}", group_name);
+                    }
+                    found_discriminant = true;
+
+                    let variable_range_field =
+                        self.variable_range_fields().map(|param| param.field());
+
+                    quote! {
+                        Parameter::#variant(param) => {
+                            crate::jstation::data::ParameterSetter::set(
+                                &mut self.#field,
+                                param,
+                            ).map(|param| {
+                                use crate::jstation::data::VariableRangeParameter;
+                                #( self.#variable_range_field.set_discriminant(param.into()); )*
+
+                                Parameter::#variant(param)
+                            })
+                        }
+                    }
+                } else {
+                    quote! {
+                        Parameter::#variant(param) => {
+                            crate::jstation::data::ParameterSetter::set(
+                                &mut self.#field,
+                                param,
+                            ).map(Parameter::#variant)
+                        }
                     }
                 }
             });
@@ -101,7 +131,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
                 impl crate::jstation::data::ParameterSetter for #group_name {
                     type Parameter = Parameter;
 
-                    fn set(&mut self, param: Self::Parameter) -> Option<Self::Parameter> {
+                    fn set(&mut self, param: Parameter) -> Option<Parameter> {
                         use crate::jstation::data::ParameterSetter;
                         match param {
                             #( #variant_set_field )*
@@ -115,15 +145,6 @@ impl<'a> ToTokens for ParamGroup<'a> {
 
         tokens.extend({
             // Only implement for params with a declared cc_nb
-            let variant_from_cc = self.params.iter().filter_map(|p| {
-                p.cc_nb().map(|cc_nb| {
-                    let param = p.typ();
-                    quote! {
-                        #cc_nb => #param::from_cc(cc).map(Parameter::#param),
-                    }
-                })
-            });
-
             let variant_to_cc = self.params.iter().filter_map(|p| {
                 p.cc_nb().map(|_| {
                     let variant = p.typ();
@@ -133,21 +154,57 @@ impl<'a> ToTokens for ParamGroup<'a> {
                 })
             });
 
-            quote! {
-                impl crate::jstation::data::CCParameter for Parameter {
-                    fn from_cc(cc: crate::midi::CC) -> Option<Self> {
-                        use crate::jstation::data::CCParameter;
-                        match cc.nb.as_u8() {
-                            #( #variant_from_cc )*
-                            _ => None,
+            // Note: discriminant unitity checked with ParameterSetter
+            let variant_set_cc = self.params.iter().filter_map(|p| {
+                p.cc_nb().map(|cc_nb| {
+                    let variant = p.typ();
+                    let field = p.field();
+
+                    if p.is_discriminant() {
+                        let variable_range_field =
+                            self.variable_range_fields().map(|param| param.field());
+
+                        quote! {
+                            #cc_nb => {
+                                Ok(self.#field.set_cc(cc)?.map(|param| {
+                                    use crate::jstation::data::VariableRangeParameter;
+                                    #( self.#variable_range_field.set_discriminant(param.into()); )*
+
+                                    Parameter::#variant(param)
+                                }))
+                            }
+                        }
+                    } else {
+                        quote! {
+                            #cc_nb => Ok(self.#field.set_cc(cc)?.map(Parameter::#variant)),
                         }
                     }
+                })
+            });
 
+            quote! {
+                impl crate::jstation::data::CCParameter for Parameter {
                     fn to_cc(self) -> Option<crate::midi::CC> {
                         use crate::jstation::data::CCParameter;
                         match self {
                             #( #variant_to_cc )*
                             _ => None,
+                        }
+                    }
+                }
+
+                impl crate::jstation::data::CCParameterSetter for #group_name {
+                    type Parameter = Parameter;
+
+                    fn set_cc(
+                        &mut self,
+                        cc: crate::midi::CC,
+                    ) -> Result<Option<Parameter>, crate::jstation::Error>
+                    {
+                        use crate::jstation::data::CCParameterSetter;
+                        match cc.nb.as_u8() {
+                            #( #variant_set_cc )*
+                            other => Err(crate::jstation::Error::CCNumberUnknown(other)),
                         }
                     }
                 }

@@ -1,26 +1,23 @@
-use std::{cell::RefCell, rc::Rc};
-
 use iced::{
-    widget::{column, horizontal_space, row, text, toggler},
+    widget::{horizontal_space, row},
     Alignment, Element, Length,
 };
-use iced_audio::Knob;
 use iced_lazy::{self, Component};
 
 use crate::{
     jstation::data::{
         dsp::{noise_gate, NoiseGate},
-        BoolParameter, DiscreteParameter,
+        ConstRangeParameter,
     },
-    ui::{to_jstation_normal, to_ui_param},
+    ui,
 };
 
 pub struct Panel {
-    noise_gate: Rc<RefCell<NoiseGate>>,
+    noise_gate: NoiseGate,
 }
 
 impl Panel {
-    pub fn new(noise_gate: Rc<RefCell<NoiseGate>>) -> Self {
+    pub fn new(noise_gate: NoiseGate) -> Self {
         Self { noise_gate }
     }
 }
@@ -38,18 +35,26 @@ where
         event: noise_gate::Parameter,
     ) -> Option<Message> {
         use crate::jstation::data::ParameterSetter;
-        self.noise_gate.borrow_mut().set(event).map(Message::from)
+        self.noise_gate.set(event).map(Message::from)
     }
 
     fn view(&self, _state: &Self::State) -> Element<noise_gate::Parameter> {
-        let noise_gate = self.noise_gate.borrow();
-
         use noise_gate::Parameter::*;
         let content: Element<_> = row![
-            param_switch!(@name "Noise Gate", noise_gate, switch, Switch).width(Length::Units(100)),
+            ui::switch("Noise Gate", self.noise_gate.switch, |is_on| {
+                noise_gate::Switch::from(is_on)
+            }),
             horizontal_space(Length::Units(5)),
-            param_knob!(@name "Attack", noise_gate, attack_time, AttackTime),
-            param_knob!(@name "Thold", noise_gate, threshold, Threshold),
+            ui::knob(self.noise_gate.attack_time, |normal| AttackTime(
+                noise_gate::AttackTime::from_snapped(normal)
+            ))
+            .name("Attack")
+            .build(),
+            ui::knob(self.noise_gate.threshold, |normal| Threshold(
+                noise_gate::Threshold::from_snapped(normal)
+            ))
+            .name("Thold")
+            .build(),
         ]
         .spacing(10)
         .align_items(Alignment::Fill)

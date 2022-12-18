@@ -11,7 +11,7 @@ pub struct Boolean<'a> {
     default: TokenStream,
     display_raw: bool,
     param_nb: Option<Expr>,
-    cc_nb: Option<Expr>,
+    cc_nb: Option<u8>,
 }
 
 impl<'a> Boolean<'a> {
@@ -48,7 +48,22 @@ impl<'a> Boolean<'a> {
                     param.display_raw = true;
                 }
                 "param_nb" => param.param_nb = Some(arg.value_or_abort(field)),
-                "cc_nb" => param.cc_nb = Some(arg.value_or_abort(field)),
+                "cc_nb" => {
+                    let cc_nb = match arg.value_or_abort(field) {
+                        Expr::Lit(syn::ExprLit {
+                            lit: syn::Lit::Int(lit_int),
+                            ..
+                        }) => lit_int.base10_parse::<u8>().unwrap_or_else(|err| {
+                            abort!(field, "Expected an `u8` for `cc_nb`: {:?}", err);
+                        }),
+                        other => abort!(
+                            field,
+                            "Expected a literal int for `cc_nb` found {}",
+                            other.to_token_stream(),
+                        ),
+                    };
+                    param.cc_nb = Some(cc_nb)
+                }
                 "name" => {
                     let name = match arg.value_or_abort(field) {
                         Expr::Lit(syn::ExprLit {
@@ -62,7 +77,8 @@ impl<'a> Boolean<'a> {
                 other => {
                     abort!(
                         field,
-                        "Incompatible arg `{other}` for boolean param {}",
+                        "Incompatible arg `{}` for `boolean` param {}",
+                        other,
                         field.ty.to_token_stream(),
                     );
                 }
@@ -80,8 +96,8 @@ impl<'a> Boolean<'a> {
         self.field.ident.as_ref().expect("named field")
     }
 
-    pub fn cc_nb(&self) -> Option<&Expr> {
-        self.cc_nb.as_ref()
+    pub fn cc_nb(&self) -> Option<u8> {
+        self.cc_nb
     }
 }
 
@@ -98,17 +114,25 @@ impl<'a> ToTokens for Boolean<'a> {
             #[derive(Clone, Copy, Debug, Eq, PartialEq)]
             pub struct #param(bool);
 
-            impl crate::jstation::data::BoolParameter for #param {
-                const NAME: &'static str = #param_name;
-                const DEFAULT: bool = #param_default;
-            }
-
             impl crate::jstation::data::ParameterSetter for #param {
                 type Parameter = Self;
 
-                fn set(&mut self, param: Self) -> Option<Self::Parameter> {
-                    crate::jstation::data::BoolParameter::set(self, param)
+                fn set(&mut self, new: Self) -> Option<Self> {
+                    if *self == new {
+                        return None;
+                    }
+
+                    *self = new;
+
+                    Some(new)
                 }
+            }
+
+            impl crate::jstation::data::BoolParameter for #param {
+                const NAME: &'static str = #param_name;
+                const DEFAULT: bool = #param_default;
+                const TRUE: Self = #param(true);
+                const FALSE: Self = #param(false);
             }
 
             impl Default for #param {
@@ -143,16 +167,6 @@ impl<'a> ToTokens for Boolean<'a> {
         if let Some(cc_nb) = &self.cc_nb {
             tokens.extend(quote! {
                 impl crate::jstation::data::CCParameter for #param {
-                    fn from_cc(cc: crate::midi::CC) -> Option<Self> {
-                        const CC_TRUE_THRESHOLD: u8 = 0x40;
-
-                        if cc.nb.as_u8() != #cc_nb {
-                            return None;
-                        }
-
-                        Some(#param((cc.value.as_u8() >= CC_TRUE_THRESHOLD)))
-                    }
-
                     fn to_cc(self) -> Option<crate::midi::CC> {
                         use crate::midi;
 
@@ -165,6 +179,29 @@ impl<'a> ToTokens for Boolean<'a> {
                         Some(midi::CC::new(midi::CCNumber::new(#cc_nb), value))
                     }
                 }
+
+                impl crate::jstation::data::CCParameterSetter for #param {
+                    type Parameter = Self;
+
+                    fn set_cc(
+                        &mut self,
+                        cc: crate::midi::CC,
+                    ) -> Result<Option<Self>, crate::jstation::Error>
+                    {
+                        const CC_TRUE_THRESHOLD: u8 = 0x40;
+
+                        assert_eq!(cc.nb.as_u8(), #cc_nb);
+
+                        let value = cc.value.as_u8() >= CC_TRUE_THRESHOLD;
+                        if self.0 == value {
+                            return Ok(None);
+                        }
+
+                        *self = #param(value);
+
+                        Ok(Some(*self))
+                    }
+                }
             });
         }
 
@@ -173,7 +210,7 @@ impl<'a> ToTokens for Boolean<'a> {
                 impl std::fmt::Display for #param {
                     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                         use crate::jstation::data::BoolParameter;
-                        if self.is_active() {
+                        if self.is_on() {
                             f.write_str("on")
                         } else {
                             f.write_str("off")

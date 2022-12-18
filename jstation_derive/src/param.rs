@@ -7,11 +7,12 @@ use syn::{
     Expr, Field, Ident, Token, Type,
 };
 
-use crate::{Boolean, Discrete};
+use crate::{Boolean, ConstRange, VariableRange};
 
 pub enum Param<'a> {
-    Discrete(Discrete<'a>),
+    ConstRange(ConstRange<'a>),
     Boolean(Boolean<'a>),
+    VariableRange(VariableRange<'a>),
 }
 
 impl<'a> Param<'a> {
@@ -29,10 +30,12 @@ impl<'a> Param<'a> {
             );
         }
 
-        let param = if field.attrs[0].path.is_ident("discrete") {
-            Param::Discrete(Discrete::from_attrs(field, &field.attrs[0]))
+        let param = if field.attrs[0].path.is_ident("const_range") {
+            Param::ConstRange(ConstRange::from_attrs(field, &field.attrs[0]))
         } else if field.attrs[0].path.is_ident("boolean") {
             Param::Boolean(Boolean::from_attrs(field, &field.attrs[0]))
+        } else if field.attrs[0].path.is_ident("variable_range") {
+            Param::VariableRange(VariableRange::from_attrs(field, &field.attrs[0]))
         } else {
             abort!(
                 field,
@@ -47,31 +50,46 @@ impl<'a> Param<'a> {
 
     pub fn typ(&self) -> &Type {
         match self {
-            Param::Discrete(param) => param.typ(),
+            Param::ConstRange(param) => param.typ(),
             Param::Boolean(param) => param.typ(),
+            Param::VariableRange(param) => param.typ(),
         }
     }
 
     pub fn field(&self) -> &Ident {
         match self {
-            Param::Discrete(param) => param.field(),
+            Param::ConstRange(param) => param.field(),
             Param::Boolean(param) => param.field(),
+            Param::VariableRange(param) => param.field(),
         }
     }
 
-    pub fn cc_nb(&self) -> Option<&Expr> {
+    pub fn cc_nb(&self) -> Option<u8> {
         match self {
-            Param::Discrete(param) => param.cc_nb(),
+            Param::ConstRange(param) => param.cc_nb(),
             Param::Boolean(param) => param.cc_nb(),
+            Param::VariableRange(param) => param.cc_nb(),
         }
+    }
+
+    pub fn is_discriminant(&self) -> bool {
+        match self {
+            Param::ConstRange(param) => param.is_discriminant(),
+            _ => false,
+        }
+    }
+
+    pub fn is_variable_range(&self) -> bool {
+        matches!(self, Param::VariableRange(_))
     }
 }
 
 impl<'a> ToTokens for Param<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Param::Discrete(param) => param.to_tokens(tokens),
+            Param::ConstRange(param) => param.to_tokens(tokens),
             Param::Boolean(param) => param.to_tokens(tokens),
+            Param::VariableRange(param) => param.to_tokens(tokens),
         }
     }
 }
