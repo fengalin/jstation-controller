@@ -18,6 +18,7 @@ pub use widget::{knob, switch};
 pub mod amp;
 pub mod cabinet;
 pub mod compressor;
+pub mod delay;
 pub mod effect;
 pub mod noise_gate;
 pub mod utility_settings;
