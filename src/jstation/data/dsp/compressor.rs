@@ -13,7 +13,7 @@ pub struct Compressor {
     pub ratio: Ratio,
     #[const_range(max = 30, param_nb = 3, cc_nb = 4)]
     pub gain: Gain,
-    #[const_range(max = 19, param_nb = 4, cc_nb = 5, name = "Max. Freq.", display_map = value)]
+    #[const_range(max = 19, param_nb = 4, cc_nb = 5, display_map = value)]
     pub freq: Freq,
 }
 

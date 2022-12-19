@@ -1,3 +1,4 @@
+use heck::ToTitleCase;
 use proc_macro2::TokenStream;
 use proc_macro_error::{abort, ResultExt};
 use quote::{quote, ToTokens};
@@ -9,12 +10,11 @@ use crate::param::Arg;
 pub struct ConstRange<'a> {
     field: &'a Field,
     is_discr: bool,
-    name: Option<String>,
-    default: TokenStream,
+    default_center: bool,
     displays: Vec<Display>,
-    min: TokenStream,
-    max: TokenStream,
-    param_nb: Option<Expr>,
+    min: Option<u8>,
+    max: Option<u8>,
+    param_nb: Option<u8>,
     cc_nb: Option<u8>,
 }
 
@@ -23,11 +23,10 @@ impl<'a> ConstRange<'a> {
         ConstRange {
             field,
             is_discr: false,
-            name: None,
-            default: quote! { crate::jstation::data::Normal::MIN },
+            default_center: false,
             displays: Vec::new(),
-            min: quote! { crate::jstation::data::RawValue::new(0) },
-            max: quote! { crate::jstation::data::RawValue::new(0) },
+            min: None,
+            max: None,
             param_nb: None,
             cc_nb: None,
         }
@@ -42,25 +41,11 @@ impl<'a> ConstRange<'a> {
         for arg in args {
             let name = arg.name.to_string();
             match name.as_str() {
-                "min" => {
-                    let value = arg.value_or_abort(field);
-                    param.min = quote! { crate::jstation::data::RawValue::new(#value) };
-                }
-                "max" => {
-                    let value = arg.value_or_abort(field);
-                    param.max = quote! { crate::jstation::data::RawValue::new(#value) };
-                }
-                "default_min" => {
-                    arg.no_value_or_abort(field);
-                    param.default = quote! { crate::jstation::data::Normal::MIN };
-                }
+                "min" => param.min = Some(arg.u8_or_abort(field)),
+                "max" => param.max = Some(arg.u8_or_abort(field)),
                 "default_center" => {
                     arg.no_value_or_abort(field);
-                    param.default = quote! { crate::jstation::data::Normal::CENTER };
-                }
-                "default_max" => {
-                    arg.no_value_or_abort(field);
-                    param.default = quote! { crate::jstation::data::Normal::MAX };
+                    param.default_center = true;
                 }
                 "display_raw" => {
                     arg.no_value_or_abort(field);
@@ -77,44 +62,21 @@ impl<'a> ConstRange<'a> {
                         ),
                     };
 
-                    let name = match path.segments.first() {
+                    let name = match path.get_ident() {
                         Some(name) => name,
                         None => {
-                            abort!(field, "Empty `display_map` for {}", field.to_token_stream())
-                        }
-                    };
-
-                    param.displays.push(Display::Map(name.ident.clone()));
-                }
-                "param_nb" => param.param_nb = Some(arg.value_or_abort(field)),
-                "cc_nb" => {
-                    let cc_nb = match arg.value_or_abort(field) {
-                        Expr::Lit(syn::ExprLit {
-                            lit: syn::Lit::Int(lit_int),
-                            ..
-                        }) => lit_int.base10_parse::<u8>().unwrap_or_else(|err| {
-                            abort!(field, "Expected an `u8` for `cc_nb`: {:?}", err);
-                        }),
-                        other => {
                             abort!(
                                 field,
-                                "Expected a literal int for `cc_nb` found {}",
-                                other.to_token_stream(),
+                                "Expecting ident for `display_map`, got {}",
+                                field.to_token_stream()
                             )
                         }
                     };
-                    param.cc_nb = Some(cc_nb)
+
+                    param.displays.push(Display::Map(name.clone()));
                 }
-                "name" => {
-                    let name = match arg.value_or_abort(field) {
-                        Expr::Lit(syn::ExprLit {
-                            lit: syn::Lit::Str(lit_str),
-                            ..
-                        }) => lit_str.value(),
-                        other => other.to_token_stream().to_string(),
-                    };
-                    param.name = Some(name);
-                }
+                "param_nb" => param.param_nb = Some(arg.u8_or_abort(field)),
+                "cc_nb" => param.cc_nb = Some(arg.u8_or_abort(field)),
                 "discriminant" => {
                     arg.no_value_or_abort(field);
                     param.is_discr = true;
@@ -152,13 +114,27 @@ impl<'a> ConstRange<'a> {
 impl<'a> ToTokens for ConstRange<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let param = self.typ();
-        let param_name = self.name.clone().unwrap_or_else(|| {
-            use heck::ToTitleCase;
-            param.to_token_stream().to_string().to_title_case()
+        let param_name = param.to_token_stream().to_string().to_title_case();
+        let param_default = if self.default_center {
+            quote! { CENTER }
+        } else {
+            quote! { MIN }
+        };
+        let param_min = self.min.unwrap_or(0);
+        let param_max = self.max.unwrap_or_else(|| {
+            abort!(
+                self.field,
+                "Undefined `max` attribute for {}",
+                param.to_token_stream()
+            )
         });
-        let param_default = &self.default;
-        let param_min = &self.min;
-        let param_max = &self.max;
+        if param_max < param_min {
+            abort!(
+                self.field,
+                "`max` is less then `min` for {}",
+                param.to_token_stream()
+            );
+        }
 
         tokens.extend(quote! {
             #[derive(Clone, Copy, Debug, PartialEq)]
@@ -166,9 +142,12 @@ impl<'a> ToTokens for ConstRange<'a> {
 
             impl crate::jstation::data::ConstRangeParameter for #param {
                 const NAME: &'static str = #param_name;
-                const DEFAULT: crate::jstation::data::Normal = #param_default;
-                const MIN_RAW: crate::jstation::data::RawValue = #param_min;
-                const MAX_RAW: crate::jstation::data::RawValue = #param_max;
+                const DEFAULT: crate::jstation::data::Normal =
+                    crate::jstation::data::Normal::#param_default;
+                const MIN_RAW: crate::jstation::data::RawValue =
+                    crate::jstation::data::RawValue::new(#param_min);
+                const MAX_RAW: crate::jstation::data::RawValue =
+                    crate::jstation::data::RawValue::new(#param_max);
                 const RANGE: crate::jstation::data::DiscreteRange =
                     crate::jstation::data::DiscreteRange::new(Self::MIN_RAW, Self::MAX_RAW);
 

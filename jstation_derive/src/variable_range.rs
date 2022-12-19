@@ -9,7 +9,7 @@ use crate::param::Arg;
 pub struct VariableRange<'a> {
     field: &'a Field,
     name: Option<String>,
-    param_nb: Option<Expr>,
+    param_nb: Option<u8>,
     cc_nb: Option<u8>,
 }
 
@@ -32,25 +32,8 @@ impl<'a> VariableRange<'a> {
         for arg in args {
             let name = arg.name.to_string();
             match name.as_str() {
-                "param_nb" => param.param_nb = Some(arg.value_or_abort(field)),
-                "cc_nb" => {
-                    let cc_nb = match arg.value_or_abort(field) {
-                        Expr::Lit(syn::ExprLit {
-                            lit: syn::Lit::Int(lit_int),
-                            ..
-                        }) => lit_int.base10_parse::<u8>().unwrap_or_else(|err| {
-                            abort!(field, "Expected an `u8` for `cc_nb`: {:?}", err);
-                        }),
-                        other => {
-                            abort!(
-                                field,
-                                "Expected a literal int for `cc_nb` found {}",
-                                other.to_token_stream(),
-                            )
-                        }
-                    };
-                    param.cc_nb = Some(cc_nb)
-                }
+                "param_nb" => param.param_nb = Some(arg.u8_or_abort(field)),
+                "cc_nb" => param.cc_nb = Some(arg.u8_or_abort(field)),
                 "name" => {
                     let name = match arg.value_or_abort(field) {
                         Expr::Lit(syn::ExprLit {
