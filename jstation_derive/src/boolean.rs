@@ -1,3 +1,4 @@
+use heck::ToTitleCase;
 use proc_macro2::TokenStream;
 use proc_macro_error::{abort, ResultExt};
 use quote::{quote, ToTokens};
@@ -8,9 +9,7 @@ use crate::param::Arg;
 pub struct Boolean<'a> {
     field: &'a Field,
     name: Option<String>,
-    default: TokenStream,
-    display_raw: bool,
-    param_nb: Option<Expr>,
+    param_nb: Option<u8>,
     cc_nb: Option<u8>,
 }
 
@@ -19,8 +18,6 @@ impl<'a> Boolean<'a> {
         Boolean {
             field,
             name: None,
-            default: quote! { false },
-            display_raw: false,
             param_nb: None,
             cc_nb: None,
         }
@@ -35,35 +32,8 @@ impl<'a> Boolean<'a> {
         for arg in args {
             let name = arg.name.to_string();
             match name.as_str() {
-                "default_inactive" => {
-                    arg.no_value_or_abort(field);
-                    param.default = quote! { false };
-                }
-                "default_active" => {
-                    arg.no_value_or_abort(field);
-                    param.default = quote! { true };
-                }
-                "display_raw" => {
-                    arg.no_value_or_abort(field);
-                    param.display_raw = true;
-                }
-                "param_nb" => param.param_nb = Some(arg.value_or_abort(field)),
-                "cc_nb" => {
-                    let cc_nb = match arg.value_or_abort(field) {
-                        Expr::Lit(syn::ExprLit {
-                            lit: syn::Lit::Int(lit_int),
-                            ..
-                        }) => lit_int.base10_parse::<u8>().unwrap_or_else(|err| {
-                            abort!(field, "Expected an `u8` for `cc_nb`: {:?}", err);
-                        }),
-                        other => abort!(
-                            field,
-                            "Expected a literal int for `cc_nb` found {}",
-                            other.to_token_stream(),
-                        ),
-                    };
-                    param.cc_nb = Some(cc_nb)
-                }
+                "param_nb" => param.param_nb = Some(arg.u8_or_abort(field)),
+                "cc_nb" => param.cc_nb = Some(arg.u8_or_abort(field)),
                 "name" => {
                     let name = match arg.value_or_abort(field) {
                         Expr::Lit(syn::ExprLit {
@@ -104,11 +74,7 @@ impl<'a> Boolean<'a> {
 impl<'a> ToTokens for Boolean<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let param = self.typ();
-        let param_name = self.name.clone().unwrap_or_else(|| {
-            use heck::ToTitleCase;
-            param.to_token_stream().to_string().to_title_case()
-        });
-        let param_default = &self.default;
+        let param_name = param.to_token_stream().to_string().to_title_case();
 
         tokens.extend(quote! {
             #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -130,7 +96,7 @@ impl<'a> ToTokens for Boolean<'a> {
 
             impl crate::jstation::data::BoolParameter for #param {
                 const NAME: &'static str = #param_name;
-                const DEFAULT: bool = #param_default;
+                const DEFAULT: bool = false;
                 const TRUE: Self = #param(true);
                 const FALSE: Self = #param(false);
             }
@@ -200,21 +166,6 @@ impl<'a> ToTokens for Boolean<'a> {
                         *self = #param(value);
 
                         Ok(Some(*self))
-                    }
-                }
-            });
-        }
-
-        if self.display_raw {
-            tokens.extend(quote! {
-                impl std::fmt::Display for #param {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        use crate::jstation::data::BoolParameter;
-                        if self.is_on() {
-                            f.write_str("on")
-                        } else {
-                            f.write_str("off")
-                        }
                     }
                 }
             });

@@ -108,6 +108,35 @@ impl Arg {
             .unwrap_or_else(|| abort!(field, "attribute `{}` requires a value", self.name))
     }
 
+    pub fn u8_or_abort(&self, field: &Field) -> u8 {
+        let value = self
+            .value
+            .as_ref()
+            .unwrap_or_else(|| abort!(field, "attribute `{}` requires a value", self.name));
+
+        match value {
+            Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Int(lit_int),
+                ..
+            }) => lit_int.base10_parse::<u8>().unwrap_or_else(|err| {
+                abort!(
+                    field,
+                    "Expected a literal `u8` for `{}`: {:?}",
+                    self.name,
+                    err
+                );
+            }),
+            other => {
+                abort!(
+                    field,
+                    "Expected a literal `u8` for `{}` found {}",
+                    self.name,
+                    other.to_token_stream(),
+                )
+            }
+        }
+    }
+
     pub fn no_value_or_abort(&self, field: &Field) {
         if self.value.is_some() {
             abort!(field, "attribute `{}` doesn't accept any value", self.name);
