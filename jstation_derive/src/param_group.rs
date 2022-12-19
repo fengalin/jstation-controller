@@ -36,7 +36,9 @@ impl<'a> ParamGroup<'a> {
     }
 
     fn variable_range_fields(&self) -> impl Iterator<Item = &Param<'a>> {
-        self.params.iter().filter(|param| param.is_variable_range())
+        self.params
+            .iter()
+            .filter(|param| matches!(param, Param::VariableRange(_)))
     }
 }
 
@@ -49,8 +51,8 @@ impl<'a> ToTokens for ParamGroup<'a> {
         let group_name = &self.name;
 
         tokens.extend({
-            let param_enum = self.params.iter().map(Param::typ);
-            let param_from = self.params.iter().map(Param::typ);
+            let param_enum = self.params.iter().map(Param::ty);
+            let param_from = self.params.iter().map(Param::ty);
 
             quote! {
                 #[derive(Clone, Copy, Debug)]
@@ -90,7 +92,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
 
         tokens.extend({
             let variant_set_field = self.params.iter().map(|p| {
-                let variant = p.typ();
+                let variant = p.ty();
                 let field = p.field();
 
                 if p.is_discriminant() {
@@ -147,7 +149,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
             // Only implement for params with a declared cc_nb
             let variant_to_cc = self.params.iter().filter_map(|p| {
                 p.cc_nb().map(|_| {
-                    let variant = p.typ();
+                    let variant = p.ty();
                     quote! {
                         Parameter::#variant(param) => param.to_cc(),
                     }
@@ -157,7 +159,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
             // Note: discriminant unitity checked with ParameterSetter
             let variant_set_cc = self.params.iter().filter_map(|p| {
                 p.cc_nb().map(|cc_nb| {
-                    let variant = p.typ();
+                    let variant = p.ty();
                     let field = p.field();
 
                     if p.is_discriminant() {
