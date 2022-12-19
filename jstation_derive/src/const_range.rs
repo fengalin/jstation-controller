@@ -1,109 +1,81 @@
-use heck::ToTitleCase;
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort, ResultExt};
+use proc_macro_error::abort;
 use quote::{quote, ToTokens};
 use syn::spanned::Spanned;
-use syn::{self, punctuated::Punctuated, Attribute, Expr, Field, Ident, Token, Type};
+use syn::{self, Expr, Ident};
 
-use crate::param::Arg;
+use crate::param::{Arg, ParamBase};
 
 pub struct ConstRange<'a> {
-    field: &'a Field,
+    pub base: ParamBase<'a>,
     is_discr: bool,
     default_center: bool,
     displays: Vec<Display>,
     min: Option<u8>,
     max: Option<u8>,
-    param_nb: Option<u8>,
-    cc_nb: Option<u8>,
 }
 
 impl<'a> ConstRange<'a> {
-    fn new(field: &'a Field) -> Self {
-        ConstRange {
-            field,
+    pub fn new(base: ParamBase<'a>, args: impl Iterator<Item = Arg>) -> Self {
+        let mut this = ConstRange {
+            base,
             is_discr: false,
             default_center: false,
             displays: Vec::new(),
             min: None,
             max: None,
-            param_nb: None,
-            cc_nb: None,
-        }
-    }
+        };
 
-    pub fn from_attrs(field: &'a Field, attr: &Attribute) -> Self {
-        let mut param = ConstRange::new(field);
-
-        let args = attr
-            .parse_args_with(Punctuated::<Arg, Token![,]>::parse_terminated)
-            .unwrap_or_abort();
         for arg in args {
-            let name = arg.name.to_string();
-            match name.as_str() {
-                "min" => param.min = Some(arg.u8_or_abort(field)),
-                "max" => param.max = Some(arg.u8_or_abort(field)),
-                "default_center" => {
-                    arg.no_value_or_abort(field);
-                    param.default_center = true;
-                }
-                "display_raw" => {
-                    arg.no_value_or_abort(field);
-                    param.displays.push(Display::Raw);
-                }
-                "display_map" => {
-                    let list_expr = arg.value_or_abort(field);
-                    let path = match list_expr {
-                        Expr::Path(expr_path) => expr_path.path,
-                        _ => abort!(
-                            field,
-                            "Unexpected `display_map` expression for {}",
-                            field.to_token_stream(),
-                        ),
-                    };
-
-                    let name = match path.get_ident() {
-                        Some(name) => name,
-                        None => {
-                            abort!(
-                                field,
-                                "Expecting ident for `display_map`, got {}",
-                                field.to_token_stream()
-                            )
-                        }
-                    };
-
-                    param.displays.push(Display::Map(name.clone()));
-                }
-                "param_nb" => param.param_nb = Some(arg.u8_or_abort(field)),
-                "cc_nb" => param.cc_nb = Some(arg.u8_or_abort(field)),
-                "discriminant" => {
-                    arg.no_value_or_abort(field);
-                    param.is_discr = true;
-                }
-                other => {
-                    abort!(
-                        field,
-                        "Incompatible arg `{other}` for `const_range` param {}",
-                        field.ty.to_token_stream(),
-                    );
-                }
-            }
+            this.have_arg(arg);
         }
 
-        param
+        this
     }
 
-    pub fn typ(&self) -> &Type {
-        &self.field.ty
-    }
+    fn have_arg(&mut self, arg: Arg) {
+        let name = arg.name.to_string();
+        match name.as_str() {
+            "min" => self.min = Some(arg.u8_or_abort(self.base.field)),
+            "max" => self.max = Some(arg.u8_or_abort(self.base.field)),
+            "default_center" => {
+                arg.no_value_or_abort(self.base.field);
+                self.default_center = true;
+            }
+            "display_raw" => {
+                arg.no_value_or_abort(self.base.field);
+                self.displays.push(Display::Raw);
+            }
+            "display_map" => {
+                let list_expr = arg.value_or_abort(self.base.field);
+                let path = match list_expr {
+                    Expr::Path(expr_path) => expr_path.path,
+                    _ => abort!(
+                        self.base.field,
+                        "Unexpected `display_map` expression for {}",
+                        self.base.field.to_token_stream(),
+                    ),
+                };
 
-    pub fn field(&self) -> &Ident {
-        self.field.ident.as_ref().expect("name field")
-    }
+                let name = match path.get_ident() {
+                    Some(name) => name,
+                    None => {
+                        abort!(
+                            self.base.field,
+                            "Expecting ident for `display_map`, got {}",
+                            self.base.field.to_token_stream()
+                        )
+                    }
+                };
 
-    pub fn cc_nb(&self) -> Option<u8> {
-        self.cc_nb
+                self.displays.push(Display::Map(name.clone()));
+            }
+            "discriminant" => {
+                arg.no_value_or_abort(self.base.field);
+                self.is_discr = true;
+            }
+            _ => self.base.have_arg(arg),
+        }
     }
 
     pub fn is_discriminant(&self) -> bool {
@@ -113,8 +85,8 @@ impl<'a> ConstRange<'a> {
 
 impl<'a> ToTokens for ConstRange<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let param = self.typ();
-        let param_name = param.to_token_stream().to_string().to_title_case();
+        let param = &self.base.field.ty;
+        let param_name = self.base.name();
         let param_default = if self.default_center {
             quote! { CENTER }
         } else {
@@ -123,14 +95,14 @@ impl<'a> ToTokens for ConstRange<'a> {
         let param_min = self.min.unwrap_or(0);
         let param_max = self.max.unwrap_or_else(|| {
             abort!(
-                self.field,
+                self.base.field,
                 "Undefined `max` attribute for {}",
                 param.to_token_stream()
             )
         });
         if param_max < param_min {
             abort!(
-                self.field,
+                self.base.field,
                 "`max` is less then `min` for {}",
                 param.to_token_stream()
             );
@@ -216,7 +188,7 @@ impl<'a> ToTokens for ConstRange<'a> {
             }
         });
 
-        if let Some(param_nb) = &self.param_nb {
+        if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
                 impl crate::jstation::data::DiscreteRawParameter for #param {
                     const PARAMETER_NB: crate::jstation::data::ParameterNumber =
@@ -225,7 +197,7 @@ impl<'a> ToTokens for ConstRange<'a> {
             });
         }
 
-        if let Some(cc_nb) = &self.cc_nb {
+        if let Some(cc_nb) = &self.base.cc_nb {
             tokens.extend(quote! {
                 impl crate::jstation::data::CCParameter for #param {
                     fn to_cc(self) -> Option<crate::midi::CC> {
@@ -279,17 +251,17 @@ impl<'a> ToTokens for ConstRange<'a> {
 
                     let name_as_type = name_str.to_upper_camel_case();
                     let names_param_str = &format!("{}{}", param.to_token_stream(), name_as_type);
-                    let named_param = Ident::new(names_param_str, self.field.span());
+                    let named_param = Ident::new(names_param_str, self.base.field.span());
 
                     let named_list = Ident::new(
                         format!("{}S", &names_param_str.to_shouty_snake_case()).as_str(),
-                        self.field.span(),
+                        self.base.field.span(),
                     );
 
                     let name_as_field = name_str.to_snake_case();
-                    let name_method = Ident::new(&name_as_field, self.field.span());
+                    let name_method = Ident::new(&name_as_field, self.base.field.span());
                     let names_method =
-                        Ident::new(format!("{name_as_field}s").as_str(), self.field.span());
+                        Ident::new(format!("{name_as_field}s").as_str(), self.base.field.span());
 
                     tokens.extend(quote! {
                         #[derive(Clone, Copy, Debug)]

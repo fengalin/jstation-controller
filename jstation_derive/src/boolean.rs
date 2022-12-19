@@ -1,80 +1,26 @@
-use heck::ToTitleCase;
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort, ResultExt};
 use quote::{quote, ToTokens};
-use syn::{self, punctuated::Punctuated, Attribute, Expr, Field, Ident, Token, Type};
 
-use crate::param::Arg;
+use crate::param::{Arg, ParamBase};
 
 pub struct Boolean<'a> {
-    field: &'a Field,
-    name: Option<String>,
-    param_nb: Option<u8>,
-    cc_nb: Option<u8>,
+    pub base: ParamBase<'a>,
 }
 
 impl<'a> Boolean<'a> {
-    fn new(field: &'a Field) -> Self {
-        Boolean {
-            field,
-            name: None,
-            param_nb: None,
-            cc_nb: None,
-        }
-    }
-
-    pub fn from_attrs(field: &'a Field, attr: &Attribute) -> Self {
-        let mut param = Boolean::new(field);
-
-        let args = attr
-            .parse_args_with(Punctuated::<Arg, Token![,]>::parse_terminated)
-            .unwrap_or_abort();
+    pub fn new(mut base: ParamBase<'a>, args: impl Iterator<Item = Arg>) -> Self {
         for arg in args {
-            let name = arg.name.to_string();
-            match name.as_str() {
-                "param_nb" => param.param_nb = Some(arg.u8_or_abort(field)),
-                "cc_nb" => param.cc_nb = Some(arg.u8_or_abort(field)),
-                "name" => {
-                    let name = match arg.value_or_abort(field) {
-                        Expr::Lit(syn::ExprLit {
-                            lit: syn::Lit::Str(lit_str),
-                            ..
-                        }) => lit_str.value(),
-                        other => other.to_token_stream().to_string(),
-                    };
-                    param.name = Some(name);
-                }
-                other => {
-                    abort!(
-                        field,
-                        "Incompatible arg `{}` for `boolean` param {}",
-                        other,
-                        field.ty.to_token_stream(),
-                    );
-                }
-            }
+            base.have_arg(arg);
         }
 
-        param
-    }
-
-    pub fn typ(&self) -> &Type {
-        &self.field.ty
-    }
-
-    pub fn field(&self) -> &Ident {
-        self.field.ident.as_ref().expect("named field")
-    }
-
-    pub fn cc_nb(&self) -> Option<u8> {
-        self.cc_nb
+        Boolean { base }
     }
 }
 
 impl<'a> ToTokens for Boolean<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let param = self.typ();
-        let param_name = param.to_token_stream().to_string().to_title_case();
+        let param = &self.base.field.ty;
+        let param_name = self.base.name();
 
         tokens.extend(quote! {
             #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -121,7 +67,7 @@ impl<'a> ToTokens for Boolean<'a> {
             }
         });
 
-        if let Some(param_nb) = &self.param_nb {
+        if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
                 impl crate::jstation::data::BoolRawParameter for #param {
                     const PARAMETER_NB: crate::jstation::data::ParameterNumber =
@@ -130,7 +76,7 @@ impl<'a> ToTokens for Boolean<'a> {
             });
         }
 
-        if let Some(cc_nb) = &self.cc_nb {
+        if let Some(cc_nb) = &self.base.cc_nb {
             tokens.extend(quote! {
                 impl crate::jstation::data::CCParameter for #param {
                     fn to_cc(self) -> Option<crate::midi::CC> {
