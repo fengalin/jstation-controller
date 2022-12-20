@@ -42,6 +42,10 @@ impl<'a> ConstRange<'a> {
                 arg.no_value_or_abort(self.base.field);
                 self.default_center = true;
             }
+            "display_cent" => {
+                arg.no_value_or_abort(self.base.field);
+                self.displays.push(Display::Cent);
+            }
             "display_raw" => {
                 arg.no_value_or_abort(self.base.field);
                 self.displays.push(Display::Raw);
@@ -236,6 +240,14 @@ impl<'a> ToTokens for ConstRange<'a> {
 
         for display in self.displays.iter() {
             match display {
+                Display::Cent => tokens.extend(quote! {
+                    impl std::fmt::Display for #param {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            use crate::jstation::data::DiscreteParameter;
+                            fmt::Display::fmt(&self.normal().unwrap().as_cents(), f)
+                        }
+                    }
+                }),
                 Display::Raw => tokens.extend(quote! {
                     impl std::fmt::Display for #param {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -336,6 +348,7 @@ impl<'a> ToTokens for ConstRange<'a> {
 }
 
 enum Display {
+    Cent,
     Raw,
     Map(Ident),
 }

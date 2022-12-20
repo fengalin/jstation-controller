@@ -26,7 +26,7 @@ const TYPE_NAMES: [&str; 4] = ["Mono", "Analog", "Pong", "Analog Pong"];
 
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        super::fmt_percent(*self, f)
+        fmt::Display::fmt(&self.normal().unwrap().as_cents(), f)
     }
 }
 
@@ -51,6 +51,6 @@ impl fmt::Display for TimeFine {
 
 impl fmt::Display for Feedback {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        super::fmt_percent(*self, f)
+        fmt::Display::fmt(&self.normal().unwrap().as_cents(), f)
     }
 }

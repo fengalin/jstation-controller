@@ -1,8 +1,6 @@
-use std::fmt;
-
 use crate::{
     jstation::{
-        data::{CCParameter, CCParameterSetter, DiscreteParameter, ParameterSetter},
+        data::{CCParameter, CCParameterSetter, ParameterSetter},
         Error,
     },
     midi,
@@ -122,22 +120,5 @@ impl CCParameterSetter for Dsp {
         try_set_cc!(self.utility_settings, cc, UtilitySettings);
 
         Err(Error::CCNumberUnknown(cc.nb.as_u8()))
-    }
-}
-
-fn fmt_percent(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    if let Some(normal) = param.normal() {
-        f.write_fmt(format_args!("{:.0}", 100.0 * normal.as_ratio()))
-    } else {
-        f.write_str("n/a")
-    }
-}
-
-fn fmt_bipolar_normal(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    if let Some(normal) = param.normal() {
-        let bipolar = 2.0 * normal.as_ratio() - 1.0;
-        f.write_fmt(format_args!("{:0.2}", bipolar))
-    } else {
-        f.write_str("n/a")
     }
 }
