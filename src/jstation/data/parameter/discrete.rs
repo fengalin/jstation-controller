@@ -54,8 +54,8 @@ impl DiscreteValue {
         self.normal
     }
 
-    pub fn get_raw(&self, range: DiscreteRange) -> RawValue {
-        ((self.normal.as_f32() * range.zero_based_max) as u8 + range.min).into()
+    pub fn to_raw(self, range: DiscreteRange) -> RawValue {
+        range.to_raw(self.normal)
     }
 }
 
@@ -71,69 +71,55 @@ impl From<DiscreteValue> for Normal {
 #[derive(Clone, Copy, Debug)]
 pub struct DiscreteRange {
     min: u8,
-    zero_based_max: f32,
-    // Note: in a previous implementation, I used a `max_recip` to avoid float divisions
-    // in some functions, thus allegedly saving a few cycles. However, since float operations
-    // can't be used in `const` functions, I had to use a `once_cell` in the parameters and
-    // return the `DiscreteRange` lazily, which adds some cycles too and cache misses potentialy.
-    // I ended up deciding it wasn't worth the complexity.
+    delta: u8,
 }
 
 impl DiscreteRange {
     /// Builds a new `DiscreteRange` from the provided value.
-    ///
-    /// # Panic
-    ///
-    /// Panics if `min` < `max`.
     pub const fn new(min: RawValue, max: RawValue) -> Self {
         let min = min.as_u8();
         let max = max.as_u8();
 
-        assert!(min < max);
+        if min >= max {
+            panic!("min >= max");
+        }
 
         DiscreteRange {
             min,
-            zero_based_max: (max - min) as f32,
+            delta: max - min,
         }
     }
 
-    fn out_of_range_error(self, value: RawValue) -> Error {
-        Error::ParameterRawValueOutOfRange {
-            value,
-            min: self.min.into(),
-            max: (self.zero_based_max as u8 + self.min).into(),
+    fn out_of_range_error(self, value: impl Into<u8>) -> Error {
+        Error::ValueOutOfRange {
+            value: value.into(),
+            min: self.min,
+            max: self.delta + self.min,
         }
     }
 
     /// Tries to build a `Normal` from the provided `value`.
+    ///
+    /// The value must fit in this `DiscreteRange`.
     fn try_normalize(self, value: RawValue) -> Result<Normal, Error> {
         let zero_based_value = value
             .as_u8()
             .checked_sub(self.min)
-            .ok_or_else(|| self.out_of_range_error(value))? as f32;
+            .ok_or_else(|| self.out_of_range_error(value))?;
 
-        let normal = Normal::try_from(zero_based_value / self.zero_based_max)
-            .map_err(|_| self.out_of_range_error(value))?;
-
-        Ok(self.snap(normal))
+        Normal::try_normalize(zero_based_value, self.delta)
+            .map_err(|_| self.out_of_range_error(value))
     }
 
-    /// Returns the provided `Normal` after snapping it to this `DiscreteRange`.
-    pub fn snap(&self, normal: Normal) -> Normal {
-        unsafe {
-            // Safety: `self.zero_based_max` is ensured to be a positive integral since
-            // the only way to build `DiscreteRange` is via `DiscreteRange::new` which uses
-            // a `RawValue` which is guaranteed to be built from an `u8`.
-            //
-            // The expression `normal_snapped` is expected to be in the range `(0.0..=1.0)`,
-            // thanks to the `(0.0..=1.0)` guarantee for `normal`.
-            // `(normal.as_f32() * self.zero_based_max).round()` equals at most
-            // `self.zero_based_max`, so `normal_snapped` can't be greater than `1.0`.
+    pub fn to_raw(self, normal: Normal) -> RawValue {
+        let min_based_value = normal.map_to(self.delta) + self.min;
 
-            let normal_snapped =
-                (normal.as_f32() * self.zero_based_max).round() / self.zero_based_max;
-            Normal::new_unchecked(normal_snapped)
-        }
+        RawValue::new(min_based_value)
+    }
+
+    /// Returns a `Normal` from the provided value after snapping it to this `DiscreteRange`.
+    pub fn snap(self, normal: Normal) -> Normal {
+        normal.snap_to(self.delta)
     }
 }
 
@@ -143,84 +129,64 @@ mod tests {
 
     #[test]
     fn range_round_trip_min_zero() {
-        const MAX: RawValue = RawValue::new(24);
-        const CENTER: RawValue = RawValue::new(MAX.as_u8() / 2);
-        const BEYOND_MAX: RawValue = RawValue::new(MAX.as_u8() + 1);
+        const MAX_BOUND: RawValue = RawValue::new(24);
+        const CENTER: RawValue = RawValue::new(MAX_BOUND.as_u8() / 2);
 
-        let range = DiscreteRange::new(RawValue::ZERO, MAX);
+        let range = DiscreteRange::new(RawValue::ZERO, MAX_BOUND);
 
         let normal = range.try_normalize(RawValue::ZERO).unwrap();
-        assert_eq!(normal.as_f32(), 0.0);
-        assert_eq!(DiscreteValue { normal }.get_raw(range), RawValue::ZERO);
+        assert_eq!(normal, Normal::MIN);
+        assert_eq!(DiscreteValue { normal }.to_raw(range), RawValue::ZERO);
 
         let normal = range.try_normalize(CENTER).unwrap();
-        assert_eq!(normal.as_f32(), 0.5);
-        assert_eq!(DiscreteValue { normal }.get_raw(range), CENTER);
+        assert_eq!(normal, Normal::CENTER);
+        assert_eq!(DiscreteValue { normal }.to_raw(range), CENTER);
 
-        let normal = range.try_normalize(MAX).unwrap();
-        assert_eq!(normal.as_f32(), 1.0);
-        assert_eq!(DiscreteValue { normal }.get_raw(range), MAX);
-
-        let res = range.try_normalize(BEYOND_MAX);
-        if let Error::ParameterRawValueOutOfRange { value, min, max } = res.unwrap_err() {
-            assert_eq!(value, BEYOND_MAX);
-            assert_eq!(min, RawValue::ZERO);
-            assert_eq!(max, MAX);
-        }
+        let normal = range.try_normalize(MAX_BOUND).unwrap();
+        assert_eq!(normal, Normal::MAX);
+        assert_eq!(DiscreteValue { normal }.to_raw(range), MAX_BOUND);
     }
 
     #[test]
     fn range_round_trip_min_one() {
-        const MIN: RawValue = RawValue::new(1);
-        const MAX: RawValue = RawValue::new(25);
-        const CENTER: RawValue = RawValue::new((MAX.as_u8() + MIN.as_u8()) / 2);
-        const BEYOND_MAX: RawValue = RawValue::new(MAX.as_u8() + 1);
+        const MIN_BOUND: RawValue = RawValue::new(1);
+        const MAX_BOUND: RawValue = RawValue::new(25);
+        const CENTER: RawValue = RawValue::new((MAX_BOUND.as_u8() + MIN_BOUND.as_u8()) / 2);
 
-        let range = DiscreteRange::new(MIN, MAX);
+        let range = DiscreteRange::new(MIN_BOUND, MAX_BOUND);
 
-        let normal = range.try_normalize(MIN).unwrap();
-        assert_eq!(normal.as_f32(), 0.0);
-        assert_eq!(DiscreteValue { normal }.get_raw(range), MIN);
+        let normal = range.try_normalize(MIN_BOUND).unwrap();
+        assert_eq!(normal, Normal::MIN);
+        assert_eq!(DiscreteValue { normal }.to_raw(range), MIN_BOUND);
 
         let normal = range.try_normalize(CENTER).unwrap();
-        assert_eq!(normal.as_f32(), 0.5);
-        assert_eq!(DiscreteValue { normal }.get_raw(range), CENTER);
+        assert_eq!(normal, Normal::CENTER);
+        assert_eq!(DiscreteValue { normal }.to_raw(range), CENTER);
 
-        let normal = range.try_normalize(MAX).unwrap();
-        assert_eq!(normal.as_f32(), 1.0);
-        assert_eq!(DiscreteValue { normal }.get_raw(range), MAX);
-
-        let res = range.try_normalize(RawValue::ZERO);
-        if let Error::ParameterRawValueOutOfRange { value, min, max } = res.unwrap_err() {
-            assert_eq!(value, RawValue::ZERO);
-            assert_eq!(min, MIN);
-            assert_eq!(max, MAX);
-        }
-
-        let res = range.try_normalize(BEYOND_MAX);
-        if let Error::ParameterRawValueOutOfRange { value, min, max } = res.unwrap_err() {
-            assert_eq!(value, BEYOND_MAX);
-            assert_eq!(min, MIN);
-            assert_eq!(max, MAX);
-        }
+        let normal = range.try_normalize(MAX_BOUND).unwrap();
+        assert_eq!(normal, Normal::MAX);
+        assert_eq!(DiscreteValue { normal }.to_raw(range), MAX_BOUND);
     }
 
     #[test]
-    fn snap() {
-        let r23 = DiscreteRange::new(RawValue::ZERO, 23.into());
-        let r24 = DiscreteRange::new(RawValue::ZERO, 24.into());
-        let r25 = DiscreteRange::new(RawValue::ZERO, 25.into());
+    fn out_of_range() {
+        const MIN_BOUND: RawValue = RawValue::new(10);
+        const MAX_BOUND: RawValue = RawValue::new(20);
 
-        assert_eq!(r23.snap(Normal::CENTER).as_f32() * 23.0, 12.0);
-        assert_eq!(r24.snap(Normal::CENTER).as_f32() * 24.0, 12.0);
-        assert_eq!(r25.snap(Normal::CENTER).as_f32() * 25.0, 13.0);
+        let range = DiscreteRange::new(MIN_BOUND, MAX_BOUND);
 
-        let normal_third = Normal::try_from(1.0 / 3.0).unwrap();
-        assert_eq!(r23.snap(normal_third).as_f32() * 23.0, 8.0);
-        assert_eq!(r24.snap(normal_third).as_f32() * 24.0, 8.0);
-        assert_eq!(r25.snap(normal_third).as_f32() * 25.0, 8.0);
+        let res = range.try_normalize(RawValue::MIN);
+        if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
+            assert_eq!(value, RawValue::MIN.as_u8());
+            assert_eq!(min, MIN_BOUND.as_u8());
+            assert_eq!(max, MAX_BOUND.as_u8());
+        }
 
-        assert_eq!(r24.snap(Normal::MAX).as_f32() * 24.0, 24.0);
-        assert_eq!(r25.snap(Normal::MAX).as_f32() * 25.0, 25.0);
+        let res = range.try_normalize(RawValue::MAX);
+        if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
+            assert_eq!(value, RawValue::MAX.as_u8() as u8);
+            assert_eq!(min, MIN_BOUND.as_u8());
+            assert_eq!(max, MAX_BOUND.as_u8());
+        }
     }
 }

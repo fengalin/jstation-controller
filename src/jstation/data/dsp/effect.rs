@@ -135,7 +135,7 @@ impl DiscreteParameter for Speed {
     }
 
     fn to_raw_value(self) -> Option<RawValue> {
-        Some(self.value.get_raw(self.range().unwrap()))
+        Some(self.value.to_raw(self.range().unwrap()))
     }
 
     fn reset(&mut self) -> Option<Self> {
@@ -162,7 +162,7 @@ impl fmt::Display for Speed {
                 // -24 to +24 semitones.
                 self.to_raw_value().unwrap().as_u8() as i32 - 24i32
             }
-            _ => (100.0 * self.value.normal().as_f32()) as i32,
+            _ => self.value.normal().as_cents() as i32,
         };
 
         fmt::Display::fmt(&value, f)
@@ -231,7 +231,7 @@ impl DiscreteParameter for Depth {
     }
 
     fn to_raw_value(self) -> Option<RawValue> {
-        Some(self.value.get_raw(self.range().unwrap()))
+        Some(self.value.to_raw(self.range().unwrap()))
     }
 
     fn reset(&mut self) -> Option<Self> {
@@ -246,7 +246,7 @@ impl fmt::Display for Depth {
                 // -30 to +30 cents.
                 self.to_raw_value().unwrap().as_u8() as i32 - 30i32
             }
-            _ => (100.0 * self.value.normal().as_f32()) as i32,
+            _ => self.value.normal().as_cents() as i32,
         };
 
         fmt::Display::fmt(&value, f)
@@ -292,7 +292,7 @@ impl DiscreteParameter for Regen {
     }
 
     fn to_raw_value(self) -> Option<RawValue> {
-        self.range().map(|range| self.value.get_raw(range))
+        self.range().map(|range| self.value.to_raw(range))
     }
 
     fn reset(&mut self) -> Option<Self> {
@@ -312,7 +312,7 @@ impl DiscreteParameter for Regen {
 impl fmt::Display for Regen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_active() {
-            fmt::Display::fmt(&((100.0 * self.value.normal().as_f32()) as i32), f)
+            fmt::Display::fmt(&self.value.normal().as_cents(), f)
         } else {
             f.write_str("n/a")
         }

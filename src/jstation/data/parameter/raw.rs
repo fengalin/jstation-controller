@@ -27,9 +27,10 @@ pub struct RawValue(u8);
 
 impl RawValue {
     pub const ZERO: Self = RawValue(0);
-    pub const CENTER: Self = RawValue(0x7f);
+    pub const MIN: Self = RawValue(0);
     pub const MAX: Self = RawValue(0xff);
 
+    /// Builds a `RawValue`.
     pub const fn new(value: u8) -> Self {
         RawValue(value)
     }
@@ -41,7 +42,7 @@ impl RawValue {
 
 impl From<u8> for RawValue {
     fn from(value: u8) -> Self {
-        Self(value)
+        RawValue(value)
     }
 }
 

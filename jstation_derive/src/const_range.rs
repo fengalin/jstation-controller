@@ -157,7 +157,7 @@ impl<'a> ToTokens for ConstRange<'a> {
 
                 fn to_raw_value(self) -> Option<crate::jstation::data::RawValue> {
                     use crate::jstation::data::ConstRangeParameter;
-                    Some(self.0.get_raw(Self::RANGE))
+                    Some(self.0.to_raw(Self::RANGE))
                 }
 
                 fn reset(&mut self) -> Option<Self> {
