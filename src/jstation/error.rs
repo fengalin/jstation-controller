@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{jstation::data::RawValue, midi};
+use crate::midi;
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum Error {
@@ -13,12 +13,8 @@ pub enum Error {
     #[error("Parameter number {} out of range", .0)]
     ParameterNumberOutOfRange(u8),
 
-    #[error("Parameter raw value {} out of range: ({}..={})", .value, .min, .max)]
-    ParameterRawValueOutOfRange {
-        value: RawValue,
-        min: RawValue,
-        max: RawValue,
-    },
+    #[error("Value {} out of range: ({}..={})", .value, .min, .max)]
+    ValueOutOfRange { value: u8, min: u8, max: u8 },
 
     #[error("Program number {} out of range", .0)]
     ProgramNumberOutOfRange(u8),

@@ -61,7 +61,7 @@ impl UtilitySettingsResp {
         Ok((i, UtilitySettingsResp {
             stereo_mono,
             dry_track,
-            digital_out_level: digital_out_level.into(),
+            digital_out_level: RawValue::try_from(digital_out_level).unwrap(),
             global_cabinet,
             midi_merge,
             midi_channel,

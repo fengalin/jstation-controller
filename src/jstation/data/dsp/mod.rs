@@ -127,7 +127,7 @@ impl CCParameterSetter for Dsp {
 
 fn fmt_percent(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     if let Some(normal) = param.normal() {
-        f.write_fmt(format_args!("{:.0}", 100.0 * normal.as_f32()))
+        f.write_fmt(format_args!("{:.0}", 100.0 * normal.as_ratio()))
     } else {
         f.write_str("n/a")
     }
@@ -135,7 +135,7 @@ fn fmt_percent(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt
 
 fn fmt_bipolar_normal(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     if let Some(normal) = param.normal() {
-        let bipolar = 2.0 * normal.as_f32() - 1.0;
+        let bipolar = 2.0 * normal.as_ratio() - 1.0;
         f.write_fmt(format_args!("{:0.2}", bipolar))
     } else {
         f.write_str("n/a")

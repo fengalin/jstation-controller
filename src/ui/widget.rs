@@ -158,10 +158,9 @@ where
 }
 
 fn to_ui_normal(normal: crate::jstation::data::Normal) -> iced_audio::Normal {
-    // Safety: these two `Normal`s are both wrappers on `f32`
-    // and they observe the same invariants: the inner `f32` is constrained
-    // to (0.0..=1.0).
-    unsafe { std::mem::transmute(normal) }
+    // Safety: jstation's `Normal::as_ratio` returns an `f32` in (0.0..=1.0)
+    // which is the inner type and invariant for `iced_audio::Normal`.
+    unsafe { std::mem::transmute(normal.as_ratio()) }
 }
 
 #[track_caller]
@@ -179,11 +178,9 @@ where
     iced_audio::NormalParam { value, default }
 }
 
+#[track_caller]
 fn to_jstation_normal(normal: iced_audio::Normal) -> crate::jstation::data::Normal {
-    // Safety: these two `Normal`s are both wrappers on `f32`
-    // and they observe the same invariants: the inner `f32` is constrained
-    // to (0.0..=1.0).
-    unsafe { std::mem::transmute(normal) }
+    TryFrom::try_from(normal.as_f32()).unwrap()
 }
 
 #[cfg(test)]
@@ -197,9 +194,9 @@ mod tests {
         const JS_CENTER: Normal = Normal::CENTER;
         const JS_MAX: Normal = Normal::MAX;
 
-        assert_eq!(to_ui_normal(JS_MIN).as_f32(), JS_MIN.as_f32());
-        assert_eq!(to_ui_normal(JS_CENTER).as_f32(), JS_CENTER.as_f32());
-        assert_eq!(to_ui_normal(JS_MAX).as_f32(), JS_MAX.as_f32());
+        assert_eq!(to_ui_normal(JS_MIN).as_f32(), JS_MIN.as_ratio());
+        assert_eq!(to_ui_normal(JS_CENTER).as_f32(), JS_CENTER.as_ratio());
+        assert_eq!(to_ui_normal(JS_MAX).as_f32(), JS_MAX.as_ratio());
 
         let less_than_min_res = Normal::try_from(0.0 - f32::EPSILON);
         assert!(less_than_min_res.is_err());
@@ -217,20 +214,18 @@ mod tests {
         const UI_CENTER: Normal = Normal::CENTER;
         const UI_MAX: Normal = Normal::MAX;
 
-        assert_eq!(to_jstation_normal(UI_MIN).as_f32(), UI_MIN.as_f32());
-        assert_eq!(to_jstation_normal(UI_CENTER).as_f32(), UI_CENTER.as_f32());
-        assert_eq!(to_jstation_normal(UI_MAX).as_f32(), UI_MAX.as_f32());
+        assert!((to_jstation_normal(UI_MIN).as_ratio() - UI_MIN.as_f32()).abs() < 0.005);
+        assert!((to_jstation_normal(UI_CENTER).as_ratio() - UI_CENTER.as_f32()).abs() < 0.005);
+        assert!((to_jstation_normal(UI_MAX).as_ratio() - UI_MAX.as_f32()).abs() < 0.005);
 
         let clipped_less_than_min = Normal::from_clipped(0.0 - f32::EPSILON);
-        assert_eq!(
-            to_jstation_normal(clipped_less_than_min).as_f32(),
-            UI_MIN.as_f32()
+        assert!(
+            (to_jstation_normal(clipped_less_than_min).as_ratio() - UI_MIN.as_f32()).abs() < 0.005
         );
 
         let clipped_more_than_max = Normal::from_clipped(1.0 + f32::EPSILON);
-        assert_eq!(
-            to_jstation_normal(clipped_more_than_max).as_f32(),
-            UI_MAX.as_f32()
+        assert!(
+            (to_jstation_normal(clipped_more_than_max).as_ratio() - UI_MAX.as_f32()).abs() < 0.005
         );
     }
 }
