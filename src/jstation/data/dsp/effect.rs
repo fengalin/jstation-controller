@@ -13,7 +13,7 @@ pub struct Effect {
     pub switch: Switch,
     #[const_range(discriminant, max = 6, param_nb = 20, cc_nb = 45, display_map = name)]
     pub typ: Type,
-    #[const_range(max = 99, param_nb = 21, cc_nb = 46)]
+    #[const_range(max = 99, param_nb = 21, cc_nb = 46, display_cent)]
     pub mix: Mix,
     // The speed parameter changes assignment depending on the effect type:
     // - For Auto Wah, it's the WahType with 3 possible values.
@@ -73,12 +73,6 @@ const TYPE_NAMES: [&str; 7] = [
     "Auto Wah",
     "Pitch / Detune",
 ];
-
-impl fmt::Display for Mix {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        super::fmt_percent(*self, f)
-    }
-}
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum SpeedAssignment {

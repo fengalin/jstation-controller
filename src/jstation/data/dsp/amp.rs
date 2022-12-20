@@ -1,14 +1,15 @@
 use std::fmt;
 
+use crate::jstation::data::DiscreteParameter;
 use jstation_derive::ParameterSetter;
 
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]
 pub struct Amp {
     #[const_range(max = 24, param_nb = 9, cc_nb = 34, display_map = name, display_map = nick)]
     pub modeling: Modeling,
-    #[const_range(max = 90, param_nb = 10, cc_nb = 35)]
+    #[const_range(max = 90, param_nb = 10, cc_nb = 35, display_cent)]
     pub gain: Gain,
-    #[const_range(max = 90, param_nb = 14, cc_nb = 36)]
+    #[const_range(max = 90, param_nb = 14, cc_nb = 36, display_cent)]
     pub level: Level,
     #[const_range(max = 90, default_center, param_nb = 13, cc_nb = 37)]
     pub bass: Bass,
@@ -74,32 +75,29 @@ const MODELING_NICKS: [&str; 25] = [
     "Direct (A8)",
 ];
 
-impl fmt::Display for Gain {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        super::fmt_percent(*self, f)
-    }
-}
-
-impl fmt::Display for Level {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        super::fmt_percent(*self, f)
+fn fmt_bipolar_normal(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    if let Some(normal) = param.normal() {
+        let bipolar = 20.0 * normal.as_ratio() - 10.0;
+        f.write_fmt(format_args!("{:0.1}", bipolar))
+    } else {
+        f.write_str("n/a")
     }
 }
 
 impl fmt::Display for Bass {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        super::fmt_bipolar_normal(*self, f)
+        fmt_bipolar_normal(*self, f)
     }
 }
 
 impl fmt::Display for Middle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        super::fmt_bipolar_normal(*self, f)
+        fmt_bipolar_normal(*self, f)
     }
 }
 
 impl fmt::Display for Treble {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        super::fmt_bipolar_normal(*self, f)
+        fmt_bipolar_normal(*self, f)
     }
 }
