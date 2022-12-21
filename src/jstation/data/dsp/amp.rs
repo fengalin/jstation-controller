@@ -7,9 +7,9 @@ use jstation_derive::ParameterSetter;
 pub struct Amp {
     #[const_range(max = 24, param_nb = 9, cc_nb = 34, display_map = name, display_map = nick)]
     pub modeling: Modeling,
-    #[const_range(max = 90, param_nb = 10, cc_nb = 35, display_cent)]
+    #[const_range(max = 90, param_nb = 10, cc_nb = 35, display_cents)]
     pub gain: Gain,
-    #[const_range(max = 90, param_nb = 14, cc_nb = 36, display_cent)]
+    #[const_range(max = 90, param_nb = 14, cc_nb = 36, display_cents)]
     pub level: Level,
     #[const_range(max = 90, default_center, param_nb = 13, cc_nb = 37)]
     pub bass: Bass,
