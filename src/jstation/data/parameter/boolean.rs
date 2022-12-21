@@ -12,7 +12,7 @@ pub trait BoolParameter:
         (raw.as_u8() == 0).into()
     }
 
-    fn to_raw_value(self) -> RawValue {
+    fn raw_value(self) -> RawValue {
         RawValue::new(if self.into() { 0 } else { u8::MAX })
     }
 
@@ -31,6 +31,6 @@ pub trait BoolRawParameter: BoolParameter {
     const PARAMETER_NB: ParameterNumber;
 
     fn to_raw_parameter(self) -> RawParameter {
-        RawParameter::new(Self::PARAMETER_NB, self.to_raw_value())
+        RawParameter::new(Self::PARAMETER_NB, self.raw_value())
     }
 }

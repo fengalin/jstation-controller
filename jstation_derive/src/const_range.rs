@@ -91,11 +91,6 @@ impl<'a> ToTokens for ConstRange<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let param = &self.base.field.ty;
         let param_name = self.base.name();
-        let param_default = if self.default_center {
-            quote! { CENTER }
-        } else {
-            quote! { MIN }
-        };
         let param_min = self.min.unwrap_or(0);
         let param_max = self.max.unwrap_or_else(|| {
             abort!(
@@ -111,15 +106,18 @@ impl<'a> ToTokens for ConstRange<'a> {
                 param.to_token_stream()
             );
         }
+        let (param_default, normal_default) = if self.default_center {
+            ((param_max + param_min) / 2, quote! { CENTER })
+        } else {
+            (param_min, quote! { MIN })
+        };
 
         tokens.extend(quote! {
-            #[derive(Clone, Copy, Debug, PartialEq)]
-            pub struct #param(crate::jstation::data::DiscreteValue);
+            #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+            pub struct #param(crate::jstation::data::RawValue);
 
             impl crate::jstation::data::ConstRangeParameter for #param {
                 const NAME: &'static str = #param_name;
-                const DEFAULT: crate::jstation::data::Normal =
-                    crate::jstation::data::Normal::#param_default;
                 const MIN_RAW: crate::jstation::data::RawValue =
                     crate::jstation::data::RawValue::new(#param_min);
                 const MAX_RAW: crate::jstation::data::RawValue =
@@ -127,18 +125,18 @@ impl<'a> ToTokens for ConstRange<'a> {
                 const RANGE: crate::jstation::data::DiscreteRange =
                     crate::jstation::data::DiscreteRange::new(Self::MIN_RAW, Self::MAX_RAW);
 
-                fn from_snapped(normal: crate::jstation::data::Normal) -> Self {
-                    #param(crate::jstation::data::DiscreteValue::new(normal, Self::RANGE))
+                fn from_normal(normal: crate::jstation::data::Normal) -> Self {
+                    use crate::jstation::data::ConstRangeParameter;
+                    #param(Self::RANGE.normal_to_raw(normal))
                 }
 
                 fn try_from_raw(
                     raw: crate::jstation::data::RawValue,
                 ) -> Result<Self, crate::jstation::Error> {
-                    let value = crate::jstation::data::DiscreteValue::try_from_raw(
-                        raw,
-                        Self::RANGE,
-                    )
-                    .map_err(|err| crate::jstation::Error::with_context(Self::NAME, err))?;
+                    use crate::jstation::data::ConstRangeParameter;
+                    let value = Self::RANGE
+                        .check(raw)
+                        .map_err(|err| crate::jstation::Error::with_context(Self::NAME, err))?;
 
                     Ok(#param(value))
                 }
@@ -151,22 +149,26 @@ impl<'a> ToTokens for ConstRange<'a> {
                 }
 
                 fn normal_default(self) -> Option<crate::jstation::data::Normal> {
-                    use crate::jstation::data::ConstRangeParameter;
-                    Some(Self::DEFAULT)
+                    Some(crate::jstation::data::Normal::#normal_default)
                 }
 
                 fn normal(self) -> Option<crate::jstation::data::Normal> {
-                    Some(self.0.normal())
+                    use crate::jstation::data::ConstRangeParameter;
+                    Some(Self::RANGE.try_normalize(self.0).unwrap())
                 }
 
-                fn to_raw_value(self) -> Option<crate::jstation::data::RawValue> {
+                fn raw_value(self) -> Option<crate::jstation::data::RawValue> {
                     use crate::jstation::data::ConstRangeParameter;
-                    Some(self.0.to_raw(Self::RANGE))
+                    Some(self.0)
                 }
 
                 fn reset(&mut self) -> Option<Self> {
-                    use crate::jstation::data::{ConstRangeParameter, ParameterSetter};
-                    self.set(Self::from_snapped(Self::DEFAULT))
+                    let default = Self::default();
+                    if *self == default {
+                        return None;
+                    }
+
+                    Some(default)
                 }
             }
 
@@ -186,8 +188,7 @@ impl<'a> ToTokens for ConstRange<'a> {
 
             impl Default for #param {
                 fn default() -> Self {
-                    use crate::jstation::data::ConstRangeParameter;
-                    Self::from_snapped(Self::DEFAULT)
+                    Self(crate::jstation::data::RawValue::new(#param_default))
                 }
             }
         });
@@ -205,9 +206,11 @@ impl<'a> ToTokens for ConstRange<'a> {
             tokens.extend(quote! {
                 impl crate::jstation::data::CCParameter for #param {
                     fn to_cc(self) -> Option<crate::midi::CC> {
+                        use crate::jstation::data::ConstRangeParameter;
+
                         Some(crate::midi::CC::new(
                             crate::midi::CCNumber::new(#cc_nb),
-                            self.0.normal().into(),
+                            Self::RANGE.try_ccize(self.0).unwrap(),
                         ))
                     }
                 }
@@ -218,14 +221,13 @@ impl<'a> ToTokens for ConstRange<'a> {
                     fn set_cc(
                         &mut self,
                         cc: crate::midi::CC,
-                    ) -> Result<Option<Self>, crate::jstation::Error>
-                    {
+                    ) -> Result<Option<Self>, crate::jstation::Error> {
                         use crate::jstation::data::ConstRangeParameter;
 
                         assert_eq!(cc.nb.as_u8(), #cc_nb);
 
-                        let value =
-                            crate::jstation::data::DiscreteValue::new(cc.value.into(), Self::RANGE);
+                        let value = Self::RANGE.cc_to_raw(cc.value);
+
                         if self.0 == value {
                             return Ok(None);
                         }
@@ -243,16 +245,15 @@ impl<'a> ToTokens for ConstRange<'a> {
                 Display::Cents => tokens.extend(quote! {
                     impl std::fmt::Display for #param {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                            use crate::jstation::data::DiscreteParameter;
-                            fmt::Display::fmt(&self.normal().unwrap().as_cents(), f)
+                            use crate::jstation::data::ConstRangeParameter;
+                            std::fmt::Display::fmt(&Self::RANGE.to_cents(self.0).unwrap(), f)
                         }
                     }
                 }),
                 Display::Raw => tokens.extend(quote! {
                     impl std::fmt::Display for #param {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                            use crate::jstation::data::DiscreteParameter;
-                            std::fmt::Display::fmt(&(self.to_raw_value().unwrap().as_u8()), f)
+                            std::fmt::Display::fmt(&self.0, f)
                         }
                     }
                 }),
@@ -336,8 +337,7 @@ impl<'a> ToTokens for ConstRange<'a> {
                             }
 
                             pub fn #name_method(self) -> #named_param {
-                                use crate::jstation::data::DiscreteParameter;
-                                Self::#names_method()[self.to_raw_value().unwrap().as_u8() as usize]
+                                Self::#names_method()[self.0.as_u8() as usize]
                             }
                         }
                     });

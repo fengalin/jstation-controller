@@ -58,21 +58,21 @@ where
         let content: Element<_> = row![
             title_area,
             ui::knob(self.delay.level, |normal| {
-                Level(delay::Level::from_snapped(normal))
+                Level(delay::Level::from_normal(normal))
             })
             .build(),
             ui::knob(self.delay.time_course, |normal| TimeCourse(
-                delay::TimeCourse::from_snapped(normal)
+                delay::TimeCourse::from_normal(normal)
             ))
             .name("Course")
             .build(),
             ui::knob(self.delay.time_fine, |normal| TimeFine(
-                delay::TimeFine::from_snapped(normal)
+                delay::TimeFine::from_normal(normal)
             ))
             .name("Fine")
             .build(),
             ui::knob(self.delay.feedback, |normal| {
-                Feedback(delay::Feedback::from_snapped(normal))
+                Feedback(delay::Feedback::from_normal(normal))
             })
             .name("Fback")
             .build(),

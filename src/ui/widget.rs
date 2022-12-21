@@ -29,6 +29,7 @@ where
     .align_items(Alignment::Start)
 }
 
+#[track_caller]
 fn build_knob<'a, Field, Message, OnChange, OnRelease, Output>(
     field: Field,
     name: Option<String>,
@@ -122,6 +123,7 @@ where
         }
     }
 
+    #[track_caller]
     pub fn build(self) -> Column<'a, Message> {
         let on_release_none = Option::<fn() -> Option<Output>>::None;
         build_knob(self.field, self.name, self.on_change, on_release_none)
@@ -152,15 +154,16 @@ where
     OnChange: 'a + Fn(Normal) -> Output,
     OnRelease: 'a + Fn() -> Option<Output>,
 {
+    #[track_caller]
     pub fn build(self) -> Column<'a, Message> {
         build_knob(self.field, self.name, self.on_change, Some(self.on_release))
     }
 }
 
 fn to_ui_normal(normal: crate::jstation::data::Normal) -> iced_audio::Normal {
-    // Safety: jstation's `Normal::as_ratio` returns an `f32` in (0.0..=1.0)
+    // Safety: jstation's `Normal` is a newtype on an `f32` in (0.0..=1.0)
     // which is the inner type and invariant for `iced_audio::Normal`.
-    unsafe { std::mem::transmute(normal.as_ratio()) }
+    unsafe { std::mem::transmute(normal) }
 }
 
 #[track_caller]
@@ -178,9 +181,10 @@ where
     iced_audio::NormalParam { value, default }
 }
 
-#[track_caller]
 fn to_jstation_normal(normal: iced_audio::Normal) -> crate::jstation::data::Normal {
-    TryFrom::try_from(normal.as_f32()).unwrap()
+    // Safety: jstation's `Normal` is a newtype on an `f32` in (0.0..=1.0)
+    // which is the inner type and invariant for `iced_audio::Normal`.
+    unsafe { std::mem::transmute(normal) }
 }
 
 #[cfg(test)]

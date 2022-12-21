@@ -5,7 +5,7 @@ mod const_range;
 pub use const_range::ConstRangeParameter;
 
 mod discrete;
-pub use discrete::{DiscreteParameter, DiscreteRange, DiscreteRawParameter, DiscreteValue};
+pub use discrete::{DiscreteParameter, DiscreteRange, DiscreteRawParameter};
 
 mod normal;
 pub use normal::Normal;

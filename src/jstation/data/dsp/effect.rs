@@ -3,8 +3,7 @@ use std::fmt;
 use jstation_derive::ParameterSetter;
 
 use crate::jstation::data::{
-    DiscreteParameter, DiscreteRange, Normal, ParameterSetter, RawValue, VariableRange,
-    VariableRangeParameter,
+    DiscreteParameter, DiscreteRange, Normal, RawValue, VariableRange, VariableRangeParameter,
 };
 
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]
@@ -51,7 +50,7 @@ pub enum Discriminant {
 impl From<Type> for Discriminant {
     fn from(typ: Type) -> Self {
         use Discriminant::*;
-        match typ.to_raw_value().unwrap().as_u8() {
+        match typ.raw_value().unwrap().as_u8() {
             0 => Chorus,
             1 => Flanger,
             2 => Phaser,
@@ -125,15 +124,27 @@ impl DiscreteParameter for Speed {
     }
 
     fn normal(self) -> Option<Normal> {
-        Some(self.value.normal())
+        let range = self.range().unwrap();
+        Some(range.try_normalize(self.value).unwrap())
     }
 
-    fn to_raw_value(self) -> Option<RawValue> {
-        Some(self.value.to_raw(self.range().unwrap()))
+    fn raw_value(self) -> Option<RawValue> {
+        Some(self.value)
     }
 
     fn reset(&mut self) -> Option<Self> {
-        self.set(Self::from_snapped(self.discr, self.normal_default().unwrap()).unwrap())
+        let default = RawValue::new(match self.discr {
+            Discriminant::PitchDetune => 24,
+            _ => 0,
+        });
+
+        if self.value == default {
+            return None;
+        }
+
+        self.value = default;
+
+        Some(*self)
     }
 }
 
@@ -151,12 +162,12 @@ impl Speed {
 impl fmt::Display for Speed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value = match self.discr {
-            Discriminant::AutoWah => self.to_raw_value().unwrap().as_u8() as i32,
+            Discriminant::AutoWah => self.raw_value().unwrap().as_u8() as i32,
             Discriminant::PitchDetune => {
                 // -24 to +24 semitones.
-                self.to_raw_value().unwrap().as_u8() as i32 - 24i32
+                self.raw_value().unwrap().as_u8() as i32 - 24i32
             }
-            _ => self.value.normal().as_cents() as i32,
+            _ => self.range().unwrap().to_cents(self.value).unwrap() as i32,
         };
 
         fmt::Display::fmt(&value, f)
@@ -221,15 +232,27 @@ impl DiscreteParameter for Depth {
     }
 
     fn normal(self) -> Option<Normal> {
-        Some(self.value.normal())
+        let range = self.range().unwrap();
+        Some(range.try_normalize(self.value).unwrap())
     }
 
-    fn to_raw_value(self) -> Option<RawValue> {
-        Some(self.value.to_raw(self.range().unwrap()))
+    fn raw_value(self) -> Option<RawValue> {
+        Some(self.value)
     }
 
     fn reset(&mut self) -> Option<Self> {
-        self.set(Self::from_snapped(self.discr, self.normal_default().unwrap()).unwrap())
+        let default = RawValue::new(match self.discr {
+            Discriminant::PitchDetune => 30,
+            _ => 0,
+        });
+
+        if self.value == default {
+            return None;
+        }
+
+        self.value = default;
+
+        Some(*self)
     }
 }
 
@@ -238,9 +261,9 @@ impl fmt::Display for Depth {
         let value = match self.discr {
             Discriminant::PitchDetune => {
                 // -30 to +30 cents.
-                self.to_raw_value().unwrap().as_u8() as i32 - 30i32
+                self.raw_value().unwrap().as_u8() as i32 - 30i32
             }
-            _ => self.value.normal().as_cents() as i32,
+            _ => self.range().unwrap().to_cents(self.value).unwrap() as i32,
         };
 
         fmt::Display::fmt(&value, f)
@@ -278,23 +301,30 @@ impl DiscreteParameter for Regen {
     }
 
     fn normal(self) -> Option<Normal> {
-        if self.is_active() {
-            Some(self.value.normal())
-        } else {
-            None
-        }
+        let range = self.range()?;
+        Some(range.try_normalize(self.value).unwrap())
     }
 
-    fn to_raw_value(self) -> Option<RawValue> {
-        self.range().map(|range| self.value.to_raw(range))
+    fn raw_value(self) -> Option<RawValue> {
+        if !self.is_active() {
+            return None;
+        }
+
+        Some(self.value)
     }
 
     fn reset(&mut self) -> Option<Self> {
-        let normal_default = self.normal_default()?;
-        // regen is active since we could get a normal_default
-        let snapped = Self::from_snapped(self.discr, normal_default).expect("regen is active");
+        if !self.is_active() {
+            return None;
+        }
 
-        self.set(snapped)
+        if self.value == RawValue::ZERO {
+            return None;
+        }
+
+        self.value = RawValue::ZERO;
+
+        Some(*self)
     }
 
     fn is_active(self) -> bool {
@@ -305,8 +335,8 @@ impl DiscreteParameter for Regen {
 
 impl fmt::Display for Regen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_active() {
-            fmt::Display::fmt(&self.value.normal().as_cents(), f)
+        if let Some(range) = self.range() {
+            fmt::Display::fmt(&range.to_cents(self.value).unwrap(), f)
         } else {
             f.write_str("n/a")
         }

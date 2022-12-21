@@ -101,25 +101,19 @@ where
         use amp::Parameter::*;
         let content: Element<_> = row![
             title_area,
-            ui::knob(self.amp.gain, |normal| Gain(amp::Gain::from_snapped(
+            ui::knob(self.amp.gain, |normal| Gain(amp::Gain::from_normal(normal))).build(),
+            horizontal_space(Length::Units(2)),
+            ui::knob(self.amp.bass, |normal| Bass(amp::Bass::from_normal(normal))).build(),
+            ui::knob(self.amp.middle, |normal| Middle(amp::Middle::from_normal(
+                normal
+            )))
+            .build(),
+            ui::knob(self.amp.treble, |normal| Treble(amp::Treble::from_normal(
                 normal
             )))
             .build(),
             horizontal_space(Length::Units(2)),
-            ui::knob(self.amp.bass, |normal| Bass(amp::Bass::from_snapped(
-                normal
-            )))
-            .build(),
-            ui::knob(self.amp.middle, |normal| Middle(amp::Middle::from_snapped(
-                normal
-            )))
-            .build(),
-            ui::knob(self.amp.treble, |normal| Treble(amp::Treble::from_snapped(
-                normal
-            )))
-            .build(),
-            horizontal_space(Length::Units(2)),
-            ui::knob(self.amp.level, |normal| Level(amp::Level::from_snapped(
+            ui::knob(self.amp.level, |normal| Level(amp::Level::from_normal(
                 normal
             )))
             .build(),
