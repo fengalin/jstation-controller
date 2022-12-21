@@ -110,13 +110,13 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             .spacing(10)
             .padding(5),
             ui::knob(self.settings.midi_channel, |normal| {
-                MidiChannel(utility_settings::MidiChannel::from_snapped(normal))
+                MidiChannel(utility_settings::MidiChannel::from_normal(normal))
             })
             .name("Midi chan")
             .on_release(|| Some(MidiChannelReleased))
             .build(),
             ui::knob(self.settings.digital_out_level, |normal| {
-                DigitalOutLevel(utility_settings::DigitalOutLevel::from_snapped(normal))
+                DigitalOutLevel(utility_settings::DigitalOutLevel::from_normal(normal))
             })
             .name("Digital out")
             .on_release(|| Some(MidiChannelReleased))

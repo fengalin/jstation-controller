@@ -46,12 +46,12 @@ where
             }),
             horizontal_space(Length::Units(5)),
             ui::knob(self.noise_gate.attack_time, |normal| AttackTime(
-                noise_gate::AttackTime::from_snapped(normal)
+                noise_gate::AttackTime::from_normal(normal)
             ))
             .name("Attack")
             .build(),
             ui::knob(self.noise_gate.threshold, |normal| Threshold(
-                noise_gate::Threshold::from_snapped(normal)
+                noise_gate::Threshold::from_normal(normal)
             ))
             .name("Thold")
             .build(),

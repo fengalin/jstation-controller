@@ -44,20 +44,20 @@ where
             })
             .width(DSP_TITLE_AREA_WIDTH),
             ui::knob(self.compressor.threshold, |normal| Threshold(
-                compressor::Threshold::from_snapped(normal)
+                compressor::Threshold::from_normal(normal)
             ))
             .name("Thold")
             .build(),
             ui::knob(self.compressor.ratio, |normal| {
-                Ratio(compressor::Ratio::from_snapped(normal))
+                Ratio(compressor::Ratio::from_normal(normal))
             })
             .build(),
             ui::knob(self.compressor.gain, |normal| Gain(
-                compressor::Gain::from_snapped(normal)
+                compressor::Gain::from_normal(normal)
             ))
             .build(),
             ui::knob(self.compressor.freq, |normal| {
-                Freq(compressor::Freq::from_snapped(normal))
+                Freq(compressor::Freq::from_normal(normal))
             })
             .name("Freq")
             .build(),

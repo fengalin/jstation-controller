@@ -11,7 +11,7 @@ pub trait VariableRangeParameter:
     fn range(self) -> Option<DiscreteRange>;
     fn set_discriminant(&mut self, discr: Self::Discriminant);
 
-    fn from_snapped(discr: Self::Discriminant, normal: Normal) -> Option<Self>;
+    fn from_normal(discr: Self::Discriminant, normal: Normal) -> Option<Self>;
     fn try_from_raw(discr: Self::Discriminant, raw: RawValue) -> Result<Self, Error>;
 }
 

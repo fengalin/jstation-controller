@@ -2,7 +2,7 @@
 pub mod parameter;
 pub use parameter::{
     BoolParameter, BoolRawParameter, CCParameter, CCParameterSetter, ConstRangeParameter,
-    DiscreteParameter, DiscreteRange, DiscreteRawParameter, DiscreteValue, Normal, ParameterNumber,
+    DiscreteParameter, DiscreteRange, DiscreteRawParameter, Normal, ParameterNumber,
     ParameterSetter, RawParameter, RawValue, VariableRange, VariableRangeParameter,
 };
 

@@ -74,7 +74,7 @@ where
         let mut content = row![
             title_area,
             ui::knob(self.effect.mix, |normal| {
-                Mix(effect::Mix::from_snapped(normal))
+                Mix(effect::Mix::from_normal(normal))
             })
             .build(),
         ]
@@ -85,7 +85,7 @@ where
             // FIXME could be a pick list for Wah
             ui::knob(self.effect.speed, |normal| {
                 Speed(
-                    effect::Speed::from_snapped(self.effect.typ.into(), normal)
+                    effect::Speed::from_normal(self.effect.typ.into(), normal)
                         .expect("always defined"),
                 )
             })
@@ -100,7 +100,7 @@ where
         content = content.push({
             ui::knob(self.effect.depth, |normal| {
                 Depth(
-                    effect::Depth::from_snapped(self.effect.typ.into(), normal)
+                    effect::Depth::from_normal(self.effect.typ.into(), normal)
                         .expect("always defined"),
                 )
             })
@@ -115,7 +115,7 @@ where
             content = content.push(
                 ui::knob(self.effect.regen, |normal| {
                     Regen(
-                        effect::Regen::from_snapped(self.effect.typ.into(), normal)
+                        effect::Regen::from_normal(self.effect.typ.into(), normal)
                             .expect("regen is active"),
                     )
                 })

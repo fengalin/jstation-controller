@@ -1,5 +1,3 @@
-use std::fmt;
-
 use jstation_derive::ParameterSetter;
 
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]

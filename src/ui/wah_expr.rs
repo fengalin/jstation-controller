@@ -60,20 +60,20 @@ where
         let content: Element<_> = row![
             title_area,
             ui::knob(self.wah_expr.heel, |normal| Heel(
-                wah_expr::Heel::from_snapped(normal)
+                wah_expr::Heel::from_normal(normal)
             ))
             .build(),
             ui::knob(self.wah_expr.toe, |normal| {
-                Toe(wah_expr::Toe::from_snapped(normal))
+                Toe(wah_expr::Toe::from_normal(normal))
             })
             .build(),
             ui::knob(self.wah_expr.forward, |normal| Forward(
-                wah_expr::Forward::from_snapped(normal)
+                wah_expr::Forward::from_normal(normal)
             ))
             .name("Fwd")
             .build(),
             ui::knob(self.wah_expr.back, |normal| {
-                Back(wah_expr::Back::from_snapped(normal))
+                Back(wah_expr::Back::from_normal(normal))
             })
             .build(),
         ]

@@ -2,6 +2,7 @@ use crate::jstation::{
     data::{Normal, ParameterNumber, ParameterSetter, RawParameter, RawValue},
     Error,
 };
+use crate::midi;
 
 pub trait DiscreteParameter: ParameterSetter<Parameter = Self> + Clone + Copy {
     fn name(self) -> &'static str;
@@ -10,7 +11,7 @@ pub trait DiscreteParameter: ParameterSetter<Parameter = Self> + Clone + Copy {
 
     fn normal(self) -> Option<Normal>;
 
-    fn to_raw_value(self) -> Option<RawValue>;
+    fn raw_value(self) -> Option<RawValue>;
 
     /// Resets the parameter to its default value.
     fn reset(&mut self) -> Option<Self>;
@@ -26,55 +27,26 @@ pub trait DiscreteRawParameter: DiscreteParameter {
     const PARAMETER_NB: ParameterNumber;
 
     fn to_raw_parameter(self) -> Option<RawParameter> {
-        self.to_raw_value()
+        self.raw_value()
             .map(|value| RawParameter::new(Self::PARAMETER_NB, value))
-    }
-}
-
-// A discrete value which is guaranteed to be snapped to the provided [`DiscreteRange`].
-#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
-pub struct DiscreteValue {
-    normal: Normal,
-}
-
-impl DiscreteValue {
-    pub fn new(normal: Normal, range: DiscreteRange) -> Self {
-        DiscreteValue {
-            normal: range.snap(normal),
-        }
-    }
-
-    pub fn try_from_raw(raw: RawValue, range: DiscreteRange) -> Result<Self, Error> {
-        let normal = range.try_normalize(raw)?;
-
-        Ok(DiscreteValue { normal })
-    }
-
-    pub fn normal(self) -> Normal {
-        self.normal
-    }
-
-    pub fn to_raw(self, range: DiscreteRange) -> RawValue {
-        range.to_raw(self.normal)
-    }
-}
-
-impl From<DiscreteValue> for Normal {
-    fn from(val: DiscreteValue) -> Self {
-        val.normal
     }
 }
 
 /// An inclusive `DiscreteRange` of discrete [`Value`]s between 0 and `max`.
 ///
 /// [`Value`]: ../raw/struct.Value.html
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DiscreteRange {
     min: u8,
     delta: u8,
 }
 
 impl DiscreteRange {
+    const MAX_CC_U32: u32 = midi::CCValue::MAX.as_u8() as u32;
+    const SCALE: u32 = 0x1_0000;
+    const ROUNDING: u32 = Self::SCALE / 2;
+    const MAX_CC_SCALED: u32 = Self::MAX_CC_U32 * Self::SCALE;
+
     /// Builds a new `DiscreteRange` from the provided value.
     pub const fn new(min: RawValue, max: RawValue) -> Self {
         let min = min.as_u8();
@@ -90,6 +62,14 @@ impl DiscreteRange {
         }
     }
 
+    pub fn check(self, value: RawValue) -> Result<RawValue, Error> {
+        if !(self.min..=(self.min + self.delta)).contains(&value.as_u8()) {
+            return Err(self.out_of_range_error(value));
+        }
+
+        Ok(value)
+    }
+
     fn out_of_range_error(self, value: impl Into<u8>) -> Error {
         Error::ValueOutOfRange {
             value: value.into(),
@@ -98,34 +78,68 @@ impl DiscreteRange {
         }
     }
 
+    fn zero_based(self, value: RawValue) -> Result<u8, Error> {
+        value
+            .as_u8()
+            .checked_sub(self.min)
+            .ok_or_else(|| self.out_of_range_error(value))
+    }
+
     /// Tries to build a `Normal` from the provided `value`.
     ///
     /// The value must fit in this `DiscreteRange`.
-    fn try_normalize(self, value: RawValue) -> Result<Normal, Error> {
-        let zero_based_value = value
-            .as_u8()
-            .checked_sub(self.min)
-            .ok_or_else(|| self.out_of_range_error(value))?;
+    pub fn try_normalize(self, value: RawValue) -> Result<Normal, Error> {
+        let zero_based_value = self.zero_based(value)?;
 
         Normal::try_normalize(zero_based_value, self.delta)
             .map_err(|_| self.out_of_range_error(value))
     }
 
-    pub fn to_raw(self, normal: Normal) -> RawValue {
-        let min_based_value = normal.map_to(self.delta) + self.min;
+    pub fn normal_to_raw(self, normal: Normal) -> RawValue {
+        let zero_based_value = (self.delta as f32 * normal.as_ratio()).round() as u8;
 
-        RawValue::new(min_based_value)
+        RawValue::new(zero_based_value + self.min)
     }
 
-    /// Returns a `Normal` from the provided value after snapping it to this `DiscreteRange`.
-    pub fn snap(self, normal: Normal) -> Normal {
-        normal.snap_to(self.delta)
+    pub fn try_ccize(self, value: RawValue) -> Result<midi::CCValue, Error> {
+        let zero_based_value = self.zero_based(value)?;
+        if zero_based_value > self.delta {
+            return Err(self.out_of_range_error(value));
+        }
+
+        let cc_value = (zero_based_value as u32 * Self::MAX_CC_SCALED / (self.delta as u32)
+            + Self::ROUNDING)
+            / Self::SCALE;
+
+        Ok(midi::CCValue::new_clipped(cc_value as u8))
+    }
+
+    pub fn cc_to_raw(self, cc_value: midi::CCValue) -> RawValue {
+        // Get the zero based value in this range.
+        // round up otherwise the decimal value is simply truncated.
+        let zero_based = (cc_value.as_u8() as u32 * (self.delta as u32) * Self::SCALE
+            / Self::MAX_CC_U32
+            + Self::ROUNDING)
+            / Self::SCALE;
+
+        RawValue::new(zero_based as u8 + self.min)
+    }
+
+    pub fn to_cents(self, value: RawValue) -> Result<u8, Error> {
+        let zero_based_value = self.zero_based(value)?;
+        if zero_based_value > self.delta {
+            return Err(self.out_of_range_error(value));
+        }
+
+        let cents = (1000 * (zero_based_value as u32) / (self.delta as u32) + 5) / 10;
+
+        Ok(cents as u8)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{DiscreteRange, DiscreteValue, Error, Normal, RawValue};
+    use super::{midi::CCValue, DiscreteRange, Error, Normal, RawValue};
 
     #[test]
     fn range_round_trip_min_zero() {
@@ -136,15 +150,15 @@ mod tests {
 
         let normal = range.try_normalize(RawValue::ZERO).unwrap();
         assert_eq!(normal, Normal::MIN);
-        assert_eq!(DiscreteValue { normal }.to_raw(range), RawValue::ZERO);
+        assert_eq!(range.normal_to_raw(normal), RawValue::ZERO);
 
         let normal = range.try_normalize(CENTER).unwrap();
         assert_eq!(normal, Normal::CENTER);
-        assert_eq!(DiscreteValue { normal }.to_raw(range), CENTER);
+        assert_eq!(range.normal_to_raw(normal), CENTER);
 
         let normal = range.try_normalize(MAX_BOUND).unwrap();
         assert_eq!(normal, Normal::MAX);
-        assert_eq!(DiscreteValue { normal }.to_raw(range), MAX_BOUND);
+        assert_eq!(range.normal_to_raw(normal), MAX_BOUND);
     }
 
     #[test]
@@ -157,36 +171,111 @@ mod tests {
 
         let normal = range.try_normalize(MIN_BOUND).unwrap();
         assert_eq!(normal, Normal::MIN);
-        assert_eq!(DiscreteValue { normal }.to_raw(range), MIN_BOUND);
+        assert_eq!(range.normal_to_raw(normal), MIN_BOUND);
 
         let normal = range.try_normalize(CENTER).unwrap();
         assert_eq!(normal, Normal::CENTER);
-        assert_eq!(DiscreteValue { normal }.to_raw(range), CENTER);
+        assert_eq!(range.normal_to_raw(normal), CENTER);
 
         let normal = range.try_normalize(MAX_BOUND).unwrap();
         assert_eq!(normal, Normal::MAX);
-        assert_eq!(DiscreteValue { normal }.to_raw(range), MAX_BOUND);
+        assert_eq!(range.normal_to_raw(normal), MAX_BOUND);
     }
 
     #[test]
     fn out_of_range() {
+        const OO_MIN_BOUND: RawValue = RawValue::new(9);
         const MIN_BOUND: RawValue = RawValue::new(10);
         const MAX_BOUND: RawValue = RawValue::new(20);
+        const OO_MAX_BOUND: RawValue = RawValue::new(21);
 
-        let range = DiscreteRange::new(MIN_BOUND, MAX_BOUND);
+        const RANGE: DiscreteRange = DiscreteRange::new(MIN_BOUND, MAX_BOUND);
 
-        let res = range.try_normalize(RawValue::MIN);
+        let res = RANGE.try_normalize(OO_MIN_BOUND);
         if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
-            assert_eq!(value, RawValue::MIN.as_u8());
+            assert_eq!(value, OO_MIN_BOUND.as_u8());
             assert_eq!(min, MIN_BOUND.as_u8());
             assert_eq!(max, MAX_BOUND.as_u8());
         }
 
-        let res = range.try_normalize(RawValue::MAX);
+        let res = RANGE.try_normalize(OO_MAX_BOUND);
         if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
-            assert_eq!(value, RawValue::MAX.as_u8() as u8);
+            assert_eq!(value, OO_MAX_BOUND.as_u8() as u8);
             assert_eq!(min, MIN_BOUND.as_u8());
             assert_eq!(max, MAX_BOUND.as_u8());
         }
+
+        let res = RANGE.try_ccize(OO_MIN_BOUND);
+        if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
+            assert_eq!(value, OO_MIN_BOUND.as_u8());
+            assert_eq!(min, MIN_BOUND.as_u8());
+            assert_eq!(max, MAX_BOUND.as_u8());
+        }
+
+        let res = RANGE.try_ccize(OO_MAX_BOUND);
+        if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
+            assert_eq!(value, OO_MAX_BOUND.as_u8() as u8);
+            assert_eq!(min, MIN_BOUND.as_u8());
+            assert_eq!(max, MAX_BOUND.as_u8());
+        }
+
+        let res = RANGE.to_cents(OO_MIN_BOUND);
+        if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
+            assert_eq!(value, OO_MIN_BOUND.as_u8());
+            assert_eq!(min, MIN_BOUND.as_u8());
+            assert_eq!(max, MAX_BOUND.as_u8());
+        }
+
+        let res = RANGE.to_cents(OO_MAX_BOUND);
+        if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
+            assert_eq!(value, OO_MAX_BOUND.as_u8() as u8);
+            assert_eq!(min, MIN_BOUND.as_u8());
+            assert_eq!(max, MAX_BOUND.as_u8());
+        }
+    }
+
+    #[test]
+    fn cc_to_raw() {
+        const MIN_BOUND: RawValue = RawValue::new(10);
+        const CENTER_BOUND: RawValue = RawValue::new(15);
+        const MAX_BOUND: RawValue = RawValue::new(20);
+
+        const RANGE: DiscreteRange = DiscreteRange::new(MIN_BOUND, MAX_BOUND);
+
+        assert_eq!(RANGE.cc_to_raw(CCValue::ZERO), MIN_BOUND);
+        assert_eq!(
+            RANGE.cc_to_raw(CCValue::new_clipped(CCValue::MAX.as_u8() / 2 + 1)),
+            CENTER_BOUND,
+        );
+        assert_eq!(RANGE.cc_to_raw(CCValue::MAX), MAX_BOUND);
+    }
+
+    #[test]
+    fn try_ccize() {
+        const MIN_BOUND: RawValue = RawValue::new(10);
+        const CENTER_BOUND: RawValue = RawValue::new(15);
+        const MAX_BOUND: RawValue = RawValue::new(20);
+
+        const RANGE: DiscreteRange = DiscreteRange::new(MIN_BOUND, MAX_BOUND);
+
+        assert_eq!(RANGE.try_ccize(MIN_BOUND).unwrap(), CCValue::ZERO);
+        assert_eq!(
+            RANGE.try_ccize(CENTER_BOUND).unwrap(),
+            CCValue::new_clipped(CCValue::MAX.as_u8() / 2 + 1),
+        );
+        assert_eq!(RANGE.try_ccize(MAX_BOUND).unwrap(), CCValue::MAX);
+    }
+
+    #[test]
+    fn to_cents() {
+        const MIN_BOUND: RawValue = RawValue::new(10);
+        const CENTER_BOUND: RawValue = RawValue::new(15);
+        const MAX_BOUND: RawValue = RawValue::new(20);
+
+        const RANGE: DiscreteRange = DiscreteRange::new(MIN_BOUND, MAX_BOUND);
+
+        assert_eq!(RANGE.to_cents(MIN_BOUND).unwrap(), 0);
+        assert_eq!(RANGE.to_cents(CENTER_BOUND).unwrap(), 50);
+        assert_eq!(RANGE.to_cents(MAX_BOUND).unwrap(), 100);
     }
 }

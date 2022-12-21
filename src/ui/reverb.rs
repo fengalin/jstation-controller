@@ -60,20 +60,20 @@ where
         let content: Element<_> = row![
             title_area,
             ui::knob(self.reverb.level, |normal| {
-                Level(reverb::Level::from_snapped(normal))
+                Level(reverb::Level::from_normal(normal))
             })
             .build(),
             ui::knob(self.reverb.diffusion, |normal| Diffusion(
-                reverb::Diffusion::from_snapped(normal)
+                reverb::Diffusion::from_normal(normal)
             ))
             .name("Diff.")
             .build(),
             ui::knob(self.reverb.density, |normal| Density(
-                reverb::Density::from_snapped(normal)
+                reverb::Density::from_normal(normal)
             ))
             .build(),
             ui::knob(self.reverb.decay, |normal| {
-                Decay(reverb::Decay::from_snapped(normal))
+                Decay(reverb::Decay::from_normal(normal))
             })
             .build(),
         ]

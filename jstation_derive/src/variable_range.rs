@@ -23,10 +23,10 @@ impl<'a> ToTokens for VariableRange<'a> {
         let param_name = self.base.name();
 
         tokens.extend(quote! {
-            #[derive(Clone, Copy, Debug, Default, PartialEq)]
+            #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
             pub struct #param {
                 discr: <Self as crate::jstation::data::VariableRange>::Discriminant,
-                value: crate::jstation::data::DiscreteValue,
+                value: crate::jstation::data::RawValue,
             }
 
             impl crate::jstation::data::VariableRangeParameter for #param {
@@ -38,24 +38,23 @@ impl<'a> ToTokens for VariableRange<'a> {
 
                 fn set_discriminant(&mut self, discr: Self::Discriminant) {
                     if self.discr != discr {
+                        let cur_range = <Self as crate::jstation::data::VariableRange>::range_from(self.discr);
                         self.discr = discr;
 
-                        // snap the value to the new range
                         if let Some(range) = <Self as crate::jstation::data::VariableRange>::range_from(discr) {
-                            self.value = crate::jstation::data::DiscreteValue::new(
-                                self.value.normal(),
-                                range,
-                            );
+                            if cur_range.map_or(true, |cur_range| cur_range != range) {
+                                crate::jstation::data::DiscreteParameter::reset(self);
+                            }
                         }
                     }
                 }
 
-                fn from_snapped(
+                fn from_normal(
                     discr: <Self as crate::jstation::data::VariableRange>::Discriminant,
                     normal: crate::jstation::data::Normal,
                 ) -> Option<Self> {
                     let range = <Self as crate::jstation::data::VariableRange>::range_from(discr)?;
-                    let value = crate::jstation::data::DiscreteValue::new(normal, range);
+                    let value = range.normal_to_raw(normal);
 
                     Some(#param {
                         discr,
@@ -71,9 +70,9 @@ impl<'a> ToTokens for VariableRange<'a> {
 
                     let range = <Self as crate::jstation::data::VariableRange>::range_from(discr)
                         .ok_or_else(|| Error::ParameterInactive(stringify!(#param).into()))?;
-                    let value =
-                        crate::jstation::data::DiscreteValue::try_from_raw(raw, range)
-                            .map_err(|err| Error::with_context(Self::NAME, err))?;
+                    let value = range
+                        .check(raw)
+                        .map_err(|err| crate::jstation::Error::with_context(Self::NAME, err))?;
 
                     Ok(#param {
                         discr,
@@ -117,12 +116,11 @@ impl<'a> ToTokens for VariableRange<'a> {
             tokens.extend(quote! {
                 impl crate::jstation::data::CCParameter for #param {
                     fn to_cc(self) -> Option<crate::midi::CC> {
-                        use crate::jstation::data::DiscreteParameter;
+                        use crate::jstation::data::VariableRangeParameter;
 
-                        let normal = self.normal()?;
                         Some(crate::midi::CC::new(
                             crate::midi::CCNumber::new(#cc_nb),
-                            normal.into(),
+                            self.range()?.try_ccize(self.value).unwrap(),
                         ))
                     }
                 }
@@ -135,14 +133,14 @@ impl<'a> ToTokens for VariableRange<'a> {
                         cc: crate::midi::CC,
                     ) -> Result<Option<Self>, crate::jstation::Error>
                     {
-                        use crate::jstation::{data::{DiscreteParameter, VariableRangeParameter}, Error};
+                        use crate::jstation::{data::VariableRangeParameter, Error};
 
                         assert_eq!(cc.nb.as_u8(), #cc_nb);
 
                         let range = self.range()
                             .ok_or_else(|| Error::ParameterInactive(stringify!(#param).into()))?;
-                        let value =
-                            crate::jstation::data::DiscreteValue::new(cc.value.into(), range);
+                        let value = range.cc_to_raw(cc.value);
+
                         if self.value == value {
                             return Ok(None);
                         }
