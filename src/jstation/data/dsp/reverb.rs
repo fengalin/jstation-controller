@@ -8,11 +8,11 @@ pub struct Reverb {
     pub switch: Switch,
     #[const_range(max = 12, param_nb = 33, cc_nb = 60, display_map = name)]
     pub typ: Type,
-    #[const_range(max = 99, param_nb = 34, cc_nb = 61, display_cent)]
+    #[const_range(max = 99, param_nb = 34, cc_nb = 61, display_cents)]
     pub level: Level,
-    #[const_range(max = 99, param_nb = 35, cc_nb = 62, display_cent)]
+    #[const_range(max = 99, param_nb = 35, cc_nb = 62, display_cents)]
     pub diffusion: Diffusion,
-    #[const_range(max = 99, param_nb = 36, cc_nb = 63, display_cent)]
+    #[const_range(max = 99, param_nb = 36, cc_nb = 63, display_cents)]
     pub density: Density,
     #[const_range(max = 9, param_nb = 37, cc_nb = 65, display_raw)]
     pub decay: Decay,

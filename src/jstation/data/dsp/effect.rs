@@ -13,7 +13,7 @@ pub struct Effect {
     pub switch: Switch,
     #[const_range(discriminant, max = 6, param_nb = 20, cc_nb = 45, display_map = name)]
     pub typ: Type,
-    #[const_range(max = 99, param_nb = 21, cc_nb = 46, display_cent)]
+    #[const_range(max = 99, param_nb = 21, cc_nb = 46, display_cents)]
     pub mix: Mix,
     // The speed parameter changes assignment depending on the effect type:
     // - For Auto Wah, it's the WahType with 3 possible values.
