@@ -6,8 +6,6 @@ use crate::jstation::{
 pub trait VariableRangeParameter:
     VariableRange + ParameterSetter<Parameter = Self> + Clone + Copy
 {
-    const NAME: &'static str;
-
     fn range(self) -> Option<DiscreteRange>;
     fn set_discriminant(&mut self, discr: Self::Discriminant);
 

@@ -37,7 +37,7 @@ fn build_knob<'a, Field, Message, OnChange, OnRelease, Output>(
     on_release: Option<OnRelease>,
 ) -> Column<'a, Message>
 where
-    Field: DiscreteParameter + fmt::Display,
+    Field: DiscreteParameter + fmt::Display + fmt::Debug,
     Message: 'a,
     Output: Into<Message>,
     OnChange: 'a + Fn(Normal) -> Output,
@@ -53,7 +53,7 @@ where
     }
 
     column![
-        text(name.unwrap_or_else(|| field.name().to_string()))
+        text(name.unwrap_or_else(|| field.param_name().to_string()))
             .size(crate::ui::LABEL_TEXT_SIZE)
             .horizontal_alignment(iced::alignment::Horizontal::Center)
             .width(crate::ui::LABEL_WIDTH),
@@ -97,7 +97,7 @@ where
 
 impl<'a, Field, Message, OnChange, Output> KnobBuilder<'a, Field, Message, OnChange, Output>
 where
-    Field: DiscreteParameter + fmt::Display,
+    Field: DiscreteParameter + fmt::Display + fmt::Debug,
     Message: 'a,
     Output: 'a + Into<Message>,
     OnChange: Fn(Normal) -> Output,
@@ -148,7 +148,7 @@ where
 impl<'a, Field, Message, OnChange, OnRelease, Output>
     KnobBuilderOnRelease<'a, Field, Message, OnChange, OnRelease, Output>
 where
-    Field: DiscreteParameter + fmt::Display,
+    Field: DiscreteParameter + fmt::Display + fmt::Debug,
     Message: 'a,
     Output: Into<Message>,
     OnChange: 'a + Fn(Normal) -> Output,
@@ -160,6 +160,7 @@ where
     }
 }
 
+#[inline]
 fn to_ui_normal(normal: crate::jstation::data::Normal) -> iced_audio::Normal {
     // Safety: jstation's `Normal` is a newtype on an `f32` in (0.0..=1.0)
     // which is the inner type and invariant for `iced_audio::Normal`.
@@ -167,14 +168,15 @@ fn to_ui_normal(normal: crate::jstation::data::Normal) -> iced_audio::Normal {
 }
 
 #[track_caller]
+#[inline]
 fn to_ui_param<P>(param: P) -> iced_audio::NormalParam
 where
-    P: crate::jstation::data::DiscreteParameter,
+    P: crate::jstation::data::DiscreteParameter + fmt::Debug,
 {
-    let (normal, default) = param
-        .normal()
-        .zip(param.normal_default())
-        .expect("Attempt to get a value from an inactive parameter");
+    let (Some(normal), Some(default)) = (param.normal(), param.normal_default()) else {
+        panic!("Attempt to get a value from an inactive parameter {param:?}");
+    };
+
     let value = to_ui_normal(normal);
     let default = to_ui_normal(default);
 

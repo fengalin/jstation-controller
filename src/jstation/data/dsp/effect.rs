@@ -112,7 +112,7 @@ impl VariableRange for Speed {
 }
 
 impl DiscreteParameter for Speed {
-    fn name(self) -> &'static str {
+    fn param_name(self) -> &'static str {
         self.assignment().name()
     }
 
@@ -220,7 +220,7 @@ impl VariableRange for Depth {
 }
 
 impl DiscreteParameter for Depth {
-    fn name(self) -> &'static str {
+    fn param_name(self) -> &'static str {
         self.assignment().name()
     }
 
@@ -284,7 +284,7 @@ impl VariableRange for Regen {
 }
 
 impl DiscreteParameter for Regen {
-    fn name(self) -> &'static str {
+    fn param_name(self) -> &'static str {
         use Discriminant::*;
         match self.discr {
             Chorus | Flanger | Phaser => "Regen",

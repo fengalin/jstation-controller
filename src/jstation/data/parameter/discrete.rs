@@ -5,7 +5,7 @@ use crate::jstation::{
 use crate::midi;
 
 pub trait DiscreteParameter: ParameterSetter<Parameter = Self> + Clone + Copy {
-    fn name(self) -> &'static str;
+    fn param_name(self) -> &'static str;
 
     fn normal_default(self) -> Option<Normal>;
 
@@ -27,8 +27,9 @@ pub trait DiscreteRawParameter: DiscreteParameter {
     const PARAMETER_NB: ParameterNumber;
 
     fn to_raw_parameter(self) -> Option<RawParameter> {
-        self.raw_value()
-            .map(|value| RawParameter::new(Self::PARAMETER_NB, value))
+        let value = self.raw_value()?;
+
+        Some(RawParameter::new(Self::PARAMETER_NB, value))
     }
 }
 
@@ -62,6 +63,7 @@ impl DiscreteRange {
         }
     }
 
+    #[inline]
     pub fn check(self, value: RawValue) -> Result<RawValue, Error> {
         if !(self.min..=(self.min + self.delta)).contains(&value.as_u8()) {
             return Err(self.out_of_range_error(value));
@@ -70,6 +72,7 @@ impl DiscreteRange {
         Ok(value)
     }
 
+    #[inline]
     fn out_of_range_error(self, value: impl Into<u8>) -> Error {
         Error::ValueOutOfRange {
             value: value.into(),
@@ -78,6 +81,7 @@ impl DiscreteRange {
         }
     }
 
+    #[inline]
     fn zero_based(self, value: RawValue) -> Result<u8, Error> {
         value
             .as_u8()

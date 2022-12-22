@@ -107,7 +107,10 @@ impl<'a> ToTokens for ConstRange<'a> {
             );
         }
         let (param_default, normal_default) = if self.default_center {
-            ((param_max + param_min) / 2, quote! { CENTER })
+            (
+                ((param_max as u16 + param_min as u16) / 2) as u8,
+                quote! { CENTER },
+            )
         } else {
             (param_min, quote! { MIN })
         };
@@ -117,13 +120,11 @@ impl<'a> ToTokens for ConstRange<'a> {
             pub struct #param(crate::jstation::data::RawValue);
 
             impl crate::jstation::data::ConstRangeParameter for #param {
-                const NAME: &'static str = #param_name;
-                const MIN_RAW: crate::jstation::data::RawValue =
-                    crate::jstation::data::RawValue::new(#param_min);
-                const MAX_RAW: crate::jstation::data::RawValue =
-                    crate::jstation::data::RawValue::new(#param_max);
                 const RANGE: crate::jstation::data::DiscreteRange =
-                    crate::jstation::data::DiscreteRange::new(Self::MIN_RAW, Self::MAX_RAW);
+                    crate::jstation::data::DiscreteRange::new(
+                        crate::jstation::data::RawValue::new(#param_min),
+                        crate::jstation::data::RawValue::new(#param_max),
+                    );
 
                 fn from_normal(normal: crate::jstation::data::Normal) -> Self {
                     use crate::jstation::data::ConstRangeParameter;
@@ -136,16 +137,15 @@ impl<'a> ToTokens for ConstRange<'a> {
                     use crate::jstation::data::ConstRangeParameter;
                     let value = Self::RANGE
                         .check(raw)
-                        .map_err(|err| crate::jstation::Error::with_context(Self::NAME, err))?;
+                        .map_err(|err| crate::jstation::Error::with_context(#param_name, err))?;
 
                     Ok(#param(value))
                 }
             }
 
             impl crate::jstation::data::DiscreteParameter for #param {
-                fn name(self) -> &'static str {
-                    use crate::jstation::data::ConstRangeParameter;
-                    Self::NAME
+                fn param_name(self) -> &'static str {
+                    #param_name
                 }
 
                 fn normal_default(self) -> Option<crate::jstation::data::Normal> {
@@ -270,6 +270,7 @@ impl<'a> ToTokens for ConstRange<'a> {
                         format!("{}S", &names_param_str.to_shouty_snake_case()).as_str(),
                         self.base.field.span(),
                     );
+                    let expected_list_len = (param_max - param_min) as usize + 1;
 
                     let name_as_field = name_str.to_snake_case();
                     let name_method = Ident::new(&name_as_field, self.base.field.span());
@@ -312,7 +313,7 @@ impl<'a> ToTokens for ConstRange<'a> {
 
                                         assert_eq!(
                                             #named_list.len(),
-                                            (<#param>::MAX_RAW.as_u8() - <#param>::MIN_RAW.as_u8()) as usize + 1,
+                                            #expected_list_len,
                                             concat!(
                                                 stringify!(#named_list),
                                                 " list len and ",
