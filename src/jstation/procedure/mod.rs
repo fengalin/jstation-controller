@@ -50,8 +50,8 @@ macro_rules! declare_procs {
             }
         )* )*
 
-        pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], Procedure> {
-            let (i, proc_id_version) = take(3usize)(i)?;
+        pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], Procedure> {
+            let (i, proc_id_version) = take(3usize)(input)?;
 
             *checksum = *checksum ^ proc_id_version[0] ^ proc_id_version[1] ^ proc_id_version[2];
 
@@ -75,7 +75,7 @@ macro_rules! declare_procs {
                 )* )*
                 _ => {
                     log::warn!("Unknown Procedure with id: x{proc_id:02x}, version: {version}");
-                    Err(nom::Err::Failure(Error::new(i, error::ErrorKind::NoneOf)))
+                    Err(nom::Err::Error(Error::new(input, error::ErrorKind::NoneOf)))
                 }
             }
         }
@@ -87,5 +87,6 @@ declare_procs!(
     utility_settings: UtilitySettingsReq, UtilitySettingsResp;
     one_program: OneProgramReq, OneProgramResp;
     program_indices: ProgramIndicesReq, ProgramIndicesResp;
+    program_update: ProgramUpdateReq, ProgramUpdateResp;
     who_am_i: WhoAmIReq, WhoAmIResp;
 );

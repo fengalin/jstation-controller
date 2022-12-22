@@ -40,6 +40,17 @@ impl<'a> ParamGroup<'a> {
             .iter()
             .filter(|param| matches!(param, Param::VariableRange(_)))
     }
+
+    fn sorted_by_param_nb(&self) -> Option<impl Iterator<Item = &Param<'a>>> {
+        let mut params = Vec::from_iter(self.params.iter().filter(|p| p.param_nb().is_some()));
+        if params.is_empty() {
+            return None;
+        }
+
+        params.sort_by(|p1, p2| p1.param_nb().unwrap().cmp(&p2.param_nb().unwrap()));
+
+        Some(params.into_iter())
+    }
 }
 
 impl<'a> ToTokens for ParamGroup<'a> {
@@ -142,6 +153,30 @@ impl<'a> ToTokens for ParamGroup<'a> {
                 }
             }
         });
+
+        // RawParameter specifics
+
+        if let Some(params) = self.sorted_by_param_nb() {
+            let set_field = params.map(|p| {
+                let field = p.field();
+                quote! {
+                    self.#field.set_raw(data)?;
+                }
+            });
+
+            tokens.extend(quote! {
+                impl crate::jstation::data::RawParameter for #group_name {
+                    fn set_raw(
+                        &mut self,
+                        data: &[crate::jstation::data::RawValue]
+                    ) -> Result<(), crate::jstation::Error> {
+                        #( #set_field )*
+
+                        Ok(())
+                    }
+                }
+            });
+        }
 
         // CCParameter specifics
 

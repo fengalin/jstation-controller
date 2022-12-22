@@ -11,8 +11,8 @@ impl ProcedureBuilder for BankDumpReq {
 }
 
 impl BankDumpReq {
-    pub fn parse<'i>(i: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], BankDumpReq> {
-        Ok((i, BankDumpReq))
+    pub fn parse<'i>(input: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], BankDumpReq> {
+        Ok((input, BankDumpReq))
     }
 }
 
@@ -31,8 +31,8 @@ impl ProcedureBuilder for StartBankDumpResp {
 }
 
 impl StartBankDumpResp {
-    pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], StartBankDumpResp> {
-        let (i, total_len_size) = take_split_bytes_u16(i, checksum)?;
+    pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], StartBankDumpResp> {
+        let (i, total_len_size) = take_split_bytes_u16(input, checksum)?;
         if total_len_size > 2 {
             // Quoting gstation-edit:
             // > For some reasons, data len in a bank export from J-Edit
@@ -56,7 +56,7 @@ impl ProcedureBuilder for EndBankDumpResp {
 }
 
 impl EndBankDumpResp {
-    pub fn parse<'i>(i: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], EndBankDumpResp> {
-        Ok((i, EndBankDumpResp))
+    pub fn parse<'i>(input: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], EndBankDumpResp> {
+        Ok((input, EndBankDumpResp))
     }
 }

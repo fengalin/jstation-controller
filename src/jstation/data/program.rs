@@ -1,8 +1,10 @@
 use std::{borrow::Cow, fmt};
 
+use nom::IResult;
+
 use crate::jstation::{
-    data::{ParameterNumber, RawParameter, RawValue},
-    Error,
+    data::{ParameterNumber, RawValue},
+    take_split_bytes_u8, Error,
 };
 
 #[derive(Debug)]
@@ -10,42 +12,20 @@ pub struct Program {
     bank: ProgramBank,
     nb: ProgramNumber,
 
-    original_data: Cow<'static, [RawValue]>,
-    original_name: Cow<'static, str>,
-
-    data: Cow<'static, [RawValue]>,
-    name: Cow<'static, str>,
+    original: ProgramData,
+    cur: ProgramData,
 }
 
 impl Program {
-    pub const PARAM_COUNT: usize = (ParameterNumber::MAX.as_u8() + 1) as usize;
-    const NAME_MAX_LEN: usize = 20;
+    pub fn new(bank: ProgramBank, nb: ProgramNumber, data: ProgramData) -> Self {
+        let original = data;
 
-    pub fn try_new(
-        bank: ProgramBank,
-        nb: ProgramNumber,
-        data: Vec<RawValue>,
-        name: String,
-    ) -> Result<Self, Error> {
-        if data.len() > Self::PARAM_COUNT {
-            return Err(Error::ProgramDataOutOfRange(data.len()));
-        }
-
-        if name.len() > Self::NAME_MAX_LEN {
-            return Err(Error::ProgramNameOutOfRange(name.len()));
-        }
-
-        let data = Cow::<[RawValue]>::from(data);
-        let name = Cow::<str>::from(name);
-
-        Ok(Program {
+        Program {
             bank,
             nb,
-            original_data: data.clone(),
-            original_name: name.clone(),
-            data,
-            name,
-        })
+            cur: original.clone(),
+            original,
+        }
     }
 
     pub fn bank(&self) -> ProgramBank {
@@ -57,43 +37,77 @@ impl Program {
     }
 
     pub fn data(&self) -> &[RawValue] {
-        &self.data
+        &self.cur.data
     }
 
     pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn parameter(&self, nb: ParameterNumber) -> RawParameter {
-        RawParameter::new(nb, self.data[nb.as_u8() as usize])
+        &self.cur.name
     }
 
     pub fn has_changed(&self) -> bool {
-        matches!(self.data, Cow::Owned(_)) | matches!(self.name, Cow::Owned(_))
+        self.cur.has_changed()
     }
 
     pub fn undo(&mut self) {
-        self.data = self.original_data.clone();
-        self.name = self.original_name.clone();
+        self.cur = self.original.clone();
     }
 
     pub fn apply(&mut self) {
-        if matches!(self.data, Cow::Owned(_)) {
-            std::mem::swap(&mut self.original_data, &mut self.data);
-            self.data = self.original_data.clone();
+        if matches!(self.cur.data, Cow::Owned(_)) {
+            std::mem::swap(&mut self.original.data, &mut self.cur.data);
+            self.cur.data = self.original.data.clone();
         }
 
-        assert!(matches!(self.data, Cow::Borrowed(_)));
+        assert!(matches!(self.cur.data, Cow::Borrowed(_)));
 
-        if matches!(self.name, Cow::Owned(_)) {
-            std::mem::swap(&mut self.original_name, &mut self.name);
-            self.name = self.original_name.clone();
+        if matches!(self.cur.name, Cow::Owned(_)) {
+            std::mem::swap(&mut self.original.name, &mut self.cur.name);
+            self.cur.name = self.original.name.clone();
         }
 
-        assert!(matches!(self.name, Cow::Borrowed(_)));
+        assert!(matches!(self.cur.name, Cow::Borrowed(_)));
     }
 
-    pub fn rename_as(&mut self, mut name: String) {
+    pub fn rename_as(&mut self, name: String) {
+        self.cur.rename_as(&self.original.name, name);
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ProgramData {
+    data: Cow<'static, [RawValue]>,
+    name: Cow<'static, str>,
+}
+
+impl ProgramData {
+    pub const PARAM_COUNT: usize = (ParameterNumber::MAX.as_u8() + 1) as usize;
+    const NAME_MAX_LEN: usize = 20;
+
+    pub fn try_new(data: Vec<RawValue>, name: String) -> Result<Self, Error> {
+        if data.len() > Self::PARAM_COUNT {
+            return Err(Error::ProgramDataOutOfRange(data.len()));
+        }
+
+        if name.len() > Self::NAME_MAX_LEN {
+            return Err(Error::ProgramNameOutOfRange(name.len()));
+        }
+
+        let data = Cow::<[RawValue]>::from(data);
+        let name = Cow::<str>::from(name);
+
+        Ok(ProgramData { data, name })
+    }
+
+    pub fn data(&self) -> &[RawValue] {
+        &self.data
+    }
+
+    fn has_changed(&self) -> bool {
+        matches!(self.data, Cow::Owned(_)) | matches!(self.name, Cow::Owned(_))
+    }
+
+    #[allow(clippy::ptr_arg)]
+    fn rename_as(&mut self, original_name: &Cow<'static, str>, mut name: String) {
         // Truncate the name so as to comply with the device's limits
         let buf = name.as_bytes();
         if buf.len() > Self::NAME_MAX_LEN {
@@ -104,16 +118,62 @@ impl Program {
             return;
         }
 
-        if name == self.original_name {
+        if name == *original_name {
             if matches!(self.name, Cow::Owned(_)) {
                 // renaming as the original name
-                self.name = self.original_name.clone();
+                self.name = original_name.clone();
             }
 
             return;
         }
 
         self.name = Cow::<str>::from(name);
+    }
+}
+
+impl ProgramData {
+    pub fn parse<'i>(
+        input: &'i [u8],
+        checksum: &mut u8,
+        mut len: u16,
+    ) -> IResult<&'i [u8], ProgramData> {
+        let mut i = input;
+
+        let mut data = Vec::<RawValue>::new();
+        for _ in 0..Self::PARAM_COUNT {
+            let (i_, byte) = take_split_bytes_u8(i, checksum)?;
+            i = i_;
+            data.push(byte.into());
+        }
+
+        len -= Self::PARAM_COUNT as u16;
+
+        let mut name = vec![];
+        let mut got_zero = false;
+
+        for _ in 0..len {
+            let (i_, byte) = take_split_bytes_u8(i, checksum)?;
+            i = i_;
+            if !got_zero {
+                if byte != 0 {
+                    name.push(byte);
+                } else {
+                    got_zero = true;
+                }
+            }
+        }
+
+        let name = String::from_utf8_lossy(&name).to_string();
+        let prog_data = ProgramData::try_new(data, name).map_err(|err| {
+            log::error!("ProgramData: {err}");
+
+            nom::Err::Failure(nom::error::Error::new(
+                input,
+                nom::error::ErrorKind::LengthValue,
+            ))
+        })?;
+
+        Ok((i, prog_data))
     }
 }
 
@@ -154,8 +214,14 @@ impl From<ProgramBank> for u8 {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ProgramNumber(u8);
+
+impl ProgramNumber {
+    pub fn as_u8(self) -> u8 {
+        self.0
+    }
+}
 
 impl From<u8> for ProgramNumber {
     fn from(nb: u8) -> Self {

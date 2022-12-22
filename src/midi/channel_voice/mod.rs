@@ -21,8 +21,8 @@ pub enum Message {
     ProgramChange(u8),
 }
 
-pub fn parse(i: &[u8]) -> IResult<&[u8], ChannelVoice> {
-    let (i, tag_chan) = take(1usize)(i)?;
+pub fn parse(input: &[u8]) -> IResult<&[u8], ChannelVoice> {
+    let (i, tag_chan) = take(1usize)(input)?;
     let tag_chan = midi::TagChannel::from(tag_chan[0]);
 
     let (i, msg) = match tag_chan.tag {
@@ -33,11 +33,11 @@ pub fn parse(i: &[u8]) -> IResult<&[u8], ChannelVoice> {
             (i, Message::ProgramChange(prog_id[0]))
         }
         other => {
-            log::warn!(
+            log::debug!(
                 "Unknown Midi ChannelVoice tag with id: 0x{:02x}",
                 other.as_u8(),
             );
-            return Err(nom::Err::Failure(Error::new(i, error::ErrorKind::NoneOf)));
+            return Err(nom::Err::Error(Error::new(input, error::ErrorKind::NoneOf)));
         }
     };
 

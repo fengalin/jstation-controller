@@ -1,4 +1,10 @@
-use std::{cell::RefCell, future, rc::Rc, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, VecDeque},
+    future,
+    rc::Rc,
+    sync::Arc,
+};
 
 use iced::{
     widget::{button, checkbox, column, container, horizontal_space, row, text, vertical_space},
@@ -11,7 +17,10 @@ use smol::future::FutureExt;
 pub static APP_NAME: Lazy<Arc<str>> = Lazy::new(|| "J-Station Controller".into());
 
 use crate::{
-    jstation::{self, data::dsp},
+    jstation::{
+        self,
+        data::{dsp, Program, ProgramNumber},
+    },
     midi, ui,
 };
 
@@ -21,11 +30,20 @@ pub enum Error {
     JStationNotFound,
     #[error("J-Station error: {}", .0)]
     JStation(#[from] jstation::Error),
+    #[error("Unexpected program received {}, expected {}", .received, .expected)]
+    UnexpectedProgramNumber {
+        received: ProgramNumber,
+        expected: ProgramNumber,
+    },
+    #[error("Unexpected program received {}", .0)]
+    UnexpectedProgram(ProgramNumber),
 }
 
 pub struct App {
     jstation: ui::jstation::Interface,
     dsp: dsp::Dsp,
+    programs: BTreeMap<ProgramNumber, Program>,
+    program_indices: VecDeque<u8>,
 
     show_midi_panel: bool,
     ports: Rc<RefCell<ui::midi::Ports>>,
@@ -51,8 +69,10 @@ impl App {
         match res {
             Ok(SysEx(sysex)) => {
                 use jstation::Procedure::*;
-                match &sysex.as_ref().proc {
+                match Arc::try_unwrap(sysex).unwrap().proc {
                     WhoAmIResp(resp) => {
+                        self.programs.clear();
+
                         self.jstation.have_who_am_i_resp(resp).map_err(|err| {
                             self.jstation.clear();
                             self.ports.borrow_mut().set_disconnected();
@@ -72,11 +92,30 @@ impl App {
                         // FIXME handle ui consequence of the error
                         self.jstation.bank_dump()?;
                     }
+                    ProgramIndicesResp(resp) => {
+                        self.program_indices = VecDeque::from_iter(resp.indices.iter().cloned());
+                    }
                     OneProgramResp(resp) => {
-                        log::debug!("{:?}", resp.prog);
+                        let prog_nb = resp.prog.nb();
+
+                        if let Some(indice) = self.program_indices.pop_front() {
+                            if prog_nb.as_u8() == indice {
+                                self.programs.insert(prog_nb, resp.prog);
+                            } else {
+                                self.show_error(&Error::UnexpectedProgramNumber {
+                                    received: prog_nb,
+                                    expected: ProgramNumber::from(indice),
+                                });
+                            }
+                        } else {
+                            self.show_error(&Error::UnexpectedProgram(prog_nb));
+                        }
                     }
                     EndBankDumpResp(_) => {
-                        log::debug!("EndBankDumpResp");
+                        self.jstation.program_update_req()?;
+                    }
+                    ProgramUpdateResp(resp) => {
+                        self.dsp.set_raw(resp.prog_data.data())?;
                     }
                     other => {
                         log::debug!("Unhandled {other:?}");
@@ -92,7 +131,15 @@ impl App {
                         Ok(None) => log::debug!("Unchanged param for {cc:?}"),
                         Err(err) => log::warn!("{err}"),
                     },
-                    ProgramChange(pc) => log::debug!("Got {pc:?}"),
+                    ProgramChange(prog_nb) => {
+                        log::debug!("Requested {prog_nb:?}");
+                        if let Some(prog) = self.programs.get(&prog_nb) {
+                            self.dsp.set_raw(prog.data())?;
+                        } else {
+                            // FIXME could be an error
+                            log::warn!("Requested unknown {prog_nb:?}");
+                        }
+                    }
                 }
             }
             Err(err) if err.is_handshake_timeout() => {
@@ -148,6 +195,8 @@ impl Application for App {
             jstation,
 
             dsp: dsp::Dsp::default(),
+            programs: BTreeMap::new(),
+            program_indices: VecDeque::new(),
 
             show_midi_panel: false,
             ports: RefCell::new(ports).into(),

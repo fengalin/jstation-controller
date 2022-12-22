@@ -79,13 +79,13 @@ pub struct Message {
     pub proc: Procedure,
 }
 
-pub fn parse(i: &[u8]) -> IResult<&[u8], Message> {
+pub fn parse(input: &[u8]) -> IResult<&[u8], Message> {
     let (i, _) = tag([
         midi::sysex::TAG,
         MANUFACTURER_ID[0],
         MANUFACTURER_ID[1],
         MANUFACTURER_ID[2],
-    ])(i)?;
+    ])(input)?;
 
     let (i, chan) = take(1usize)(i)?;
     let (i, _) = tag([PRODUCT_ID])(i)?;

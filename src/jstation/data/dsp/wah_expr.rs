@@ -1,5 +1,6 @@
 use jstation_derive::ParameterSetter;
 
+// FIXME parameters and cc are disjoncted, might want to use different structs
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]
 pub struct WahExpr {
     #[boolean(param_nb = 5, cc_nb = 8)]

@@ -26,8 +26,8 @@ impl ProcedureBuilder for WhoAmIReq {
 }
 
 impl WhoAmIReq {
-    pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], WhoAmIReq> {
-        let (i, resp_on_all_chans) = take_split_bytes_bool(i, checksum)?;
+    pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], WhoAmIReq> {
+        let (i, resp_on_all_chans) = take_split_bytes_bool(input, checksum)?;
 
         Ok((i, WhoAmIReq { resp_on_all_chans }))
     }
@@ -44,8 +44,8 @@ impl WhoAmIResp {
     pub const ID: u8 = 0x41;
     pub const VERSION: u8 = 1;
 
-    pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], WhoAmIResp> {
-        let (i, _) = take_split_bytes_len(i, checksum, 3)?;
+    pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], WhoAmIResp> {
+        let (i, _) = take_split_bytes_len(input, checksum, 3)?;
 
         let (i, receive_chan) = take_split_bytes_chan(i, checksum)?;
         let (i, transmit_chan) = take_split_bytes_chan(i, checksum)?;

@@ -1,5 +1,5 @@
 use crate::jstation::{
-    data::{Normal, ParameterNumber, ParameterSetter, RawParameter, RawValue},
+    data::{Normal, ParameterSetter, RawValue},
     Error,
 };
 use crate::midi;
@@ -18,18 +18,6 @@ pub trait DiscreteParameter: ParameterSetter<Parameter = Self> + Clone + Copy {
 
     fn is_active(self) -> bool {
         true
-    }
-}
-
-// FIXME might want to define a generic RawParameter similar to CCParameter
-/// A `DiscreteParameter`, view as a raw `Parameter`, e.g. part of a `Program` `data`.
-pub trait DiscreteRawParameter: DiscreteParameter {
-    const PARAMETER_NB: ParameterNumber;
-
-    fn to_raw_parameter(self) -> Option<RawParameter> {
-        let value = self.raw_value()?;
-
-        Some(RawParameter::new(Self::PARAMETER_NB, value))
     }
 }
 

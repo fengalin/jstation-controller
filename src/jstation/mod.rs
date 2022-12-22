@@ -42,14 +42,14 @@ impl From<sysex::Message> for Message {
     }
 }
 
-fn parse_midi_channel_voice(i: &[u8]) -> IResult<&[u8], Message> {
-    let (i, cv) = midi::channel_voice::parse(i)?;
+fn parse_midi_channel_voice(input: &[u8]) -> IResult<&[u8], Message> {
+    let (i, cv) = midi::channel_voice::parse(input)?;
 
     let cv = ChannelVoice::try_from(cv).map_err(|err| {
         use nom::error::{self, Error};
 
-        log::warn!("{err}");
-        nom::Err::Failure(Error::new(i, error::ErrorKind::NoneOf))
+        log::debug!("{err}");
+        nom::Err::Error(Error::new(input, error::ErrorKind::NoneOf))
     })?;
 
     Ok((i, cv.into()))

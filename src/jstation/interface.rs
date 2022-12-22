@@ -45,7 +45,7 @@ impl Interface {
         }
     }
 
-    pub fn have_who_am_i_resp(&mut self, resp: &procedure::WhoAmIResp) -> Result<(), Error> {
+    pub fn have_who_am_i_resp(&mut self, resp: procedure::WhoAmIResp) -> Result<(), Error> {
         // FIXME check that this is the right channel to send cc
         self.cc_chan = resp.receive_chan;
         self.sysex_chan = resp.sysex_chan;
@@ -58,6 +58,11 @@ impl Interface {
     pub fn bank_dump(&mut self) -> Result<(), Error> {
         self.send_sysex(procedure::BankDumpReq)
             .map_err(|err| Error::with_context("Bank Dump req.", err))
+    }
+
+    pub fn program_update_req(&mut self) -> Result<(), Error> {
+        self.send_sysex(procedure::ProgramUpdateReq)
+            .map_err(|err| Error::with_context("Program Update req.", err))
     }
 
     fn send_sysex(&mut self, proc: impl ProcedureBuilder) -> Result<(), Error> {

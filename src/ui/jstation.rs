@@ -36,12 +36,16 @@ impl Interface {
         self.subscription = None;
     }
 
-    pub fn have_who_am_i_resp(&mut self, resp: &procedure::WhoAmIResp) -> Result<(), Error> {
+    pub fn have_who_am_i_resp(&mut self, resp: procedure::WhoAmIResp) -> Result<(), Error> {
         self.iface.have_who_am_i_resp(resp)
     }
 
     pub fn bank_dump(&mut self) -> Result<(), Error> {
         self.iface.bank_dump()
+    }
+
+    pub fn program_update_req(&mut self) -> Result<(), Error> {
+        self.iface.program_update_req()
     }
 
     pub fn send_cc(&mut self, cc: midi::CC) -> Result<(), Error> {

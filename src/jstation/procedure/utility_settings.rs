@@ -15,8 +15,8 @@ impl ProcedureBuilder for UtilitySettingsReq {
 }
 
 impl UtilitySettingsReq {
-    pub fn parse<'i>(i: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], UtilitySettingsReq> {
-        Ok((i, UtilitySettingsReq))
+    pub fn parse<'i>(input: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], UtilitySettingsReq> {
+        Ok((input, UtilitySettingsReq))
     }
 }
 
@@ -48,8 +48,8 @@ impl ProcedureBuilder for UtilitySettingsResp {
 }
 
 impl UtilitySettingsResp {
-    pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], UtilitySettingsResp> {
-        let (i, _) = take_split_bytes_len(i, checksum, 6)?;
+    pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], UtilitySettingsResp> {
+        let (i, _) = take_split_bytes_len(input, checksum, 6)?;
 
         let (i, stereo_mono) = take_split_bytes_bool(i, checksum)?;
         let (i, dry_track) = take_split_bytes_bool(i, checksum)?;

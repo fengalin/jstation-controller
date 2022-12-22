@@ -1,7 +1,7 @@
 use nom::{error::{self, Error}, IResult};
 
 use crate::jstation::{
-    data::{Program, ProgramBank, ProgramNumber, RawValue},
+    data::{Program, ProgramBank, ProgramData, ProgramNumber},
     split_bytes, take_split_bytes_u16, take_split_bytes_u8, BufferBuilder, ProcedureBuilder
 };
 
@@ -24,8 +24,8 @@ impl ProcedureBuilder for OneProgramReq {
 }
 
 impl OneProgramReq {
-    pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramReq> {
-        let (i, bank) = take_split_bytes_u8(i, checksum)?;
+    pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramReq> {
+        let (i, bank) = take_split_bytes_u8(input, checksum)?;
         let bank = ProgramBank::from(bank);
 
         let (i, nb) = take_split_bytes_u8(i, checksum)?;
@@ -62,50 +62,25 @@ impl ProcedureBuilder for OneProgramResp {
 }
 
 impl OneProgramResp {
-    pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramResp> {
-        let (i, bank) = take_split_bytes_u8(i, checksum)?;
+    pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramResp> {
+        let (i, bank) = take_split_bytes_u8(input, checksum)?;
         let bank = ProgramBank::from(bank);
 
         let (i, nb) = take_split_bytes_u8(i, checksum)?;
         let nb = ProgramNumber::from(nb);
 
-        let (mut i, mut len) = take_split_bytes_u16(i, checksum)?;
+        let (i, len) = take_split_bytes_u16(i, checksum)?;
 
-        let mut data = Vec::<RawValue>::new();
-        for _ in 0..Program::PARAM_COUNT {
-            let (i_, byte) = take_split_bytes_u8(i, checksum)?;
-            i = i_;
-            data.push(byte.into());
-        }
-
-        len -= Program::PARAM_COUNT as u16;
-
-        let mut name = vec![];
-        let mut got_zero = false;
-
-        for _ in 0..len {
-            let (i_, byte) = take_split_bytes_u8(i, checksum)?;
-            i = i_;
-            if !got_zero {
-                if byte != 0 {
-                    name.push(byte);
-                } else {
-                    got_zero = true;
-                }
-            }
-        }
-
-        let name = String::from_utf8_lossy(&name).to_string();
-        let prog = Program::try_new(bank, nb, data, name)
+        let (i, prog_data) = ProgramData::parse(i, checksum, len)
             .map_err(|err| {
-                log::error!("{err}");
+                log::error!("OneProgramResp: {err}");
 
                 nom::Err::Failure(Error::new(
-                    i,
+                    input,
                     error::ErrorKind::LengthValue,
                 ))
             })?;
 
-        Ok((i, OneProgramResp { prog }))
+        Ok((i, OneProgramResp { prog: Program::new(bank, nb, prog_data) }))
     }
 }

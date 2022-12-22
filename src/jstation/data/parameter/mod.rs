@@ -1,11 +1,11 @@
 mod boolean;
-pub use boolean::{BoolParameter, BoolRawParameter};
+pub use boolean::BoolParameter;
 
 mod const_range;
 pub use const_range::ConstRangeParameter;
 
 mod discrete;
-pub use discrete::{DiscreteParameter, DiscreteRange, DiscreteRawParameter};
+pub use discrete::{DiscreteParameter, DiscreteRange};
 
 mod normal;
 pub use normal::Normal;
