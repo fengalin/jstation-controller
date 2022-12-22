@@ -4,9 +4,6 @@ use crate::jstation::{
 };
 
 pub trait ConstRangeParameter: ParameterSetter<Parameter = Self> + Clone + Copy {
-    const NAME: &'static str;
-    const MIN_RAW: RawValue;
-    const MAX_RAW: RawValue;
     const RANGE: crate::jstation::data::DiscreteRange;
 
     fn from_normal(normal: Normal) -> Self;

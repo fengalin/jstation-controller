@@ -7,7 +7,7 @@ use iced_lazy::{self, Component};
 use crate::{
     jstation::data::{
         dsp::{amp, Amp},
-        ConstRangeParameter,
+        ConstRangeParameter, DiscreteParameter,
     },
     ui::{
         self, AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, DSP_TITLE_AREA_WIDTH,
@@ -66,7 +66,7 @@ where
     fn view(&self, state: &Self::State) -> Element<Event> {
         let mut modeling = column![
             row![
-                text(amp::Modeling::NAME)
+                text(self.amp.modeling.param_name())
                     .size(LABEL_TEXT_SIZE)
                     .width(AMP_CABINET_LABEL_WIDTH),
                 checkbox("nick", state.show_nick, Event::MustShowNicks).size(CHECKBOX_SIZE),

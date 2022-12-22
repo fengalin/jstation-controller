@@ -9,6 +9,7 @@ impl Normal {
     pub const CENTER: Normal = Normal(0.5);
     pub const MAX: Normal = Normal(1.0);
 
+    #[inline]
     pub fn as_ratio(self) -> f32 {
         self.0
     }
@@ -16,6 +17,7 @@ impl Normal {
     /// Tries to build a `Normal` from the provided zero based value and range.
     ///
     /// Returns an `Error` if the `value` is greated than `max`.
+    #[inline]
     pub fn try_normalize(value: u8, range: u8) -> Result<Normal, Error> {
         if value > range {
             return Err(Error::ValueOutOfRange {

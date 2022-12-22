@@ -278,13 +278,13 @@ impl Listener {
             .await
             .expect("Broken internal channel");
 
-        parse_raw_midi_msg(&midi_msg)
-            .map(|(_, proc)| proc)
-            .map_err(|err| {
-                log::error!("{}", err.to_string());
+        let (_, proc) = parse_raw_midi_msg(&midi_msg).map_err(|err| {
+            log::error!("{}", err.to_string());
 
-                Error::Parse
-            })
+            Error::Parse
+        })?;
+
+        Ok(proc)
     }
 
     async fn handshake_receive(&mut self) -> Result<Message, Error> {
@@ -300,13 +300,13 @@ impl Listener {
             }
         };
 
-        parse_raw_midi_msg(&midi_msg)
-            .map(|(_, proc)| proc)
-            .map_err(|err| {
-                log::error!("{}", err.to_string());
+        let (_, proc) = parse_raw_midi_msg(&midi_msg).map_err(|err| {
+            log::error!("{}", err.to_string());
 
-                Error::Parse
-            })
+            Error::Parse
+        })?;
+
+        Ok(proc)
     }
 }
 
