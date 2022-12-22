@@ -1,9 +1,23 @@
 # jstation-controller ![CI](https://github.com/fengalin/jstation-controller/workflows/CI/badge.svg)
 
-`jstation-controller` aims to be a cross-platform interface to control the J-Station
-guitar and bass modeling and effect processing system.
+`jstation-controller` is a cross-platform interface to control the J-Station guitar and bass modeling and effect processing system.
 
-Note that this application is in early development. See [gstation-edit](https://github.com/fengalin/gstation-edit) for a working Linux alternative.
+While it is usable to control a J-Station, this application is a work in progress and lacks functionalities. See [gstation-edit](https://github.com/fengalin/gstation-edit) for a full-featured Linux alternative.
+
+## Features
+
+- [X] Scan the available MIDI ports for a J-Station device.
+- [X] Download device Programs.
+- [X] Show the parameters for selected Program.
+- [X] Use the UI to update a parameter.
+- [X] Reflect device parameters updates on the UI.
+- [ ] Show the list of Programs.
+- [ ] Change Program from the UI.
+- [ ] Rename a Program.
+- [ ] Store modifications to current Program.
+- [ ] Undo pending modifications.
+- [ ] Import a Program bank from a file.
+- [ ] Export a Program bank to a file.
 
 ## Dependencies
 
@@ -16,8 +30,16 @@ This application uses the following crates which require system level libraries:
 
 Minimum dependencies include development libraries for:
 
-- X11 or Wayland.
-- `alsa` (`alsa-lib-devel`, `libasound2-dev`, ...)
+- Wayland (`libwayland-client`, `libwayland-dev`, ...) or X11 (`libxkbcommon-dev`, ...)
+- alsa (`alsa-lib-devel`, `libasound2-dev`, ...)
+
+### macOS
+
+If you can test the application on this OS, please open a PR with instructions.
+
+### Windows
+
+If you can test the application on this OS, please open a PR with instructions.
 
 ## Build
 
