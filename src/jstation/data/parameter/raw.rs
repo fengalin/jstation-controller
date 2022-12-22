@@ -1,25 +1,9 @@
 use std::fmt;
 
-use crate::{jstation::data::ParameterNumber, midi};
+use crate::{jstation::Error, midi};
 
-#[derive(Copy, Clone, Debug)]
-pub struct RawParameter {
-    nb: ParameterNumber,
-    value: RawValue,
-}
-
-impl RawParameter {
-    pub fn new(nb: ParameterNumber, value: RawValue) -> Self {
-        RawParameter { nb, value }
-    }
-
-    pub fn nb(self) -> ParameterNumber {
-        self.nb
-    }
-
-    pub fn value(self) -> RawValue {
-        self.value
-    }
+pub trait RawParameter {
+    fn set_raw(&mut self, data: &[RawValue]) -> Result<(), Error>;
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]

@@ -23,7 +23,7 @@ impl<'a> ToTokens for Boolean<'a> {
         let param_name = self.base.name();
 
         tokens.extend(quote! {
-            #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+            #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
             pub struct #param(bool);
 
             impl crate::jstation::data::ParameterSetter for #param {
@@ -41,16 +41,11 @@ impl<'a> ToTokens for Boolean<'a> {
             }
 
             impl crate::jstation::data::BoolParameter for #param {
-                const NAME: &'static str = #param_name;
-                const DEFAULT: bool = false;
                 const TRUE: Self = #param(true);
                 const FALSE: Self = #param(false);
-            }
 
-            impl Default for #param {
-                fn default() -> Self {
-                    use crate::jstation::data::BoolParameter;
-                    #param(Self::DEFAULT)
+                fn name(self) -> &'static str {
+                    #param_name
                 }
             }
 
@@ -69,9 +64,15 @@ impl<'a> ToTokens for Boolean<'a> {
 
         if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
-                impl crate::jstation::data::BoolRawParameter for #param {
-                    const PARAMETER_NB: crate::jstation::data::ParameterNumber =
-                        crate::jstation::data::ParameterNumber::new(#param_nb);
+                impl crate::jstation::data::RawParameter for #param {
+                    fn set_raw(
+                        &mut self,
+                        data: &[crate::jstation::data::RawValue],
+                    ) -> Result<(), crate::jstation::Error> {
+                        self.0 = data[#param_nb].as_u8() != 0;
+
+                        Ok(())
+                    }
                 }
             });
         }

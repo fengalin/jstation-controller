@@ -195,9 +195,18 @@ impl<'a> ToTokens for ConstRange<'a> {
 
         if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
-                impl crate::jstation::data::DiscreteRawParameter for #param {
-                    const PARAMETER_NB: crate::jstation::data::ParameterNumber =
-                        crate::jstation::data::ParameterNumber::new(#param_nb);
+                impl crate::jstation::data::RawParameter for #param {
+                    fn set_raw(
+                        &mut self,
+                        data: &[crate::jstation::data::RawValue],
+                    ) -> Result<(), crate::jstation::Error> {
+                        use crate::jstation::data::ConstRangeParameter;
+                        let param = Self::try_from_raw(data[#param_nb])?;
+
+                        *self = param;
+
+                        Ok(())
+                    }
                 }
             });
         }

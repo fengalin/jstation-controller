@@ -76,6 +76,10 @@ impl<'a> Param<'a> {
         self.base().cc_nb
     }
 
+    pub fn param_nb(&self) -> Option<usize> {
+        self.base().param_nb
+    }
+
     pub fn is_discriminant(&self) -> bool {
         match self {
             Param::ConstRange(param) => param.is_discriminant(),
@@ -86,7 +90,8 @@ impl<'a> Param<'a> {
 
 pub struct ParamBase<'a> {
     pub field: &'a Field,
-    pub param_nb: Option<u8>,
+    pub name: String,
+    pub param_nb: Option<usize>,
     pub cc_nb: Option<u8>,
 }
 
@@ -94,6 +99,7 @@ impl<'a> ParamBase<'a> {
     pub fn new(field: &'a Field) -> Self {
         ParamBase {
             field,
+            name: field.ty.to_token_stream().to_string().to_title_case(),
             param_nb: None,
             cc_nb: None,
         }
@@ -102,7 +108,7 @@ impl<'a> ParamBase<'a> {
     pub fn have_arg(&mut self, arg: Arg) {
         let name = arg.name.to_string();
         match name.as_str() {
-            "param_nb" => self.param_nb = Some(arg.u8_or_abort(self.field)),
+            "param_nb" => self.param_nb = Some(arg.u8_or_abort(self.field) as usize),
             "cc_nb" => self.cc_nb = Some(arg.u8_or_abort(self.field)),
             other => {
                 abort!(
@@ -115,8 +121,8 @@ impl<'a> ParamBase<'a> {
         }
     }
 
-    pub fn name(&self) -> String {
-        self.field.ty.to_token_stream().to_string().to_title_case()
+    pub fn name(&self) -> &str {
+        self.name.as_str()
     }
 }
 

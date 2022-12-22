@@ -12,8 +12,8 @@ impl ProcedureBuilder for ProgramIndicesReq {
 }
 
 impl ProgramIndicesReq {
-    pub fn parse<'i>(i: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], ProgramIndicesReq> {
-        Ok((i, ProgramIndicesReq))
+    pub fn parse<'i>(input: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], ProgramIndicesReq> {
+        Ok((input, ProgramIndicesReq))
     }
 }
 
@@ -37,8 +37,8 @@ impl ProcedureBuilder for ProgramIndicesResp {
 }
 
 impl ProgramIndicesResp {
-    pub fn parse<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], ProgramIndicesResp> {
-        let (mut i, len) = take_split_bytes_u16(i, checksum)?;
+    pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], ProgramIndicesResp> {
+        let (mut i, len) = take_split_bytes_u16(input, checksum)?;
 
         let mut prg_indices = ProgramIndicesResp::default();
         for _ in 0..len {
