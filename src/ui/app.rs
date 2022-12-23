@@ -7,7 +7,7 @@ use std::{
 };
 
 use iced::{
-    widget::{button, checkbox, column, container, horizontal_space, row, text, vertical_space},
+    widget::{column, container, horizontal_space, row, text, vertical_space},
     Alignment, Application, Command, Element, Length, Theme,
 };
 use iced_native::command::Action;
@@ -16,14 +16,12 @@ use smol::future::FutureExt;
 
 pub static APP_NAME: Lazy<Arc<str>> = Lazy::new(|| "J-Station Controller".into());
 
-use crate::{
-    jstation::{
-        self,
-        data::{dsp, Program, ProgramNumber},
-    },
-    midi,
-    ui::{self, BUTTON_TEXT_SIZE, CHECKBOX_SIZE},
+use crate::jstation::{
+    self,
+    data::{dsp, Program, ProgramNumber},
 };
+use crate::midi;
+use crate::ui;
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum Error {
@@ -301,7 +299,7 @@ impl Application for App {
                 column![
                     ui::midi::Panel::new(self.ports.clone(), Midi),
                     vertical_space(Length::Units(20)),
-                    button(text("Scan")).on_press(StartScan),
+                    ui::button("Scan").on_press(StartScan),
                 ]
                 .align_items(Alignment::End),
                 HideModal,
@@ -316,13 +314,11 @@ impl Application for App {
         } else {
             let mut content = column![
                 row![
-                    button(text("Utility Settings").size(BUTTON_TEXT_SIZE))
-                        .on_press(ShowUtilitySettings),
+                    ui::button("Utility Settings").on_press(ShowUtilitySettings),
                     horizontal_space(Length::Units(20)),
-                    button(text("Midi Connection").size(BUTTON_TEXT_SIZE))
-                        .on_press(ShowMidiConnection),
+                    ui::button("Midi Connection").on_press(ShowMidiConnection),
                     horizontal_space(Length::Fill),
-                    checkbox("Dark Theme", self.use_dark_them, UseDarkTheme).size(CHECKBOX_SIZE),
+                    ui::checkbox("Dark Theme", self.use_dark_them, UseDarkTheme),
                 ]
                 .width(Length::Fill),
                 vertical_space(Length::Units(10)),
@@ -356,7 +352,7 @@ impl Application for App {
         let content: Element<_> = container(column![
             content,
             vertical_space(Length::Fill),
-            text(&self.output_text).size(super::LABEL_TEXT_SIZE),
+            text(&self.output_text).size(18),
         ])
         .padding(10)
         .width(Length::Fill)

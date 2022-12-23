@@ -1,5 +1,5 @@
 use iced::{
-    widget::{column, pick_list, row, text, toggler, vertical_space},
+    widget::{column, row, text, vertical_space},
     Element, Length,
 };
 use iced_lazy::{self, Component};
@@ -8,7 +8,8 @@ use crate::jstation::data::{
     dsp::{delay, Delay},
     ConstRangeParameter,
 };
-use crate::ui::{self, COMBO_TEXT_SIZE};
+use crate::ui;
+
 pub struct Panel {
     delay: Delay,
 }
@@ -38,14 +39,12 @@ where
             text("Delay"),
             vertical_space(Length::Units(10)),
             row![
-                toggler("".to_string(), self.delay.switch.into(), |is_on| {
+                ui::toggler(self.delay.switch.into(), |is_on| {
                     delay::Parameter::Switch(is_on.into())
-                })
-                .width(Length::Shrink),
-                pick_list(delay::Type::names(), Some(self.delay.typ.name()), |name| {
+                }),
+                ui::pick_list(delay::Type::names(), Some(self.delay.typ.name()), |name| {
                     name.param().into()
-                },)
-                .text_size(COMBO_TEXT_SIZE),
+                }),
             ]
             .spacing(15),
         ];

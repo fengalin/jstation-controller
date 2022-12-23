@@ -58,7 +58,7 @@ where
             ]
             .align_items(Alignment::End),
         ]
-        .height(Length::Units(80))
+        .height(Length::Units(78))
         .align_items(Alignment::Fill)
         .into();
 

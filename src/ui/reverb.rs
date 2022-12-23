@@ -1,5 +1,5 @@
 use iced::{
-    widget::{column, pick_list, row, text, toggler, vertical_space},
+    widget::{column, row, text, vertical_space},
     Element, Length,
 };
 use iced_lazy::{self, Component};
@@ -8,7 +8,7 @@ use crate::jstation::data::{
     dsp::{reverb, Reverb},
     ConstRangeParameter,
 };
-use crate::ui::{self, COMBO_TEXT_SIZE};
+use crate::ui;
 
 pub struct Panel {
     reverb: Reverb,
@@ -39,16 +39,14 @@ where
             text("Reverb"),
             vertical_space(Length::Units(10)),
             row![
-                toggler("".to_string(), self.reverb.switch.into(), |is_on| {
+                ui::toggler(self.reverb.switch.into(), |is_on| {
                     reverb::Parameter::Switch(is_on.into())
-                })
-                .width(Length::Shrink),
-                pick_list(
+                }),
+                ui::pick_list(
                     reverb::Type::names(),
                     Some(self.reverb.typ.name()),
                     |name| { name.param().into() },
-                )
-                .text_size(COMBO_TEXT_SIZE),
+                ),
             ]
             .spacing(15),
         ];
