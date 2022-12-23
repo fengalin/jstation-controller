@@ -4,13 +4,12 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::{
-    jstation::data::{
-        dsp::{effect, Effect},
-        BoolParameter, ConstRangeParameter, DiscreteParameter, VariableRangeParameter,
-    },
-    ui::{self, COMBO_TEXT_SIZE, DSP_TITLE_AREA_WIDTH, LABEL_TEXT_SIZE, RADIO_SIZE, RADIO_SPACING},
+use crate::jstation::data::{
+    dsp::{effect, Effect},
+    BoolParameter, ConstRangeParameter, DiscreteParameter, VariableRangeParameter,
 };
+
+use crate::ui::{self, COMBO_TEXT_SIZE, LABEL_TEXT_SIZE, RADIO_SIZE, RADIO_SPACING};
 
 pub struct Panel {
     effect: Effect,
@@ -66,18 +65,13 @@ where
                 ],
             ]
             .spacing(15),
-        ]
-        .width(DSP_TITLE_AREA_WIDTH)
-        .padding(5);
+        ];
 
         use effect::Parameter::*;
-        let mut content = row![
-            title_area,
-            ui::knob(self.effect.mix, |normal| {
-                Mix(effect::Mix::from_normal(normal))
-            })
-            .build(),
-        ]
+        let mut content = row![ui::knob(self.effect.mix, |normal| {
+            Mix(effect::Mix::from_normal(normal))
+        })
+        .build(),]
         .spacing(10)
         .align_items(Alignment::End);
 
@@ -122,6 +116,8 @@ where
                 .build(),
             )
         }
+
+        let content = ui::dsp(title_area, content);
 
         // Set to true to debug layout
         if false {

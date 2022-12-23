@@ -4,13 +4,11 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::{
-    jstation::data::{
-        dsp::{noise_gate, NoiseGate},
-        ConstRangeParameter,
-    },
-    ui,
+use crate::jstation::data::{
+    dsp::{noise_gate, NoiseGate},
+    ConstRangeParameter,
 };
+use crate::ui;
 
 pub struct Panel {
     noise_gate: NoiseGate,
@@ -44,19 +42,23 @@ where
             ui::switch("Noise Gate", self.noise_gate.switch, |is_on| {
                 noise_gate::Switch::from(is_on)
             }),
-            horizontal_space(Length::Units(5)),
-            ui::knob(self.noise_gate.attack_time, |normal| AttackTime(
-                noise_gate::AttackTime::from_normal(normal)
-            ))
-            .name("Attack")
-            .build(),
-            ui::knob(self.noise_gate.threshold, |normal| Threshold(
-                noise_gate::Threshold::from_normal(normal)
-            ))
-            .name("Thold")
-            .build(),
+            horizontal_space(Length::Units(25)),
+            row![
+                ui::knob(self.noise_gate.attack_time, |normal| AttackTime(
+                    noise_gate::AttackTime::from_normal(normal)
+                ))
+                .name("Attack")
+                .build(),
+                horizontal_space(Length::Units(10)),
+                ui::knob(self.noise_gate.threshold, |normal| Threshold(
+                    noise_gate::Threshold::from_normal(normal)
+                ))
+                .name("Thold")
+                .build(),
+            ]
+            .align_items(Alignment::End),
         ]
-        .spacing(10)
+        .height(Length::Units(80))
         .align_items(Alignment::Fill)
         .into();
 
