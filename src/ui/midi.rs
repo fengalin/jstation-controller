@@ -1,17 +1,16 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use iced::{
-    widget::{column, pick_list, row, text},
+    widget::{column, row, text},
     Alignment, Element, Length,
 };
 use iced_lazy::{self, Component};
 
 use once_cell::sync::Lazy;
 
-use crate::{
-    jstation,
-    midi::{self, port::Direction},
-};
+use crate::jstation;
+use crate::midi::{self, port::Direction};
+use crate::ui;
 
 static DISCONNECTED: Lazy<Arc<str>> = Lazy::new(|| "Disconnected".into());
 
@@ -127,26 +126,24 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         use Direction::*;
 
         let ports = self.ports.borrow();
-        let in_pick_list = pick_list(
+        let in_pick_list = ui::pick_list(
             // FIXME optimize the lists clones?
             ports.ins.list.clone(),
             Some(ports.ins.cur.clone()),
             |port| (In, port).into(),
-        )
-        .text_size(super::LABEL_TEXT_SIZE);
-        let out_pick_list = pick_list(
+        );
+        let out_pick_list = ui::pick_list(
             ports.outs.list.clone(),
             Some(ports.outs.cur.clone()),
             |port| (Out, port).into(),
-        )
-        .text_size(super::LABEL_TEXT_SIZE);
+        );
 
         // This is to force the labels to occupy the same column
         // whatever the length of the labels. We would need
         // a grid layout here.
         let label_width = Length::Units(40);
-        let in_label = text("In:").width(label_width).size(super::LABEL_TEXT_SIZE);
-        let out_label = text("Out:").width(label_width).size(super::LABEL_TEXT_SIZE);
+        let in_label = text("In:").width(label_width).size(18);
+        let out_label = text("Out:").width(label_width).size(18);
 
         let content: Element<_> = column![
             row![in_label, in_pick_list].align_items(Alignment::Center),

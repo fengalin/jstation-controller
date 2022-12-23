@@ -1,16 +1,14 @@
 use iced::{
-    widget::{checkbox, column, horizontal_space, row, vertical_space},
+    widget::{column, horizontal_space, row, vertical_space},
     Alignment, Element, Length,
 };
 use iced_lazy::{self, Component};
 
-use crate::{
-    jstation::data::{
-        dsp::{utility_settings, UtilitySettings},
-        ConstRangeParameter, ParameterSetter,
-    },
-    ui::{self, CHECKBOX_SIZE},
+use crate::jstation::data::{
+    dsp::{utility_settings, UtilitySettings},
+    ConstRangeParameter, ParameterSetter,
 };
+use crate::ui;
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -94,20 +92,19 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         let content: Element<_> = column![
             row![
                 column![
-                    checkbox("Stereo", self.settings.stereo_mono, Stereo).size(CHECKBOX_SIZE),
+                    ui::settings_checkbox("Stereo", self.settings.stereo_mono, Stereo),
                     vertical_space(Length::Units(10)),
-                    checkbox("Dry Track", self.settings.dry_track, DryTrack).size(CHECKBOX_SIZE),
+                    ui::settings_checkbox("Dry Track", self.settings.dry_track, DryTrack),
                 ],
                 horizontal_space(Length::Units(10)),
                 column![
-                    checkbox(
+                    ui::settings_checkbox(
                         "Global Cabinet",
                         self.settings.global_cabinet,
                         GlobalCabinet,
-                    )
-                    .size(CHECKBOX_SIZE),
+                    ),
                     vertical_space(Length::Units(10)),
-                    checkbox("Midi Merge", self.settings.midi_merge, MidiMerge).size(CHECKBOX_SIZE),
+                    ui::settings_checkbox("Midi Merge", self.settings.midi_merge, MidiMerge),
                 ],
             ],
             vertical_space(Length::Units(30)),

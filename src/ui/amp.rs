@@ -1,16 +1,14 @@
 use iced::{
-    widget::{checkbox, column, horizontal_space, pick_list, row, text, vertical_space},
+    widget::{column, horizontal_space, row, text, vertical_space},
     Alignment, Element, Length,
 };
 use iced_lazy::{self, Component};
 
-use crate::{
-    jstation::data::{
-        dsp::{amp, Amp},
-        ConstRangeParameter, DiscreteParameter,
-    },
-    ui::{self, AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, LABEL_TEXT_SIZE},
+use crate::jstation::data::{
+    dsp::{amp, Amp},
+    ConstRangeParameter, DiscreteParameter,
 };
+use crate::ui;
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -63,32 +61,24 @@ where
     fn view(&self, state: &Self::State) -> Element<Event> {
         let mut modeling = column![
             row![
-                text(self.amp.modeling.param_name())
-                    .size(LABEL_TEXT_SIZE)
-                    .width(AMP_CABINET_LABEL_WIDTH),
-                checkbox("nick", state.show_nick, Event::MustShowNicks).size(CHECKBOX_SIZE),
+                ui::amp_cabinet_label(self.amp.modeling.param_name()),
+                ui::checkbox("nick", state.show_nick, Event::MustShowNicks),
             ],
             vertical_space(Length::Units(5)),
         ];
 
         if state.show_nick {
-            modeling = modeling.push(
-                pick_list(
-                    amp::Modeling::nicks(),
-                    Some(self.amp.modeling.nick()),
-                    |nick| amp::Parameter::from(nick.param()).into(),
-                )
-                .text_size(COMBO_TEXT_SIZE),
-            );
+            modeling = modeling.push(ui::pick_list(
+                amp::Modeling::nicks(),
+                Some(self.amp.modeling.nick()),
+                |nick| amp::Parameter::from(nick.param()).into(),
+            ));
         } else {
-            modeling = modeling.push(
-                pick_list(
-                    amp::Modeling::names(),
-                    Some(self.amp.modeling.name()),
-                    |name| amp::Parameter::from(name.param()).into(),
-                )
-                .text_size(COMBO_TEXT_SIZE),
-            );
+            modeling = modeling.push(ui::pick_list(
+                amp::Modeling::names(),
+                Some(self.amp.modeling.name()),
+                |name| amp::Parameter::from(name.param()).into(),
+            ));
         }
 
         let title_area = column![text("Amp"), vertical_space(Length::Units(10)), modeling];

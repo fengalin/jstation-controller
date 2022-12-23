@@ -1,5 +1,5 @@
 use iced::{
-    widget::{column, horizontal_space, pick_list, row, text, toggler, vertical_space},
+    widget::{column, horizontal_space, row, text, vertical_space},
     Element, Length,
 };
 use iced_lazy::{self, Component};
@@ -8,7 +8,7 @@ use crate::jstation::data::{
     dsp::{wah_expr, WahExpr},
     ConstRangeParameter,
 };
-use crate::ui::{self, COMBO_TEXT_SIZE};
+use crate::ui;
 
 pub struct Panel {
     wah_expr: WahExpr,
@@ -39,17 +39,15 @@ where
             text("Wah / Expression"),
             vertical_space(Length::Units(10)),
             row![
-                toggler("".to_string(), self.wah_expr.switch.into(), |is_on| {
+                ui::toggler(self.wah_expr.switch.into(), |is_on| {
                     wah_expr::Parameter::Switch(is_on.into())
-                })
-                .width(Length::Shrink),
+                }),
                 horizontal_space(Length::Units(15)),
-                pick_list(
+                ui::pick_list(
                     wah_expr::Assignment::names(),
                     Some(self.wah_expr.assignment.name()),
                     |name| name.param().into(),
-                )
-                .text_size(COMBO_TEXT_SIZE),
+                ),
             ],
         ];
 

@@ -1,5 +1,5 @@
 use iced::{
-    widget::{column, pick_list, radio, row, text, toggler, vertical_space},
+    widget::{column, row, text, vertical_space},
     Alignment, Element, Length,
 };
 use iced_lazy::{self, Component};
@@ -8,8 +8,7 @@ use crate::jstation::data::{
     dsp::{effect, Effect},
     BoolParameter, ConstRangeParameter, DiscreteParameter, VariableRangeParameter,
 };
-
-use crate::ui::{self, COMBO_TEXT_SIZE, LABEL_TEXT_SIZE, RADIO_SIZE, RADIO_SPACING};
+use crate::ui;
 
 pub struct Panel {
     effect: Effect,
@@ -38,30 +37,22 @@ where
             text("Effect"),
             vertical_space(Length::Units(10)),
             row![
-                toggler("".to_string(), self.effect.switch.into(), |is_on| {
+                ui::toggler(self.effect.switch.into(), |is_on| {
                     effect::Parameter::Switch(is_on.into())
-                })
-                .width(Length::Shrink),
-                pick_list(
+                }),
+                ui::pick_list(
                     effect::Type::names(),
                     Some(self.effect.typ.name()),
                     |name| name.param().into(),
-                )
-                .text_size(COMBO_TEXT_SIZE),
+                ),
                 column![
-                    radio("Pre", effect::Post::FALSE, Some(self.effect.post), |post| {
+                    ui::radio("Pre", effect::Post::FALSE, Some(self.effect.post), |post| {
                         post.into()
-                    },)
-                    .size(RADIO_SIZE)
-                    .text_size(LABEL_TEXT_SIZE)
-                    .spacing(RADIO_SPACING),
+                    }),
                     vertical_space(Length::Units(6)),
-                    radio("Post", effect::Post::TRUE, Some(self.effect.post), |post| {
+                    ui::radio("Post", effect::Post::TRUE, Some(self.effect.post), |post| {
                         post.into()
-                    },)
-                    .size(RADIO_SIZE)
-                    .text_size(LABEL_TEXT_SIZE)
-                    .spacing(RADIO_SPACING),
+                    }),
                 ],
             ]
             .spacing(15),

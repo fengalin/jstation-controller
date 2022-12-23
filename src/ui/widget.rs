@@ -1,33 +1,86 @@
-use std::{fmt, marker::PhantomData};
+use std::{borrow::Cow, fmt, marker::PhantomData};
 
 use iced::{
     alignment::{Horizontal, Vertical},
-    widget::{button, column, container, row, text, toggler, vertical_space, Column, Container},
+    widget::{
+        column, container, row, text, vertical_space, Button, Checkbox, Column, Container,
+        PickList, Radio, Text, Toggler,
+    },
     Alignment, Element, Length,
 };
 
 use crate::jstation::data::{BoolParameter, DiscreteParameter, Normal};
-use crate::ui::{style, BUTTON_TEXT_SIZE};
+use crate::ui::style;
+
+pub fn button<'a, Message>(title: &str) -> Button<'a, Message, iced::Renderer> {
+    Button::new(text(title).size(15)).style(style::Button::Default.into())
+}
+
+pub fn checkbox<'a, Message, F>(
+    title: &str,
+    is_checked: bool,
+    f: F,
+) -> Checkbox<'a, Message, iced::Renderer>
+where
+    Message: 'a,
+    F: 'a + Fn(bool) -> Message,
+{
+    Checkbox::new(is_checked, title, f)
+        .size(16)
+        .text_size(15)
+        .style(style::Checkbox)
+}
+
+pub fn settings_checkbox<'a, Message, F>(
+    title: &str,
+    is_checked: bool,
+    f: F,
+) -> Checkbox<'a, Message, iced::Renderer>
+where
+    Message: 'a,
+    F: 'a + Fn(bool) -> Message,
+{
+    Checkbox::new(is_checked, title, f)
+        .size(19)
+        .text_size(18)
+        .style(style::Checkbox)
+}
 
 pub fn dsp<'a, Message>(
     title_area: Column<'a, Message, iced::Renderer>,
     element: impl Into<Element<'a, Message, iced::Renderer>>,
 ) -> Container<'a, Message>
 where
-    Message: 'a + Clone,
+    Message: 'a,
 {
-    const DSP_TITLE_AREA_WIDTH: Length = Length::Units(270);
-    dsp_keep_width(row![title_area.width(DSP_TITLE_AREA_WIDTH), element.into()])
-        .width(Length::Units(632))
+    container(row![title_area.width(Length::Units(270)), element.into()].padding(8))
+        .width(Length::Units(622))
+        .style(style::DspContainer)
 }
 
 pub fn dsp_keep_width<'a, Message>(
     element: impl Into<Element<'a, Message, iced::Renderer>>,
 ) -> Container<'a, Message>
 where
-    Message: 'a + Clone,
+    Message: 'a,
 {
     container(row![element.into()].padding(8)).style(style::DspContainer)
+}
+
+pub fn label(text: &str) -> Text<iced::Renderer> {
+    Text::new(text).size(18)
+}
+
+pub fn amp_cabinet_label(text: &str) -> Text<iced::Renderer> {
+    label(text).width(Length::Units(85))
+}
+
+pub fn param_label(text: &str) -> Text<iced::Renderer> {
+    label(text).width(Length::Units(55))
+}
+
+pub fn value_label(text: impl ToString) -> Text<'static, iced::Renderer> {
+    Text::new(text.to_string()).size(14)
 }
 
 pub fn modal<'a, Message>(
@@ -39,7 +92,9 @@ where
 {
     container(
         column![
-            button(text("x").size(BUTTON_TEXT_SIZE)).on_press(on_hide),
+            button("X")
+                .on_press(on_hide)
+                .style(style::Button::ModalClose.into()),
             vertical_space(Length::Units(10)),
             element.into(),
         ]
@@ -51,8 +106,38 @@ where
     .align_y(Vertical::Center)
 }
 
+pub fn pick_list<'a, T, Message>(
+    options: impl Into<Cow<'a, [T]>>,
+    selected: Option<T>,
+    on_selected: impl 'a + Fn(T) -> Message,
+) -> PickList<'a, T, Message, iced::Renderer>
+where
+    T: ToString + Eq,
+    [T]: ToOwned<Owned = Vec<T>>,
+    Message: 'a,
+{
+    PickList::new(options, selected, on_selected).text_size(15)
+}
+
+pub fn radio<V, Message>(
+    label: &str,
+    value: V,
+    selected: Option<V>,
+    f: impl Fn(V) -> Message,
+) -> Radio<Message, iced::Renderer>
+where
+    Message: Clone,
+    V: Eq + Copy,
+{
+    Radio::new(value, label, selected, f)
+        .size(16)
+        .text_size(18)
+        .spacing(5)
+        .style(style::Radio)
+}
+
 pub fn switch<'a, Field, Message, OnChange, Output>(
-    name: impl ToString,
+    name: &'a str,
     field: Field,
     on_change: OnChange,
 ) -> Column<'a, Message>
@@ -63,20 +148,26 @@ where
     OnChange: 'a + Fn(bool) -> Output,
 {
     column![
-        text(name),
+        label(name),
         vertical_space(iced::Length::Units(10)),
-        toggler("".to_string(), field.is_true(), move |is_true| {
-            (on_change)(is_true).into()
-        })
-        .width(Length::Shrink)
+        toggler(field.is_true(), move |is_true| (on_change)(is_true).into())
     ]
     .align_items(Alignment::Start)
+}
+
+pub fn toggler<'a, Message>(
+    is_active: bool,
+    f: impl 'a + Fn(bool) -> Message,
+) -> Toggler<'a, Message, iced::Renderer> {
+    Toggler::new(is_active, None, f)
+        .width(Length::Shrink)
+        .style(style::Toggler)
 }
 
 #[track_caller]
 fn build_knob<'a, Field, Message, OnChange, OnRelease, Output>(
     field: Field,
-    name: Option<String>,
+    name: Option<&'a str>,
     on_change: OnChange,
     on_release: Option<OnRelease>,
 ) -> Column<'a, Message>
@@ -90,19 +181,17 @@ where
     let mut knob = iced_audio::Knob::new(to_ui_param(field), move |normal| {
         (on_change)(to_jstation_normal(normal)).into()
     })
-    .size(crate::ui::KNOB_SIZE);
+    .size(Length::Units(35));
 
     if let Some(on_release) = on_release {
         knob = knob.on_release(move || on_release().map(Into::into));
     }
 
     column![
-        text(name.unwrap_or_else(|| field.param_name().to_string()))
-            .size(crate::ui::LABEL_TEXT_SIZE)
-            .horizontal_alignment(iced::alignment::Horizontal::Center)
-            .width(crate::ui::LABEL_WIDTH),
+        param_label(name.unwrap_or_else(|| field.param_name()))
+            .horizontal_alignment(iced::alignment::Horizontal::Center),
         knob,
-        text(field).size(crate::ui::VALUE_TEXT_SIZE),
+        value_label(field),
     ]
     .spacing(5)
     .align_items(Alignment::Center)
@@ -135,7 +224,7 @@ where
 {
     field: Field,
     on_change: OnChange,
-    name: Option<String>,
+    name: Option<&'a str>,
     phantom: PhantomData<&'a Message>,
 }
 
@@ -146,8 +235,8 @@ where
     Output: 'a + Into<Message>,
     OnChange: Fn(Normal) -> Output,
 {
-    pub fn name(mut self, name: impl ToString) -> Self {
-        self.name = Some(name.to_string());
+    pub fn name(mut self, name: &'a str) -> Self {
+        self.name = Some(name);
         self
     }
 
@@ -184,7 +273,7 @@ where
 {
     field: Field,
     on_change: OnChange,
-    name: Option<String>,
+    name: Option<&'a str>,
     on_release: OnRelease,
     phantom: PhantomData<&'a Message>,
 }
