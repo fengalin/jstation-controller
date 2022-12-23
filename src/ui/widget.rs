@@ -2,12 +2,33 @@ use std::{fmt, marker::PhantomData};
 
 use iced::{
     alignment::{Horizontal, Vertical},
-    widget::{button, column, container, text, toggler, vertical_space, Column, Container},
+    widget::{button, column, container, row, text, toggler, vertical_space, Column, Container},
     Alignment, Element, Length,
 };
 
 use crate::jstation::data::{BoolParameter, DiscreteParameter, Normal};
-use crate::ui::BUTTON_TEXT_SIZE;
+use crate::ui::{style, BUTTON_TEXT_SIZE};
+
+pub fn dsp<'a, Message>(
+    title_area: Column<'a, Message, iced::Renderer>,
+    element: impl Into<Element<'a, Message, iced::Renderer>>,
+) -> Container<'a, Message>
+where
+    Message: 'a + Clone,
+{
+    const DSP_TITLE_AREA_WIDTH: Length = Length::Units(270);
+    dsp_keep_width(row![title_area.width(DSP_TITLE_AREA_WIDTH), element.into()])
+        .width(Length::Units(632))
+}
+
+pub fn dsp_keep_width<'a, Message>(
+    element: impl Into<Element<'a, Message, iced::Renderer>>,
+) -> Container<'a, Message>
+where
+    Message: 'a + Clone,
+{
+    container(row![element.into()].padding(8)).style(style::DspContainer)
+}
 
 pub fn modal<'a, Message>(
     element: impl Into<Element<'a, Message, iced::Renderer>>,

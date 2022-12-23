@@ -4,14 +4,11 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::{
-    jstation::data::{
-        dsp::{delay, Delay},
-        ConstRangeParameter,
-    },
-    ui::{self, COMBO_TEXT_SIZE, DSP_TITLE_AREA_WIDTH},
+use crate::jstation::data::{
+    dsp::{delay, Delay},
+    ConstRangeParameter,
 };
-
+use crate::ui::{self, COMBO_TEXT_SIZE};
 pub struct Panel {
     delay: Delay,
 }
@@ -51,33 +48,33 @@ where
                 .text_size(COMBO_TEXT_SIZE),
             ]
             .spacing(15),
-        ]
-        .width(DSP_TITLE_AREA_WIDTH)
-        .padding(5);
+        ];
 
-        let content: Element<_> = row![
+        let content: Element<_> = ui::dsp(
             title_area,
-            ui::knob(self.delay.level, |normal| {
-                Level(delay::Level::from_normal(normal))
-            })
-            .build(),
-            ui::knob(self.delay.time_course, |normal| TimeCourse(
-                delay::TimeCourse::from_normal(normal)
-            ))
-            .name("Course")
-            .build(),
-            ui::knob(self.delay.time_fine, |normal| TimeFine(
-                delay::TimeFine::from_normal(normal)
-            ))
-            .name("Fine")
-            .build(),
-            ui::knob(self.delay.feedback, |normal| {
-                Feedback(delay::Feedback::from_normal(normal))
-            })
-            .name("Fback")
-            .build(),
-        ]
-        .spacing(10)
+            row![
+                ui::knob(self.delay.level, |normal| {
+                    Level(delay::Level::from_normal(normal))
+                })
+                .build(),
+                ui::knob(self.delay.time_course, |normal| TimeCourse(
+                    delay::TimeCourse::from_normal(normal)
+                ))
+                .name("Course")
+                .build(),
+                ui::knob(self.delay.time_fine, |normal| TimeFine(
+                    delay::TimeFine::from_normal(normal)
+                ))
+                .name("Fine")
+                .build(),
+                ui::knob(self.delay.feedback, |normal| {
+                    Feedback(delay::Feedback::from_normal(normal))
+                })
+                .name("Fback")
+                .build(),
+            ]
+            .spacing(10),
+        )
         .into();
 
         // Set to true to debug layout

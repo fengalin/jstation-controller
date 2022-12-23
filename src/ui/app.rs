@@ -325,10 +325,11 @@ impl Application for App {
                     checkbox("Dark Theme", self.use_dark_them, UseDarkTheme).size(CHECKBOX_SIZE),
                 ]
                 .width(Length::Fill),
+                vertical_space(Length::Units(10)),
                 ui::compressor::Panel::new(self.dsp.compressor),
                 ui::wah_expr::Panel::new(self.dsp.wah_expr),
             ]
-            .spacing(30);
+            .spacing(10);
 
             if !effect_post.is_true() {
                 content = content.push(ui::effect::Panel::new(self.dsp.effect));
@@ -337,9 +338,9 @@ impl Application for App {
             content = content.push(ui::amp::Panel::new(self.dsp.amp));
 
             content = content.push(row![
-                ui::cabinet::Panel::new(self.dsp.cabinet),
-                horizontal_space(Length::Units(30)),
-                ui::noise_gate::Panel::new(self.dsp.noise_gate),
+                ui::dsp_keep_width(ui::cabinet::Panel::new(self.dsp.cabinet)),
+                horizontal_space(Length::Units(10)),
+                ui::dsp_keep_width(ui::noise_gate::Panel::new(self.dsp.noise_gate)),
             ]);
 
             if effect_post.is_true() {

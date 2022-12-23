@@ -1,13 +1,11 @@
 use iced::{widget::row, Element};
 use iced_lazy::{self, Component};
 
-use crate::{
-    jstation::data::{
-        dsp::{compressor, Compressor},
-        ConstRangeParameter,
-    },
-    ui::{self, DSP_TITLE_AREA_WIDTH},
+use crate::jstation::data::{
+    dsp::{compressor, Compressor},
+    ConstRangeParameter,
 };
+use crate::ui;
 
 pub struct Panel {
     compressor: Compressor,
@@ -38,31 +36,32 @@ where
     fn view(&self, _state: &Self::State) -> Element<compressor::Parameter> {
         use compressor::Parameter::*;
 
-        let content: Element<_> = row![
+        let content: Element<_> = ui::dsp(
             ui::switch("Compressor", self.compressor.switch, |is_on| {
                 compressor::Switch::from(is_on)
-            })
-            .width(DSP_TITLE_AREA_WIDTH),
-            ui::knob(self.compressor.threshold, |normal| Threshold(
-                compressor::Threshold::from_normal(normal)
-            ))
-            .name("Thold")
-            .build(),
-            ui::knob(self.compressor.ratio, |normal| {
-                Ratio(compressor::Ratio::from_normal(normal))
-            })
-            .build(),
-            ui::knob(self.compressor.gain, |normal| Gain(
-                compressor::Gain::from_normal(normal)
-            ))
-            .build(),
-            ui::knob(self.compressor.freq, |normal| {
-                Freq(compressor::Freq::from_normal(normal))
-            })
-            .name("Freq")
-            .build(),
-        ]
-        .spacing(10)
+            }),
+            row![
+                ui::knob(self.compressor.threshold, |normal| Threshold(
+                    compressor::Threshold::from_normal(normal)
+                ))
+                .name("Thold")
+                .build(),
+                ui::knob(self.compressor.ratio, |normal| {
+                    Ratio(compressor::Ratio::from_normal(normal))
+                })
+                .build(),
+                ui::knob(self.compressor.gain, |normal| Gain(
+                    compressor::Gain::from_normal(normal)
+                ))
+                .build(),
+                ui::knob(self.compressor.freq, |normal| {
+                    Freq(compressor::Freq::from_normal(normal))
+                })
+                .name("Freq")
+                .build(),
+            ]
+            .spacing(10),
+        )
         .into();
 
         // Set to true to debug layout

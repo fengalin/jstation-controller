@@ -1,16 +1,14 @@
 use iced::{
-    widget::{column, pick_list, row, text, toggler, vertical_space},
+    widget::{column, horizontal_space, pick_list, row, text, toggler, vertical_space},
     Element, Length,
 };
 use iced_lazy::{self, Component};
 
-use crate::{
-    jstation::data::{
-        dsp::{wah_expr, WahExpr},
-        ConstRangeParameter,
-    },
-    ui::{self, COMBO_TEXT_SIZE, DSP_TITLE_AREA_WIDTH},
+use crate::jstation::data::{
+    dsp::{wah_expr, WahExpr},
+    ConstRangeParameter,
 };
+use crate::ui::{self, COMBO_TEXT_SIZE};
 
 pub struct Panel {
     wah_expr: WahExpr,
@@ -45,39 +43,39 @@ where
                     wah_expr::Parameter::Switch(is_on.into())
                 })
                 .width(Length::Shrink),
+                horizontal_space(Length::Units(15)),
                 pick_list(
                     wah_expr::Assignment::names(),
                     Some(self.wah_expr.assignment.name()),
                     |name| name.param().into(),
                 )
                 .text_size(COMBO_TEXT_SIZE),
-            ]
-            .spacing(15),
-        ]
-        .width(DSP_TITLE_AREA_WIDTH)
-        .padding(5);
+            ],
+        ];
 
-        let content: Element<_> = row![
+        let content: Element<_> = ui::dsp(
             title_area,
-            ui::knob(self.wah_expr.heel, |normal| Heel(
-                wah_expr::Heel::from_normal(normal)
-            ))
-            .build(),
-            ui::knob(self.wah_expr.toe, |normal| {
-                Toe(wah_expr::Toe::from_normal(normal))
-            })
-            .build(),
-            ui::knob(self.wah_expr.forward, |normal| Forward(
-                wah_expr::Forward::from_normal(normal)
-            ))
-            .name("Fwd")
-            .build(),
-            ui::knob(self.wah_expr.back, |normal| {
-                Back(wah_expr::Back::from_normal(normal))
-            })
-            .build(),
-        ]
-        .spacing(10)
+            row![
+                ui::knob(self.wah_expr.heel, |normal| Heel(
+                    wah_expr::Heel::from_normal(normal)
+                ))
+                .build(),
+                ui::knob(self.wah_expr.toe, |normal| {
+                    Toe(wah_expr::Toe::from_normal(normal))
+                })
+                .build(),
+                ui::knob(self.wah_expr.forward, |normal| Forward(
+                    wah_expr::Forward::from_normal(normal)
+                ))
+                .name("Fwd")
+                .build(),
+                ui::knob(self.wah_expr.back, |normal| {
+                    Back(wah_expr::Back::from_normal(normal))
+                })
+                .build(),
+            ]
+            .spacing(10),
+        )
         .into();
 
         // Set to true to debug layout

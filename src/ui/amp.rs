@@ -9,10 +9,7 @@ use crate::{
         dsp::{amp, Amp},
         ConstRangeParameter, DiscreteParameter,
     },
-    ui::{
-        self, AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, DSP_TITLE_AREA_WIDTH,
-        LABEL_TEXT_SIZE,
-    },
+    ui::{self, AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, LABEL_TEXT_SIZE},
 };
 
 #[derive(Debug, Clone)]
@@ -94,32 +91,33 @@ where
             );
         }
 
-        let title_area = column![text("Amp"), vertical_space(Length::Units(10)), modeling]
-            .width(DSP_TITLE_AREA_WIDTH)
-            .padding(5);
+        let title_area = column![text("Amp"), vertical_space(Length::Units(10)), modeling];
 
         use amp::Parameter::*;
-        let content: Element<_> = row![
+        let content: Element<_> = ui::dsp(
             title_area,
-            ui::knob(self.amp.gain, |normal| Gain(amp::Gain::from_normal(normal))).build(),
-            horizontal_space(Length::Units(2)),
-            ui::knob(self.amp.bass, |normal| Bass(amp::Bass::from_normal(normal))).build(),
-            ui::knob(self.amp.middle, |normal| Middle(amp::Middle::from_normal(
-                normal
-            )))
-            .build(),
-            ui::knob(self.amp.treble, |normal| Treble(amp::Treble::from_normal(
-                normal
-            )))
-            .build(),
-            horizontal_space(Length::Units(2)),
-            ui::knob(self.amp.level, |normal| Level(amp::Level::from_normal(
-                normal
-            )))
-            .build(),
-        ]
-        .spacing(10)
-        .align_items(Alignment::End)
+            row![
+                ui::knob(self.amp.gain, |normal| Gain(amp::Gain::from_normal(normal))).build(),
+                horizontal_space(Length::Units(15)),
+                ui::knob(self.amp.bass, |normal| Bass(amp::Bass::from_normal(normal))).build(),
+                horizontal_space(Length::Units(10)),
+                ui::knob(self.amp.middle, |normal| Middle(amp::Middle::from_normal(
+                    normal
+                )))
+                .build(),
+                horizontal_space(Length::Units(10)),
+                ui::knob(self.amp.treble, |normal| Treble(amp::Treble::from_normal(
+                    normal
+                )))
+                .build(),
+                horizontal_space(Length::Units(15)),
+                ui::knob(self.amp.level, |normal| Level(amp::Level::from_normal(
+                    normal
+                )))
+                .build(),
+            ]
+            .align_items(Alignment::End),
+        )
         .into();
 
         // Set to true to debug layout

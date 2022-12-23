@@ -4,13 +4,11 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::{
-    jstation::data::{
-        dsp::{cabinet, Cabinet},
-        DiscreteParameter,
-    },
-    ui::{AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, LABEL_TEXT_SIZE},
+use crate::jstation::data::{
+    dsp::{cabinet, Cabinet},
+    DiscreteParameter,
 };
+use crate::ui::{AMP_CABINET_LABEL_WIDTH, CHECKBOX_SIZE, COMBO_TEXT_SIZE, LABEL_TEXT_SIZE};
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -72,8 +70,7 @@ where
             ],
             vertical_space(Length::Units(5)),
         ]
-        .width(Length::Units(350))
-        .padding(5);
+        .width(Length::Units(350));
 
         if state.show_nick {
             cabinet_types = cabinet_types.push(
