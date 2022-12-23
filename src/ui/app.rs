@@ -8,7 +8,7 @@ use std::{
 
 use iced::{
     widget::{button, checkbox, column, container, horizontal_space, row, text, vertical_space},
-    Application, Command, Element, Length, Theme,
+    Alignment, Application, Command, Element, Length, Theme,
 };
 use iced_native::command::Action;
 use once_cell::sync::Lazy;
@@ -21,7 +21,8 @@ use crate::{
         self,
         data::{dsp, Program, ProgramNumber},
     },
-    midi, ui,
+    midi,
+    ui::{self, BUTTON_TEXT_SIZE, CHECKBOX_SIZE},
 };
 
 #[derive(Clone, Debug, thiserror::Error)]
@@ -45,7 +46,7 @@ pub struct App {
     programs: BTreeMap<ProgramNumber, Program>,
     program_indices: VecDeque<u8>,
 
-    show_midi_panel: bool,
+    show_midi_modal: bool,
     ports: Rc<RefCell<ui::midi::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
 
@@ -64,7 +65,7 @@ impl App {
     fn handle_jstation_event(
         &mut self,
         res: Result<jstation::Message, jstation::Error>,
-    ) -> Result<(), Error> {
+    ) -> Result<Command<Message>, Error> {
         use jstation::Message::*;
         match res {
             Ok(SysEx(sysex)) => {
@@ -85,6 +86,10 @@ impl App {
                         let (port_in, port_out) =
                             self.jstation.connected_ports().expect("Not connected");
                         self.ports.borrow_mut().set_ports(port_in, port_out);
+
+                        return Ok(Command::single(Action::Future(
+                            future::ready(Message::HideModal).boxed(),
+                        )));
                     }
                     UtilitySettingsResp(resp) => {
                         self.dsp.utility_settings = resp.try_into()?;
@@ -150,7 +155,7 @@ impl App {
                 if self.scanner_ctx.is_none() {
                     self.jstation.clear();
                     self.ports.borrow_mut().set_disconnected();
-                    self.show_midi_panel = true;
+                    self.show_midi_modal = true;
 
                     return Err(Error::JStationNotFound);
                 }
@@ -165,7 +170,7 @@ impl App {
             }
         }
 
-        Ok(())
+        Ok(Command::none())
     }
 }
 
@@ -198,7 +203,7 @@ impl Application for App {
             programs: BTreeMap::new(),
             program_indices: VecDeque::new(),
 
-            show_midi_panel: false,
+            show_midi_modal: false,
             ports: RefCell::new(ports).into(),
             scanner_ctx: None,
 
@@ -229,11 +234,10 @@ impl Application for App {
     fn update(&mut self, event: Message) -> Command<Message> {
         use Message::*;
         match event {
-            JStation(res) => {
-                if let Err(err) = self.handle_jstation_event(res) {
-                    self.show_error(&err);
-                }
-            }
+            JStation(res) => match self.handle_jstation_event(res) {
+                Ok(cmd) => return cmd,
+                Err(err) => self.show_error(&err),
+            },
             Parameter(param) => {
                 use jstation::data::{CCParameter, ParameterSetter};
 
@@ -249,7 +253,6 @@ impl Application for App {
                     log::error!("No CC for {:?}", param);
                 }
             }
-            ShowMidiPanel(must_show) => self.show_midi_panel = must_show,
             Midi(ui::midi::Selection { port_in, port_out }) => {
                 use midi::Scannable;
                 if let Err(err) = self.jstation.connect(port_in, port_out) {
@@ -266,13 +269,18 @@ impl Application for App {
                     self.output_text = "Couldn't scan for J-Station".to_string();
                 }
             }
-            ShowUtilitySettings(must_show) => self.show_utility_settings = must_show,
             UtilitySettings(settings) => {
                 log::debug!("Got UtilitySettings UI update");
                 self.dsp.utility_settings = settings;
                 // FIXME send message to device
             }
             UseDarkTheme(use_dark) => self.use_dark_them = use_dark,
+            ShowMidiConnection => self.show_midi_modal = true,
+            ShowUtilitySettings => self.show_utility_settings = true,
+            HideModal => {
+                self.show_midi_modal = false;
+                self.show_utility_settings = false;
+            }
         }
 
         Command::none()
@@ -286,69 +294,66 @@ impl Application for App {
         use jstation::data::BoolParameter;
         use Message::*;
 
-        let mut midi_panel = column![checkbox(
-            "Midi Connection",
-            self.show_midi_panel,
-            ShowMidiPanel
-        )];
-        if self.show_midi_panel {
-            midi_panel = midi_panel.push(column![
-                ui::midi::Panel::new(self.ports.clone(), Midi),
-                vertical_space(Length::Units(10)),
-                button(text("Scan")).on_press(StartScan),
-            ]);
-        }
-
-        let mut utility_settings = column![checkbox(
-            "Utility Settings",
-            self.show_utility_settings,
-            ShowUtilitySettings
-        ),];
-        if self.show_utility_settings {
-            utility_settings = utility_settings.push(container(ui::utility_settings::Panel::new(
-                self.dsp.utility_settings,
-                Message::from,
-            )));
-        }
-
         let effect_post = self.dsp.effect.post;
 
-        let mut dsp = column![
-            ui::compressor::Panel::new(self.dsp.compressor),
-            ui::wah_expr::Panel::new(self.dsp.wah_expr),
-        ]
-        .spacing(30);
-
-        if !effect_post.is_true() {
-            dsp = dsp.push(ui::effect::Panel::new(self.dsp.effect));
-        }
-
-        dsp = dsp.push(ui::amp::Panel::new(self.dsp.amp));
-
-        dsp = dsp.push(row![
-            ui::cabinet::Panel::new(self.dsp.cabinet),
-            horizontal_space(Length::Units(30)),
-            ui::noise_gate::Panel::new(self.dsp.noise_gate),
-        ]);
-
-        if effect_post.is_true() {
-            dsp = dsp.push(ui::effect::Panel::new(self.dsp.effect));
-        }
-
-        dsp = dsp.push(ui::delay::Panel::new(self.dsp.delay));
-        dsp = dsp.push(ui::reverb::Panel::new(self.dsp.reverb));
-
-        let container: Element<_> = container(column![
-            row![
-                utility_settings,
-                horizontal_space(Length::Units(20)),
-                midi_panel,
-                horizontal_space(Length::Fill),
-                checkbox("Dark Theme", self.use_dark_them, UseDarkTheme),
+        let content: Element<_> = if self.show_midi_modal {
+            ui::modal(
+                column![
+                    ui::midi::Panel::new(self.ports.clone(), Midi),
+                    vertical_space(Length::Units(20)),
+                    button(text("Scan")).on_press(StartScan),
+                ]
+                .align_items(Alignment::End),
+                HideModal,
+            )
+            .into()
+        } else if self.show_utility_settings {
+            ui::modal(
+                ui::utility_settings::Panel::new(self.dsp.utility_settings, Message::from),
+                HideModal,
+            )
+            .into()
+        } else {
+            let mut content = column![
+                row![
+                    button(text("Utility Settings").size(BUTTON_TEXT_SIZE))
+                        .on_press(ShowUtilitySettings),
+                    horizontal_space(Length::Units(20)),
+                    button(text("Midi Connection").size(BUTTON_TEXT_SIZE))
+                        .on_press(ShowMidiConnection),
+                    horizontal_space(Length::Fill),
+                    checkbox("Dark Theme", self.use_dark_them, UseDarkTheme).size(CHECKBOX_SIZE),
+                ]
+                .width(Length::Fill),
+                ui::compressor::Panel::new(self.dsp.compressor),
+                ui::wah_expr::Panel::new(self.dsp.wah_expr),
             ]
-            .width(Length::Fill),
-            vertical_space(Length::Units(30)),
-            dsp,
+            .spacing(30);
+
+            if !effect_post.is_true() {
+                content = content.push(ui::effect::Panel::new(self.dsp.effect));
+            }
+
+            content = content.push(ui::amp::Panel::new(self.dsp.amp));
+
+            content = content.push(row![
+                ui::cabinet::Panel::new(self.dsp.cabinet),
+                horizontal_space(Length::Units(30)),
+                ui::noise_gate::Panel::new(self.dsp.noise_gate),
+            ]);
+
+            if effect_post.is_true() {
+                content = content.push(ui::effect::Panel::new(self.dsp.effect));
+            }
+
+            content = content.push(ui::delay::Panel::new(self.dsp.delay));
+            content = content.push(ui::reverb::Panel::new(self.dsp.reverb));
+
+            content.into()
+        };
+
+        let content: Element<_> = container(column![
+            content,
             vertical_space(Length::Fill),
             text(&self.output_text).size(super::LABEL_TEXT_SIZE),
         ])
@@ -359,9 +364,9 @@ impl Application for App {
 
         // Set to true to debug layout
         if false {
-            container.explain(iced::Color::WHITE)
+            content.explain(iced::Color::WHITE)
         } else {
-            container
+            content
         }
     }
 }
@@ -373,8 +378,9 @@ pub enum Message {
     UtilitySettings(dsp::UtilitySettings),
     Midi(ui::midi::Selection),
     StartScan,
-    ShowUtilitySettings(bool),
-    ShowMidiPanel(bool),
+    ShowUtilitySettings,
+    ShowMidiConnection,
+    HideModal,
     UseDarkTheme(bool),
 }
 

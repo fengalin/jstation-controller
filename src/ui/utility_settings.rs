@@ -1,6 +1,6 @@
 use iced::{
-    widget::{checkbox, column, row},
-    Alignment, Element,
+    widget::{checkbox, column, horizontal_space, row, vertical_space},
+    Alignment, Element, Length,
 };
 use iced_lazy::{self, Component};
 
@@ -91,38 +91,43 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
     fn view(&self, _state: &Self::State) -> Element<PrivEvent> {
         use PrivEvent::*;
 
-        let content: Element<_> = row![
-            column![
-                checkbox("Stereo", self.settings.stereo_mono, Stereo).size(CHECKBOX_SIZE),
-                checkbox("Dry Track", self.settings.dry_track, DryTrack).size(CHECKBOX_SIZE),
-            ]
-            .spacing(10)
-            .padding(5),
-            column![
-                checkbox(
-                    "Global Cabinet",
-                    self.settings.global_cabinet,
-                    GlobalCabinet,
-                )
-                .size(CHECKBOX_SIZE),
-                checkbox("Midi Merge", self.settings.midi_merge, MidiMerge).size(CHECKBOX_SIZE),
-            ]
-            .spacing(10)
-            .padding(5),
-            ui::knob(self.settings.midi_channel, |normal| {
-                MidiChannel(utility_settings::MidiChannel::from_normal(normal))
-            })
-            .name("Midi chan")
-            .on_release(|| Some(MidiChannelReleased))
-            .build(),
-            ui::knob(self.settings.digital_out_level, |normal| {
-                DigitalOutLevel(utility_settings::DigitalOutLevel::from_normal(normal))
-            })
-            .name("Digital out")
-            .on_release(|| Some(MidiChannelReleased))
-            .build(),
+        let content: Element<_> = column![
+            row![
+                column![
+                    checkbox("Stereo", self.settings.stereo_mono, Stereo).size(CHECKBOX_SIZE),
+                    vertical_space(Length::Units(10)),
+                    checkbox("Dry Track", self.settings.dry_track, DryTrack).size(CHECKBOX_SIZE),
+                ],
+                horizontal_space(Length::Units(10)),
+                column![
+                    checkbox(
+                        "Global Cabinet",
+                        self.settings.global_cabinet,
+                        GlobalCabinet,
+                    )
+                    .size(CHECKBOX_SIZE),
+                    vertical_space(Length::Units(10)),
+                    checkbox("Midi Merge", self.settings.midi_merge, MidiMerge).size(CHECKBOX_SIZE),
+                ],
+            ],
+            vertical_space(Length::Units(30)),
+            column![row![
+                ui::knob(self.settings.midi_channel, |normal| {
+                    MidiChannel(utility_settings::MidiChannel::from_normal(normal))
+                })
+                .name("Midi chan")
+                .on_release(|| Some(MidiChannelReleased))
+                .build(),
+                horizontal_space(Length::Units(30)),
+                ui::knob(self.settings.digital_out_level, |normal| {
+                    DigitalOutLevel(utility_settings::DigitalOutLevel::from_normal(normal))
+                })
+                .name("Digital out")
+                .on_release(|| Some(MidiChannelReleased))
+                .build(),
+            ]]
+            .align_items(Alignment::Center),
         ]
-        .spacing(10)
         .align_items(Alignment::Fill)
         .into();
 
