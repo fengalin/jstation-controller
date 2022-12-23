@@ -1,11 +1,34 @@
 use std::{fmt, marker::PhantomData};
 
 use iced::{
-    widget::{column, text, toggler, vertical_space, Column},
-    Alignment, Length,
+    alignment::{Horizontal, Vertical},
+    widget::{button, column, container, text, toggler, vertical_space, Column, Container},
+    Alignment, Element, Length,
 };
 
 use crate::jstation::data::{BoolParameter, DiscreteParameter, Normal};
+use crate::ui::BUTTON_TEXT_SIZE;
+
+pub fn modal<'a, Message>(
+    element: impl Into<Element<'a, Message, iced::Renderer>>,
+    on_hide: Message,
+) -> Container<'a, Message>
+where
+    Message: 'a + Clone,
+{
+    container(
+        column![
+            button(text("x").size(BUTTON_TEXT_SIZE)).on_press(on_hide),
+            vertical_space(Length::Units(10)),
+            element.into(),
+        ]
+        .align_items(Alignment::End),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .align_x(Horizontal::Center)
+    .align_y(Vertical::Center)
+}
 
 pub fn switch<'a, Field, Message, OnChange, Output>(
     name: impl ToString,

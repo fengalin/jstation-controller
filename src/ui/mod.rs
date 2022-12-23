@@ -2,6 +2,7 @@ use iced::Length;
 
 // FIXME impl styles
 pub const AMP_CABINET_LABEL_WIDTH: Length = Length::Units(85);
+pub const BUTTON_TEXT_SIZE: u16 = 15;
 pub const CHECKBOX_SIZE: u16 = 16;
 pub const COMBO_TEXT_SIZE: u16 = 15;
 pub const DSP_TITLE_AREA_WIDTH: Length = Length::Units(276);
@@ -13,7 +14,7 @@ pub const RADIO_SPACING: u16 = 5;
 pub const VALUE_TEXT_SIZE: u16 = 14;
 
 pub mod widget;
-pub use widget::{knob, switch};
+pub use widget::{knob, modal, switch};
 
 pub mod amp;
 pub mod cabinet;
