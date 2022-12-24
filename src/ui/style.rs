@@ -3,6 +3,80 @@ use iced::{
     Background, Color,
 };
 
+pub enum Button {
+    Default,
+    ModalClose,
+    ListItem,
+    ListItemSelected,
+}
+
+impl button::StyleSheet for Button {
+    type Style = iced::Theme;
+
+    fn active(&self, style: &Self::Style) -> button::Appearance {
+        let appearance = style.active(&iced::theme::Button::Primary);
+
+        use Button::*;
+        match self {
+            Default => button::Appearance {
+                background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
+                text_color: Color::WHITE,
+                ..appearance
+            },
+            ListItem => button::Appearance {
+                background: None,
+                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                ..appearance
+            },
+            ListItemSelected => button::Appearance {
+                background: Some(Background::Color(Color::from_rgb(0.55, 0.0, 0.0))),
+                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                ..appearance
+            },
+            ModalClose => button::Appearance {
+                background: None,
+                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                ..appearance
+            },
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> button::Appearance {
+        let appearance = style.hovered(&iced::theme::Button::Primary);
+
+        use Button::*;
+        match self {
+            Default => button::Appearance {
+                background: Some(Background::Color(Color::from_rgb(0.3, 0.3, 0.3))),
+                text_color: Color::WHITE,
+                ..appearance
+            },
+            ListItem => button::Appearance {
+                background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
+                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                ..appearance
+            },
+            ListItemSelected => button::Appearance {
+                background: Some(Background::Color(Color::from_rgb(0.55, 0.0, 0.0))),
+                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                ..appearance
+            },
+            ModalClose => button::Appearance {
+                background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
+                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                border_radius: 20.0,
+                ..appearance
+            },
+        }
+    }
+}
+
+impl From<Button> for iced::theme::Button {
+    fn from(style: Button) -> Self {
+        iced::theme::Button::Custom(Box::new(style))
+    }
+}
+
 pub struct Checkbox;
 
 impl Checkbox {
@@ -59,58 +133,6 @@ impl container::StyleSheet for DspContainer {
 impl From<DspContainer> for iced::theme::Container {
     fn from(style: DspContainer) -> Self {
         iced::theme::Container::Custom(Box::new(style))
-    }
-}
-
-pub enum Button {
-    Default,
-    ModalClose,
-}
-
-impl button::StyleSheet for Button {
-    type Style = iced::Theme;
-
-    fn active(&self, style: &Self::Style) -> button::Appearance {
-        let appearance = style.active(&iced::theme::Button::Primary);
-
-        use Button::*;
-        match self {
-            Default => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
-                text_color: Color::WHITE,
-                ..appearance
-            },
-            ModalClose => button::Appearance {
-                background: None,
-                text_color: Color::from_rgb(0.5, 0.5, 0.55),
-                ..appearance
-            },
-        }
-    }
-
-    fn hovered(&self, style: &Self::Style) -> button::Appearance {
-        let appearance = style.hovered(&iced::theme::Button::Primary);
-
-        use Button::*;
-        match self {
-            Default => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.3, 0.3, 0.3))),
-                text_color: Color::WHITE,
-                ..appearance
-            },
-            ModalClose => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
-                text_color: Color::from_rgb(0.5, 0.5, 0.55),
-                border_radius: 20.0,
-                ..appearance
-            },
-        }
-    }
-}
-
-impl From<Button> for iced::theme::Button {
-    fn from(style: Button) -> Self {
-        iced::theme::Button::Custom(Box::new(style))
     }
 }
 

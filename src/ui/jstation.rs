@@ -48,6 +48,10 @@ impl Interface {
         self.iface.program_update_req()
     }
 
+    pub fn change_program(&mut self, prog_nb: impl Into<midi::ProgramNumber>) -> Result<(), Error> {
+        self.iface.change_program(prog_nb)
+    }
+
     pub fn send_cc(&mut self, cc: midi::CC) -> Result<(), Error> {
         self.iface.send_cc(cc)
     }

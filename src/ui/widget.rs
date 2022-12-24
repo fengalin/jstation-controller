@@ -67,15 +67,15 @@ where
     container(row![element.into()].padding(8)).style(style::DspContainer)
 }
 
-pub fn label(text: &str) -> Text<iced::Renderer> {
+pub fn label<'a>(text: impl Into<Cow<'a, str>>) -> Text<'a, iced::Renderer> {
     Text::new(text).size(18)
 }
 
-pub fn amp_cabinet_label(text: &str) -> Text<iced::Renderer> {
+pub fn amp_cabinet_label<'a>(text: impl Into<Cow<'a, str>>) -> Text<'a, iced::Renderer> {
     label(text).width(Length::Units(85))
 }
 
-pub fn param_label(text: &str) -> Text<iced::Renderer> {
+pub fn param_label<'a>(text: impl Into<Cow<'a, str>>) -> Text<'a, iced::Renderer> {
     label(text).width(Length::Units(55))
 }
 

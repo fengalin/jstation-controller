@@ -1,5 +1,5 @@
 pub mod channel_voice;
-pub use channel_voice::{CCNumber, CCValue, ChannelVoice, CC};
+pub use channel_voice::{CCNumber, CCValue, ChannelVoice, ProgramChange, ProgramNumber, CC};
 
 mod error;
 pub use error::Error;

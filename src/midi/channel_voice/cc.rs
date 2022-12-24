@@ -1,4 +1,4 @@
-use nom::{bytes::complete::take, IResult};
+use nom::IResult;
 
 use std::fmt;
 
@@ -18,30 +18,36 @@ impl CC {
     }
 
     pub fn build_for(self, chan: midi::Channel) -> [u8; 3] {
-        let tag_chan = midi::TagChannel { tag: CC::TAG, chan };
+        let tag_chan = midi::TagChannel {
+            tag: Self::TAG,
+            chan,
+        };
 
         [tag_chan.into(), self.nb.into(), self.value.into()]
     }
-}
 
-pub fn parse(i: &[u8]) -> IResult<&[u8], CC> {
-    use nom::error::{self, Error};
+    pub fn parse(i: &[u8]) -> IResult<&[u8], CC> {
+        use nom::{
+            bytes::complete::take,
+            error::{self, Error},
+        };
 
-    let (i, nb) = take(1usize)(i)?;
-    let nb = CCNumber::try_from(nb[0]).map_err(|err| {
-        log::error!("CC: {err}");
+        let (i, nb) = take(1usize)(i)?;
+        let nb = CCNumber::try_from(nb[0]).map_err(|err| {
+            log::error!("CC: {err}");
 
-        nom::Err::Failure(Error::new(i, error::ErrorKind::Verify))
-    })?;
+            nom::Err::Failure(Error::new(i, error::ErrorKind::Verify))
+        })?;
 
-    let (i, value) = take(1usize)(i)?;
-    let value = CCValue::try_from(value[0]).map_err(|err| {
-        log::error!("CC: {err}");
+        let (i, value) = take(1usize)(i)?;
+        let value = CCValue::try_from(value[0]).map_err(|err| {
+            log::error!("CC: {err}");
 
-        nom::Err::Failure(Error::new(i, error::ErrorKind::Verify))
-    })?;
+            nom::Err::Failure(Error::new(i, error::ErrorKind::Verify))
+        })?;
 
-    Ok((i, CC { nb, value }))
+        Ok((i, CC { nb, value }))
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
