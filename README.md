@@ -4,6 +4,8 @@
 
 While it is usable to control a J-Station, this application is a work in progress and lacks functionalities. See [gstation-edit](https://github.com/fengalin/gstation-edit) for a full-featured Linux alternative.
 
+![jstation-controller UI](assets/screenshot_20221224.png "jstation-controller UI")
+
 ## Features
 
 - [X] Scan the available MIDI ports for a J-Station device.
