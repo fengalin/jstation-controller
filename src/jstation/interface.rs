@@ -65,6 +65,13 @@ impl Interface {
             .map_err(|err| Error::with_context("Program Update req.", err))
     }
 
+    pub fn change_program(&mut self, prog_nb: impl Into<midi::ProgramNumber>) -> Result<(), Error> {
+        self.send(&midi::ProgramChange::build_for(
+            prog_nb.into(),
+            self.cc_chan,
+        ))
+    }
+
     fn send_sysex(&mut self, proc: impl ProcedureBuilder) -> Result<(), Error> {
         self.send(&proc.build_for(self.sysex_chan))
     }

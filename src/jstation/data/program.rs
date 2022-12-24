@@ -6,6 +6,7 @@ use crate::jstation::{
     data::{ParameterNumber, RawValue},
     take_split_bytes_u8, Error,
 };
+use crate::midi;
 
 #[derive(Debug)]
 pub struct Program {
@@ -41,7 +42,7 @@ impl Program {
     }
 
     pub fn name(&self) -> &str {
-        &self.cur.name
+        self.cur.name.as_ref()
     }
 
     pub fn has_changed(&self) -> bool {
@@ -100,6 +101,10 @@ impl ProgramData {
 
     pub fn data(&self) -> &[RawValue] {
         &self.data
+    }
+
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
     }
 
     fn has_changed(&self) -> bool {
@@ -235,8 +240,22 @@ impl From<ProgramNumber> for u8 {
     }
 }
 
+impl From<midi::ProgramNumber> for ProgramNumber {
+    fn from(nb: midi::ProgramNumber) -> Self {
+        // FIXME need to return ProgramBank when nb > 29
+        ProgramNumber(u8::from(nb))
+    }
+}
+
+impl From<ProgramNumber> for midi::ProgramNumber {
+    fn from(nb: ProgramNumber) -> Self {
+        // FIXME need to also use ProgramBank
+        nb.0.into()
+    }
+}
+
 impl fmt::Display for ProgramNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&(self.0 + 1), f)
+        f.write_fmt(format_args!("{}.{}", self.0 / 3, self.0 % 3 + 1))
     }
 }

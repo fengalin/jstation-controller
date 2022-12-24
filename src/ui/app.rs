@@ -7,7 +7,7 @@ use std::{
 };
 
 use iced::{
-    widget::{column, container, horizontal_space, row, text, vertical_space},
+    widget::{column, container, horizontal_space, row, text, vertical_space, Column},
     Alignment, Application, Command, Element, Length, Theme,
 };
 use iced_native::command::Action;
@@ -43,6 +43,7 @@ pub struct App {
     dsp: dsp::Dsp,
     programs: BTreeMap<ProgramNumber, Program>,
     program_indices: VecDeque<u8>,
+    cur_prog: Option<ProgramNumber>,
 
     show_midi_modal: bool,
     ports: Rc<RefCell<ui::midi::Ports>>,
@@ -119,6 +120,8 @@ impl App {
                     }
                     ProgramUpdateResp(resp) => {
                         self.dsp.set_raw(resp.prog_data.data())?;
+                        // FIXME figure out the selected prog_nb from its data & name
+                        //self.cur_prog = Some(prog_nb);
                     }
                     other => {
                         log::debug!("Unhandled {other:?}");
@@ -137,7 +140,13 @@ impl App {
                     ProgramChange(prog_nb) => {
                         log::debug!("Requested {prog_nb:?}");
                         if let Some(prog) = self.programs.get(&prog_nb) {
-                            self.dsp.set_raw(prog.data())?;
+                            if let Err(err) = self.dsp.set_raw(prog.data()) {
+                                // FIXME currently an Err is returned setting
+                                // an inactive Effect/Regen, but the program
+                                // is selected on device.
+                                log::debug!("{err}");
+                            }
+                            self.cur_prog = Some(prog_nb);
                         } else {
                             // FIXME could be an error
                             log::warn!("Requested unknown {prog_nb:?}");
@@ -200,6 +209,7 @@ impl Application for App {
             dsp: dsp::Dsp::default(),
             programs: BTreeMap::new(),
             program_indices: VecDeque::new(),
+            cur_prog: None,
 
             show_midi_modal: false,
             ports: RefCell::new(ports).into(),
@@ -259,6 +269,21 @@ impl Application for App {
                     self.show_error(&err);
                 }
             }
+            SelectProgram(prog_nb) => {
+                if let Some(prog) = self.programs.get(&prog_nb) {
+                    match self
+                        .dsp
+                        .set_raw(prog.data())
+                        .and_then(|()| self.jstation.change_program(prog_nb))
+                    {
+                        Ok(()) => self.cur_prog = Some(prog_nb),
+                        Err(err) => self.show_error(&err),
+                    }
+                } else {
+                    // FIXME could be an error
+                    log::warn!("Requested unknown {prog_nb:?}");
+                }
+            }
             StartScan => {
                 log::debug!("Scanning Midi ports for J-Station");
                 self.scanner_ctx = self.jstation.start_scan();
@@ -312,7 +337,55 @@ impl Application for App {
             )
             .into()
         } else {
-            let mut content = column![
+            let mut dspes = column![
+                ui::compressor::Panel::new(self.dsp.compressor),
+                ui::wah_expr::Panel::new(self.dsp.wah_expr),
+            ]
+            .spacing(10);
+
+            if !effect_post.is_true() {
+                dspes = dspes.push(ui::effect::Panel::new(self.dsp.effect));
+            }
+
+            dspes = dspes.push(ui::amp::Panel::new(self.dsp.amp));
+
+            dspes = dspes.push(row![
+                ui::dsp_keep_width(ui::cabinet::Panel::new(self.dsp.cabinet)),
+                horizontal_space(Length::Units(10)),
+                ui::dsp_keep_width(ui::noise_gate::Panel::new(self.dsp.noise_gate)),
+            ]);
+
+            if effect_post.is_true() {
+                dspes = dspes.push(ui::effect::Panel::new(self.dsp.effect));
+            }
+
+            dspes = dspes.push(ui::delay::Panel::new(self.dsp.delay));
+            dspes = dspes.push(ui::reverb::Panel::new(self.dsp.reverb));
+
+            let progs = Column::with_children(
+                self.programs
+                    .iter()
+                    .map(|(prog_nb, prog)| {
+                        let style = if self.cur_prog.map_or(false, |cur_prog| cur_prog == *prog_nb)
+                        {
+                            ui::style::Button::ListItemSelected
+                        } else {
+                            ui::style::Button::ListItem
+                        };
+
+                        iced::widget::Button::new(row![
+                            ui::value_label(prog_nb.to_string()),
+                            horizontal_space(Length::Units(5)),
+                            ui::value_label(prog.name().to_string()).width(Length::Fill),
+                        ])
+                        .on_press(SelectProgram(*prog_nb))
+                        .style(style.into())
+                        .into()
+                    })
+                    .collect(),
+            );
+
+            column![
                 row![
                     ui::button("Utility Settings").on_press(ShowUtilitySettings),
                     horizontal_space(Length::Units(20)),
@@ -322,31 +395,9 @@ impl Application for App {
                 ]
                 .width(Length::Fill),
                 vertical_space(Length::Units(10)),
-                ui::compressor::Panel::new(self.dsp.compressor),
-                ui::wah_expr::Panel::new(self.dsp.wah_expr),
+                row![dspes, horizontal_space(Length::Units(10)), progs]
             ]
-            .spacing(10);
-
-            if !effect_post.is_true() {
-                content = content.push(ui::effect::Panel::new(self.dsp.effect));
-            }
-
-            content = content.push(ui::amp::Panel::new(self.dsp.amp));
-
-            content = content.push(row![
-                ui::dsp_keep_width(ui::cabinet::Panel::new(self.dsp.cabinet)),
-                horizontal_space(Length::Units(10)),
-                ui::dsp_keep_width(ui::noise_gate::Panel::new(self.dsp.noise_gate)),
-            ]);
-
-            if effect_post.is_true() {
-                content = content.push(ui::effect::Panel::new(self.dsp.effect));
-            }
-
-            content = content.push(ui::delay::Panel::new(self.dsp.delay));
-            content = content.push(ui::reverb::Panel::new(self.dsp.reverb));
-
-            content.into()
+            .into()
         };
 
         let content: Element<_> = container(column![
@@ -374,6 +425,7 @@ pub enum Message {
     Parameter(dsp::Parameter),
     UtilitySettings(dsp::UtilitySettings),
     Midi(ui::midi::Selection),
+    SelectProgram(ProgramNumber),
     StartScan,
     ShowUtilitySettings,
     ShowMidiConnection,
