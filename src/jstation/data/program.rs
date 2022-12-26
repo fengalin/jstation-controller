@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, cmp, fmt};
 
 use nom::IResult;
 
@@ -74,6 +74,12 @@ impl Program {
     }
 }
 
+impl cmp::PartialEq<ProgramData> for Program {
+    fn eq(&self, other: &ProgramData) -> bool {
+        self.original.eq(other)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ProgramData {
     data: Cow<'static, [RawValue]>,
@@ -107,6 +113,8 @@ impl ProgramData {
         self.name.as_ref()
     }
 
+    // FIXME need to check whether a changed param value is back to
+    // its original value to figure out it has changed.
     fn has_changed(&self) -> bool {
         matches!(self.data, Cow::Owned(_)) | matches!(self.name, Cow::Owned(_))
     }
@@ -133,6 +141,22 @@ impl ProgramData {
         }
 
         self.name = Cow::<str>::from(name);
+    }
+}
+
+impl cmp::PartialEq for ProgramData {
+    fn eq(&self, other: &Self) -> bool {
+        if self.name.as_ref() != other.name.as_ref() {
+            return false;
+        }
+
+        for data in self.data.iter().zip(other.data.iter()) {
+            if data.0 != data.1 {
+                return false;
+            }
+        }
+
+        true
     }
 }
 

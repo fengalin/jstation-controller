@@ -36,6 +36,8 @@ pub enum Error {
     },
     #[error("Unexpected program received {}", .0)]
     UnexpectedProgram(ProgramNumber),
+    #[error("Failed to identify Program update")]
+    ProgramIdenticationFailure,
 }
 
 pub struct App {
@@ -119,9 +121,23 @@ impl App {
                         self.jstation.program_update_req()?;
                     }
                     ProgramUpdateResp(resp) => {
+                        let prog = self
+                            .programs
+                            .iter()
+                            .find(|(_, prog)| *prog == &resp.prog_data);
+                        if let Some((&prog_nb, _)) = prog {
+                            self.cur_prog = Some(prog_nb);
+                            log::debug!(
+                                "Updated program {prog_nb}. Has-changed flag: {}",
+                                resp.has_changed
+                            );
+                        } else {
+                            // This can occur on startup when the program on device `has_changed`
+                            self.show_error(&Error::ProgramIdenticationFailure);
+                        }
+
+                        // FIXME update UI with `resp.has_changed` too.
                         self.dsp.set_raw(resp.prog_data.data())?;
-                        // FIXME figure out the selected prog_nb from its data & name
-                        //self.cur_prog = Some(prog_nb);
                     }
                     other => {
                         log::debug!("Unhandled {other:?}");
