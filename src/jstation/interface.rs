@@ -208,12 +208,12 @@ impl Listener {
             match &msg {
                 ChannelVoice(cv) => {
                     if cv.chan == self.cc_chan {
-                        log::debug!("Received {:?}", cv.msg);
+                        log::trace!("Received {:?}", cv.msg);
 
                         return Ok(msg);
                     }
 
-                    log::debug!("Ignoring channel voice on {:?}: {:?}", cv.chan, cv.msg);
+                    log::trace!("Ignoring channel voice on {:?}: {:?}", cv.chan, cv.msg);
                 }
                 SysEx(sysex) => {
                     // FIXME check whether this is emited when the chans change
@@ -235,12 +235,12 @@ impl Listener {
                     }
 
                     if sysex.chan == self.sysex_chan {
-                        log::debug!("Received {:?}", sysex.proc);
+                        log::trace!("Received {:?}", sysex.proc);
 
                         return Ok(msg);
                     }
 
-                    log::debug!("Ignoring sysex on {:?}: {:?}", sysex.chan, sysex.proc);
+                    log::trace!("Ignoring sysex on {:?}: {:?}", sysex.chan, sysex.proc);
                 }
             }
         }

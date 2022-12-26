@@ -271,7 +271,6 @@ impl Application for App {
 
                 if let Some(cc) = param.to_cc() {
                     // FIXME handle the error
-                    dbg!(&cc);
                     let _ = self.jstation.send_cc(cc);
                 } else {
                     log::error!("No CC for {:?}", param);
