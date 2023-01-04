@@ -15,8 +15,7 @@ pub struct Delay {
     #[const_range(max = 30, param_nb = 29, cc_nb = 55)]
     pub time_course: TimeCourse,
     // 1 ms increments.
-    // FIXME check whether we really start at 1, why not 0?
-    #[const_range(min = 1, max = 99, param_nb = 30, cc_nb = 56)]
+    #[const_range(max = 99, param_nb = 30, cc_nb = 56)]
     pub time_fine: TimeFine,
     #[const_range(max = 99, param_nb = 31, cc_nb = 57, display_cents)]
     pub feedback: Feedback,
