@@ -13,7 +13,7 @@ pub trait BoolParameter:
     const TRUE: Self;
     const FALSE: Self;
 
-    fn name(self) -> &'static str;
+    fn param_name(self) -> &'static str;
 
     fn from_raw(raw: RawValue) -> Self {
         (raw.as_u8() == 0).into()

@@ -14,7 +14,7 @@ pub trait VariableRangeParameter:
 }
 
 pub trait VariableRange: Clone + Copy {
-    type Discriminant: Clone + Copy + Default + PartialEq;
+    type Discriminant: Clone + Copy + Default + std::fmt::Debug + PartialEq;
 
     fn range_from(discr: Self::Discriminant) -> Option<DiscreteRange>;
 }

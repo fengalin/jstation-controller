@@ -52,12 +52,12 @@ pub enum Error {
 
 impl Error {
     // FIXME there must be a better way...
-    pub fn with_context<E>(ctx: &'static str, source: E) -> Self
+    pub fn with_context<E>(ctx: impl Into<Arc<str>>, source: E) -> Self
     where
         E: 'static + std::error::Error + Send + Sync,
     {
         Error::WithContext {
-            ctx: Arc::from(ctx),
+            ctx: ctx.into(),
             source: Arc::new(source),
         }
     }

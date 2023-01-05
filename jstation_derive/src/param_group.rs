@@ -159,8 +159,25 @@ impl<'a> ToTokens for ParamGroup<'a> {
         if let Some(params) = self.sorted_by_param_nb() {
             let set_field = params.map(|p| {
                 let field = p.field();
-                quote! {
-                    self.#field.set_raw(data)?;
+
+                if p.is_discriminant() {
+                    let variable_range_field =
+                        self.variable_range_fields().map(|param| param.field());
+
+                    quote! {
+                        self.#field.set_raw(data)?;
+
+                        #(
+                            crate::jstation::data::VariableRangeParameter::set_discriminant(
+                                &mut self.#variable_range_field,
+                                self.#field.into(),
+                            );
+                        )*
+                    }
+                } else {
+                    quote! {
+                        self.#field.set_raw(data)?;
+                    }
                 }
             });
 

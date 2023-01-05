@@ -44,7 +44,7 @@ impl<'a> ToTokens for Boolean<'a> {
                 const TRUE: Self = #param(true);
                 const FALSE: Self = #param(false);
 
-                fn name(self) -> &'static str {
+                fn param_name(self) -> &'static str {
                     #param_name
                 }
             }

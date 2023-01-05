@@ -70,7 +70,10 @@ impl<'a> ToTokens for VariableRange<'a> {
                         .ok_or_else(|| Error::ParameterInactive(stringify!(#param).into()))?;
                     let value = range
                         .check(raw)
-                        .map_err(|err| crate::jstation::Error::with_context(#param_name, err))?;
+                        .map_err(|err| crate::jstation::Error::with_context(
+                            format!("{} ({:?})", #param_name, discr),
+                            err,
+                        ))?;
 
                     Ok(#param {
                         discr,
