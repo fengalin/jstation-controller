@@ -1,7 +1,7 @@
 use nom::IResult;
 use smallvec::SmallVec;
 
-use crate::jstation::{split_bytes, take_split_bytes_u16, take_split_bytes_u8, BufferBuilder, ProcedureBuilder};
+use crate::jstation::{split_bytes, take_split_bytes_u16, take_split_bytes_u8, BufferBuilder, ProcedureBuilder, ProgramNb};
 
 #[derive(Debug)]
 pub struct ProgramIndicesReq;
@@ -21,7 +21,7 @@ const DEFAULT_INDICES_LEN: usize = 32;
 
 #[derive(Debug, Default)]
 pub struct ProgramIndicesResp {
-    pub indices: SmallVec::<[u8; DEFAULT_INDICES_LEN]>,
+    pub numbers: SmallVec::<[ProgramNb; DEFAULT_INDICES_LEN]>,
 }
 
 impl ProcedureBuilder for ProgramIndicesResp {
@@ -30,7 +30,7 @@ impl ProcedureBuilder for ProgramIndicesResp {
 
     fn push_variable_size_data(&self, buffer: &mut BufferBuilder) {
         let buf = Vec::from_iter(
-            self.indices.iter().cloned().flat_map(split_bytes::from_u8)
+            self.numbers.iter().cloned().flat_map(|nb| split_bytes::from_u8(nb.into()))
         );
         buffer.push_variable_size_data(buf.into_iter());
     }
@@ -44,7 +44,17 @@ impl ProgramIndicesResp {
         for _ in 0..len {
             let (i_, indice) = take_split_bytes_u8(i, checksum)?;
             i = i_;
-            prg_indices.indices.push(indice);
+
+            let nb = ProgramNb::try_from(indice).map_err(|err| {
+                log::error!("ProgramIndicesResp: {err}");
+
+                nom::Err::Failure(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::TooLarge,
+                ))
+            })?;
+
+            prg_indices.numbers.push(nb);
         }
 
         Ok((i, prg_indices))

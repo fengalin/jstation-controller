@@ -114,6 +114,14 @@ pub fn parse(input: &[u8]) -> IResult<&[u8], Message> {
     ))
 }
 
+pub fn take_u8<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], u8> {
+    let (i, bytes) = take(1usize)(i)?;
+    let byte = bytes[0];
+    *checksum ^= byte;
+
+    Ok((i, byte))
+}
+
 pub fn take_split_bytes_bool<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], bool> {
     let (i, bytes) = take(2usize)(i)?;
     *checksum = *checksum ^ bytes[0] ^ bytes[1];

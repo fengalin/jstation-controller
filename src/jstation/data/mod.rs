@@ -10,4 +10,4 @@ pub mod dsp;
 pub use dsp::Parameter;
 
 pub mod program;
-pub use program::{Program, ProgramBank, ProgramData, ProgramNumber};
+pub use program::{Program, ProgramData, ProgramId, ProgramNb, ProgramsBank};

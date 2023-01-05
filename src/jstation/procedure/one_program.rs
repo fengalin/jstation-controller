@@ -1,14 +1,13 @@
 use nom::{error::{self, Error}, IResult};
 
 use crate::jstation::{
-    data::{Program, ProgramBank, ProgramData, ProgramNumber},
-    split_bytes, take_split_bytes_u16, take_split_bytes_u8, BufferBuilder, ProcedureBuilder
+    data::{Program, ProgramData, ProgramId},
+    split_bytes, take_split_bytes_u16, take_split_bytes_u8, take_u8, BufferBuilder, ProcedureBuilder
 };
 
 #[derive(Debug)]
 pub struct OneProgramReq {
-    pub bank: ProgramBank,
-    pub nb: ProgramNumber,
+    pub id: ProgramId,
 }
 
 impl ProcedureBuilder for OneProgramReq {
@@ -17,21 +16,26 @@ impl ProcedureBuilder for OneProgramReq {
 
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_fixed_size_data(
-            split_bytes::from_u8(self.bank.into()).into_iter()
-            .chain(split_bytes::from_u8(self.nb.into()).into_iter())
+            [self.id.progs_bank().into(), self.id.nb().into()].into_iter()
         );
     }
 }
 
 impl OneProgramReq {
     pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramReq> {
-        let (i, bank) = take_split_bytes_u8(input, checksum)?;
-        let bank = ProgramBank::from(bank);
+        let (i, progs_bank) = take_u8(input, checksum)?;
+        let (i, nb) = take_u8(i, checksum)?;
 
-        let (i, nb) = take_split_bytes_u8(i, checksum)?;
-        let nb = ProgramNumber::from(nb);
+        let id = ProgramId::try_from_raw(progs_bank, nb).map_err(|err| {
+            log::error!("OneProgramReq: {err}");
 
-        Ok((i, OneProgramReq { bank, nb }))
+            nom::Err::Failure(nom::error::Error::new(
+                input,
+                nom::error::ErrorKind::TooLarge,
+            ))
+        })?;
+
+        Ok((i, OneProgramReq { id }))
     }
 }
 
@@ -46,8 +50,8 @@ impl ProcedureBuilder for OneProgramResp {
 
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_fixed_size_data(
-            split_bytes::from_u8(self.prog.bank().into()).into_iter()
-            .chain(split_bytes::from_u8(self.prog.nb().into()).into_iter())
+            split_bytes::from_u8(self.prog.id().progs_bank().into()).into_iter()
+            .chain(split_bytes::from_u8(self.prog.id().nb().into()).into_iter())
         );
     }
 
@@ -63,11 +67,17 @@ impl ProcedureBuilder for OneProgramResp {
 
 impl OneProgramResp {
     pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramResp> {
-        let (i, bank) = take_split_bytes_u8(input, checksum)?;
-        let bank = ProgramBank::from(bank);
-
+        let (i, progs_bank) = take_split_bytes_u8(input, checksum)?;
         let (i, nb) = take_split_bytes_u8(i, checksum)?;
-        let nb = ProgramNumber::from(nb);
+
+        let id = ProgramId::try_from_raw(progs_bank, nb).map_err(|err| {
+            log::error!("OneProgramResp: {err}");
+
+            nom::Err::Failure(nom::error::Error::new(
+                input,
+                nom::error::ErrorKind::TooLarge,
+            ))
+        })?;
 
         let (i, len) = take_split_bytes_u16(i, checksum)?;
 
@@ -81,6 +91,6 @@ impl OneProgramResp {
                 ))
             })?;
 
-        Ok((i, OneProgramResp { prog: Program::new(bank, nb, prog_data) }))
+        Ok((i, OneProgramResp { prog: Program::new(id, prog_data) }))
     }
 }

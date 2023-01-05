@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    jstation::{parse_raw_midi_msg, procedure, sysex, Error, Message, Procedure, ProcedureBuilder},
+    jstation::{
+        self, parse_raw_midi_msg, procedure, sysex, Error, Message, Procedure, ProcedureBuilder,
+    },
     midi,
 };
 
@@ -65,11 +67,13 @@ impl Interface {
             .map_err(|err| Error::with_context("Program Update req.", err))
     }
 
-    pub fn change_program(&mut self, prog_nb: impl Into<midi::ProgramNumber>) -> Result<(), Error> {
-        self.send(&midi::ProgramChange::build_for(
-            prog_nb.into(),
-            self.cc_chan,
-        ))
+    pub fn change_program(&mut self, id: impl Into<midi::ProgramNumber>) -> Result<(), Error> {
+        self.send(&midi::ProgramChange::build_for(id.into(), self.cc_chan))
+    }
+
+    pub fn request_program(&mut self, id: jstation::ProgramId) -> Result<(), Error> {
+        self.send_sysex(procedure::OneProgramReq { id })
+            .map_err(|err| Error::with_context("Program req.", err))
     }
 
     fn send_sysex(&mut self, proc: impl ProcedureBuilder) -> Result<(), Error> {

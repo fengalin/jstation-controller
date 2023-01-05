@@ -1,4 +1,4 @@
-use crate::{jstation::ProgramNumber, midi};
+use crate::{jstation::ProgramId, midi};
 
 #[derive(Copy, Clone, Debug)]
 pub struct ChannelVoice {
@@ -9,7 +9,7 @@ pub struct ChannelVoice {
 #[derive(Copy, Clone, Debug)]
 pub enum Message {
     CC(midi::CC),
-    ProgramChange(ProgramNumber),
+    ProgramChange(ProgramId),
 }
 
 impl From<midi::ChannelVoice> for ChannelVoice {
@@ -17,7 +17,7 @@ impl From<midi::ChannelVoice> for ChannelVoice {
         use midi::channel_voice::Message::*;
         let msg = match cv.msg {
             CC(cc) => Message::CC(cc),
-            ProgramChange(prog_nb) => Message::ProgramChange(ProgramNumber::from(prog_nb)),
+            ProgramChange(midi_prog_nb) => Message::ProgramChange(ProgramId::from(midi_prog_nb)),
         };
 
         ChannelVoice { chan: cv.chan, msg }

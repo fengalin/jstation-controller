@@ -29,6 +29,9 @@ pub enum Error {
     #[error("Program name size {} out of range", .0)]
     ProgramNameOutOfRange(usize),
 
+    #[error("Unknown Programs Bank {}", .0)]
+    ProgramsBank(u8),
+
     #[error("Error Parsing MIDI message")]
     Parse,
 

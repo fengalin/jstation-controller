@@ -12,6 +12,9 @@ use iced::{
 use crate::jstation::data::{BoolParameter, DiscreteParameter, Normal};
 use crate::ui::style;
 
+pub const DEFAULT_DSP_WIDTH: Length = Length::Units(622);
+pub const DSP_PROGRAM_SPACING: Length = Length::Units(10);
+
 pub fn button<'a, Message>(title: &str) -> Button<'a, Message, iced::Renderer> {
     Button::new(text(title).size(15)).style(style::Button::Default.into())
 }
@@ -28,6 +31,7 @@ where
     Checkbox::new(is_checked, title, f)
         .size(16)
         .text_size(15)
+        .spacing(6)
         .style(style::Checkbox)
 }
 
@@ -54,7 +58,7 @@ where
     Message: 'a,
 {
     container(row![title_area.width(Length::Units(270)), element.into()].padding(8))
-        .width(Length::Units(622))
+        .width(DEFAULT_DSP_WIDTH)
         .style(style::DspContainer)
 }
 

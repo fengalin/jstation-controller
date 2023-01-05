@@ -1,10 +1,4 @@
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, VecDeque},
-    future,
-    rc::Rc,
-    sync::Arc,
-};
+use std::{borrow::Cow, cell::RefCell, collections::BTreeMap, future, rc::Rc, sync::Arc};
 
 use iced::{
     widget::{column, container, horizontal_space, row, text, vertical_space, Column},
@@ -18,7 +12,7 @@ pub static APP_NAME: Lazy<Arc<str>> = Lazy::new(|| "J-Station Controller".into()
 
 use crate::jstation::{
     self,
-    data::{dsp, Program, ProgramNumber},
+    data::{dsp, Program, ProgramId, ProgramNb, ProgramsBank},
 };
 use crate::midi;
 use crate::ui;
@@ -31,11 +25,11 @@ pub enum Error {
     JStation(#[from] jstation::Error),
     #[error("Unexpected program received {}, expected {}", .received, .expected)]
     UnexpectedProgramNumber {
-        received: ProgramNumber,
-        expected: ProgramNumber,
+        received: ProgramId,
+        expected: ProgramId,
     },
     #[error("Unexpected program received {}", .0)]
-    UnexpectedProgram(ProgramNumber),
+    UnexpectedProgram(ProgramId),
     #[error("Failed to identify Program update")]
     ProgramIdenticationFailure,
 }
@@ -43,9 +37,9 @@ pub enum Error {
 pub struct App {
     jstation: ui::jstation::Interface,
     dsp: dsp::Dsp,
-    programs: BTreeMap<ProgramNumber, Program>,
-    program_indices: VecDeque<u8>,
-    cur_prog: Option<ProgramNumber>,
+    progs_bank: ProgramsBank,
+    programs: BTreeMap<ProgramId, Program>,
+    cur_prog: Option<ProgramId>,
 
     show_midi_modal: bool,
     ports: Rc<RefCell<ui::midi::Ports>>,
@@ -58,9 +52,10 @@ pub struct App {
 }
 
 impl App {
-    fn show_error(&mut self, err: &dyn std::error::Error) {
+    fn show_error(&mut self, err: impl ToString) {
+        let err = err.to_string();
         log::error!("{err}");
-        self.output_text = err.to_string();
+        self.output_text = err;
     }
 
     fn handle_jstation_event(
@@ -98,47 +93,50 @@ impl App {
                         // FIXME handle ui consequence of the error
                         self.jstation.bank_dump()?;
                     }
-                    ProgramIndicesResp(resp) => {
-                        self.program_indices = VecDeque::from_iter(resp.indices.iter().cloned());
-                    }
+                    ProgramIndicesResp(_) => (),
                     OneProgramResp(resp) => {
-                        let prog_nb = resp.prog.nb();
+                        let prog_id = resp.prog.id();
 
-                        if let Some(indice) = self.program_indices.pop_front() {
-                            if prog_nb.as_u8() == indice {
-                                self.programs.insert(prog_nb, resp.prog);
-                            } else {
-                                self.show_error(&Error::UnexpectedProgramNumber {
-                                    received: prog_nb,
-                                    expected: ProgramNumber::from(indice),
-                                });
+                        if let Some(cur) = self.cur_prog {
+                            if cur.nb() == prog_id.nb() {
+                                // FIXME update UI with `resp.has_changed` too.
+                                self.dsp.set_raw(resp.prog.data())?;
+
+                                // Update cur prog in case user / factory flag changed
+                                self.cur_prog = Some(prog_id);
                             }
-                        } else {
-                            self.show_error(&Error::UnexpectedProgram(prog_nb));
                         }
-                    }
-                    EndBankDumpResp(_) => {
-                        self.jstation.program_update_req()?;
+
+                        self.programs.insert(prog_id, resp.prog);
                     }
                     ProgramUpdateResp(resp) => {
                         let prog = self
                             .programs
                             .iter()
                             .find(|(_, prog)| *prog == &resp.prog_data);
-                        if let Some((&prog_nb, _)) = prog {
-                            self.cur_prog = Some(prog_nb);
+                        if let Some((_, prog)) = prog {
+                            self.cur_prog = Some(prog.id());
                             log::debug!(
-                                "Updated program {prog_nb}. Has-changed flag: {}",
+                                "Program Update {}. Has-changed flag: {}",
+                                prog.id(),
                                 resp.has_changed
                             );
                         } else {
                             // This can occur on startup when the program on device `has_changed`
+                            assert!(self.cur_prog.is_none());
                             self.show_error(&Error::ProgramIdenticationFailure);
                         }
 
                         // FIXME update UI with `resp.has_changed` too.
                         self.dsp.set_raw(resp.prog_data.data())?;
                     }
+                    StartBankDumpResp(_) => {
+                        self.progs_bank = ProgramsBank::default();
+                    }
+                    EndBankDumpResp(_) => {
+                        self.jstation.program_update_req()?;
+                    }
+                    ToMessageResp(resp) => self.show_error(&resp),
                     other => {
                         log::debug!("Unhandled {other:?}");
                     }
@@ -153,19 +151,15 @@ impl App {
                         Ok(None) => log::debug!("Unchanged param for {cc:?}"),
                         Err(err) => log::warn!("{err}"),
                     },
-                    ProgramChange(prog_nb) => {
-                        log::debug!("Requested {prog_nb:?}");
-                        if let Some(prog) = self.programs.get(&prog_nb) {
-                            if let Err(err) = self.dsp.set_raw(prog.data()) {
-                                // FIXME currently an Err is returned setting
-                                // an inactive Effect/Regen, but the program
-                                // is selected on device.
-                                log::debug!("{err}");
-                            }
-                            self.cur_prog = Some(prog_nb);
-                        } else {
-                            // FIXME could be an error
-                            log::warn!("Requested unknown {prog_nb:?}");
+                    ProgramChange(prog_id) => {
+                        self.cur_prog = Some(prog_id);
+                        self.progs_bank = prog_id.progs_bank();
+
+                        if let Some(prog) = self.programs.get(&prog_id) {
+                            self.dsp.set_raw(prog.data()).unwrap();
+                        } else if let Err(err) = self.jstation.request_program(prog_id) {
+                            self.cur_prog = None;
+                            self.show_error(&err);
                         }
                     }
                 }
@@ -223,8 +217,8 @@ impl Application for App {
             jstation,
 
             dsp: dsp::Dsp::default(),
+            progs_bank: ProgramsBank::default(),
             programs: BTreeMap::new(),
-            program_indices: VecDeque::new(),
             cur_prog: None,
 
             show_midi_modal: false,
@@ -284,20 +278,21 @@ impl Application for App {
                     self.show_error(&err);
                 }
             }
-            SelectProgram(prog_nb) => {
-                if let Some(prog) = self.programs.get(&prog_nb) {
-                    match self
-                        .dsp
-                        .set_raw(prog.data())
-                        .and_then(|()| self.jstation.change_program(prog_nb))
-                    {
-                        Ok(()) => self.cur_prog = Some(prog_nb),
-                        Err(err) => self.show_error(&err),
+            SelectProgram(prog_id) => match self.jstation.change_program(prog_id) {
+                Ok(()) => {
+                    self.cur_prog = Some(prog_id);
+
+                    if let Some(prog) = self.programs.get(&prog_id) {
+                        self.dsp.set_raw(prog.data()).unwrap();
+                    } else if let Err(err) = self.jstation.request_program(prog_id) {
+                        self.cur_prog = None;
+                        self.show_error(&err);
                     }
-                } else {
-                    // FIXME could be an error
-                    log::warn!("Requested unknown {prog_nb:?}");
                 }
+                Err(err) => self.show_error(&err),
+            },
+            SelectProgramsBank(progs_bank) => {
+                self.progs_bank = progs_bank;
             }
             StartScan => {
                 log::debug!("Scanning Midi ports for J-Station");
@@ -329,6 +324,9 @@ impl Application for App {
     }
 
     fn view(&self) -> Element<Message> {
+        pub static PROGRAMS_BANKS: Lazy<Cow<'static, [ProgramsBank]>> =
+            Lazy::new(|| vec![ProgramsBank::User, ProgramsBank::Factory].into());
+
         use jstation::data::BoolParameter;
         use Message::*;
 
@@ -356,7 +354,7 @@ impl Application for App {
                 ui::compressor::Panel::new(self.dsp.compressor),
                 ui::wah_expr::Panel::new(self.dsp.wah_expr),
             ]
-            .spacing(10);
+            .spacing(11);
 
             if !effect_post.is_true() {
                 dspes = dspes.push(ui::effect::Panel::new(self.dsp.effect));
@@ -378,39 +376,58 @@ impl Application for App {
             dspes = dspes.push(ui::reverb::Panel::new(self.dsp.reverb));
 
             let progs = Column::with_children(
-                self.programs
-                    .iter()
-                    .map(|(prog_nb, prog)| {
-                        let style = if self.cur_prog.map_or(false, |cur_prog| cur_prog == *prog_nb)
-                        {
+                ProgramNb::enumerate()
+                    .map(|prog_nb| {
+                        let prog_id = ProgramId::new(self.progs_bank, prog_nb);
+
+                        let style = if self.cur_prog.map_or(false, |cur_prog| cur_prog == prog_id) {
                             ui::style::Button::ListItemSelected
                         } else {
                             ui::style::Button::ListItem
                         };
 
                         iced::widget::Button::new(row![
-                            ui::value_label(prog_nb.to_string()),
+                            ui::value_label(prog_id.nb().to_string()),
                             horizontal_space(Length::Units(5)),
-                            ui::value_label(prog.name().to_string()).width(Length::Fill),
+                            ui::value_label(
+                                self.programs
+                                    .get(&prog_id)
+                                    .map_or("", Program::name)
+                                    .to_string()
+                            )
+                            .width(Length::Fill),
                         ])
-                        .on_press(SelectProgram(*prog_nb))
+                        .on_press(SelectProgram(prog_id))
                         .style(style.into())
                         .into()
                     })
                     .collect(),
             );
 
-            column![
+            let header = row![
                 row![
                     ui::button("Utility Settings").on_press(ShowUtilitySettings),
                     horizontal_space(Length::Units(20)),
                     ui::button("Midi Connection").on_press(ShowMidiConnection),
-                    horizontal_space(Length::Fill),
-                    ui::checkbox("Dark Theme", self.use_dark_them, UseDarkTheme),
                 ]
-                .width(Length::Fill),
+                .width(ui::widget::DEFAULT_DSP_WIDTH),
+                horizontal_space(ui::widget::DSP_PROGRAM_SPACING),
+                ui::pick_list(
+                    PROGRAMS_BANKS.clone(),
+                    Some(self.progs_bank),
+                    move |progs_bank| { SelectProgramsBank(progs_bank) }
+                ),
+                // FIXME add Store / Undo buttons
+            ];
+
+            column![
+                header,
                 vertical_space(Length::Units(10)),
-                row![dspes, horizontal_space(Length::Units(10)), progs]
+                row![
+                    dspes,
+                    horizontal_space(ui::widget::DSP_PROGRAM_SPACING),
+                    progs
+                ]
             ]
             .into()
         };
@@ -418,7 +435,11 @@ impl Application for App {
         let content: Element<_> = container(column![
             content,
             vertical_space(Length::Fill),
-            text(&self.output_text).size(18),
+            row![
+                text(&self.output_text).size(18),
+                horizontal_space(Length::Fill),
+                ui::checkbox("Dark Theme", self.use_dark_them, UseDarkTheme),
+            ],
         ])
         .padding(10)
         .width(Length::Fill)
@@ -440,7 +461,8 @@ pub enum Message {
     Parameter(dsp::Parameter),
     UtilitySettings(dsp::UtilitySettings),
     Midi(ui::midi::Selection),
-    SelectProgram(ProgramNumber),
+    SelectProgram(ProgramId),
+    SelectProgramsBank(ProgramsBank),
     StartScan,
     ShowUtilitySettings,
     ShowMidiConnection,
