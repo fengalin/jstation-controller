@@ -160,25 +160,32 @@ impl<'a> ToTokens for ParamGroup<'a> {
             let set_field = params.map(|p| {
                 let field = p.field();
 
+                let mut set_field = quote! {
+                    if let Err(err) = self.#field.set_raw(data) {
+                        if err.is_inactive_param() {
+                            // Don't propagate
+                            log::debug!("set_raw: {}", err);
+                        } else {
+                            return Err(err);
+                        }
+                    }
+                };
+
                 if p.is_discriminant() {
                     let variable_range_field =
                         self.variable_range_fields().map(|param| param.field());
 
-                    quote! {
-                        self.#field.set_raw(data)?;
-
+                    set_field.extend(quote! {
                         #(
                             crate::jstation::data::VariableRangeParameter::set_discriminant(
                                 &mut self.#variable_range_field,
                                 self.#field.into(),
                             );
                         )*
-                    }
-                } else {
-                    quote! {
-                        self.#field.set_raw(data)?;
-                    }
+                    });
                 }
+
+                set_field
             });
 
             tokens.extend(quote! {
