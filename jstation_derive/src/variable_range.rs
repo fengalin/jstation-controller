@@ -67,7 +67,11 @@ impl<'a> ToTokens for VariableRange<'a> {
                     use crate::jstation::Error;
 
                     let range = <Self as crate::jstation::data::VariableRange>::range_from(discr)
-                        .ok_or_else(|| Error::ParameterInactive(stringify!(#param).into()))?;
+                        .ok_or_else(|| Error::ParameterInactive {
+                            param: stringify!(#param).to_string(),
+                            discriminant: format!("{:?}", discr),
+                            value: raw.into(),
+                        })?;
                     let value = range
                         .check(raw)
                         .map_err(|err| crate::jstation::Error::with_context(
@@ -148,7 +152,11 @@ impl<'a> ToTokens for VariableRange<'a> {
                         assert_eq!(cc.nb.as_u8(), #cc_nb);
 
                         let range = self.range()
-                            .ok_or_else(|| Error::ParameterInactive(stringify!(#param).into()))?;
+                            .ok_or_else(|| Error::ParameterInactive {
+                                param: stringify!(#param).to_string(),
+                                discriminant: format!("{:?}", self.discr),
+                                value: cc.value.into(),
+                            })?;
                         let value = range.cc_to_raw(cc.value);
 
                         if self.value == value {

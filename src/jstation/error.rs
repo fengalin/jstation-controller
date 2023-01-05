@@ -7,8 +7,12 @@ pub enum Error {
     #[error("Unknown J-Station CC number {}", .0)]
     CCNumberUnknown(u8),
 
-    #[error("Inactive Parameter {}", .0)]
-    ParameterInactive(String),
+    #[error("Inactive Parameter {} (discriminant {}), value {}", .param, .discriminant, .value)]
+    ParameterInactive {
+        param: String,
+        discriminant: String,
+        value: u8,
+    },
 
     #[error("Parameter number {} out of range", .0)]
     ParameterNumberOutOfRange(u8),
@@ -68,5 +72,9 @@ impl Error {
 
     pub fn is_unknown_cc(&self) -> bool {
         matches!(self, Error::CCNumberUnknown(_))
+    }
+
+    pub fn is_inactive_param(&self) -> bool {
+        matches!(self, Error::ParameterInactive { .. })
     }
 }
