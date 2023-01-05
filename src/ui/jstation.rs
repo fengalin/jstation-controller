@@ -48,8 +48,12 @@ impl Interface {
         self.iface.program_update_req()
     }
 
-    pub fn change_program(&mut self, prog_nb: impl Into<midi::ProgramNumber>) -> Result<(), Error> {
-        self.iface.change_program(prog_nb)
+    pub fn change_program(&mut self, id: impl Into<midi::ProgramNumber>) -> Result<(), Error> {
+        self.iface.change_program(id)
+    }
+
+    pub fn request_program(&mut self, id: jstation::ProgramId) -> Result<(), Error> {
+        self.iface.request_program(id)
     }
 
     pub fn send_cc(&mut self, cc: midi::CC) -> Result<(), Error> {

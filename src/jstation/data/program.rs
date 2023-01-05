@@ -10,31 +10,25 @@ use crate::midi;
 
 #[derive(Debug)]
 pub struct Program {
-    bank: ProgramBank,
-    nb: ProgramNumber,
+    id: ProgramId,
 
     original: ProgramData,
     cur: ProgramData,
 }
 
 impl Program {
-    pub fn new(bank: ProgramBank, nb: ProgramNumber, data: ProgramData) -> Self {
+    pub fn new(id: ProgramId, data: ProgramData) -> Self {
         let original = data;
 
         Program {
-            bank,
-            nb,
+            id,
             cur: original.clone(),
             original,
         }
     }
 
-    pub fn bank(&self) -> ProgramBank {
-        self.bank
-    }
-
-    pub fn nb(&self) -> ProgramNumber {
-        self.nb
+    pub fn id(&self) -> ProgramId {
+        self.id
     }
 
     pub fn data(&self) -> &[RawValue] {
@@ -206,80 +200,213 @@ impl ProgramData {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum ProgramBank {
-    Factory,
-    User,
-    Unknown(u8),
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub struct ProgramNb(u8);
+
+impl ProgramNb {
+    const PRESET_BANKS: u8 = 10;
+    const PRESETS: u8 = 3;
+
+    pub fn preset_bank(self) -> u8 {
+        self.0 / Self::PRESETS
+    }
+
+    pub fn preset(self) -> u8 {
+        self.0 % Self::PRESETS + 1
+    }
+
+    pub fn enumerate() -> ProgramNbIter {
+        ProgramNbIter { cur: 0 }
+    }
 }
 
-impl fmt::Display for ProgramBank {
+impl TryFrom<u8> for ProgramNb {
+    type Error = Error;
+
+    fn try_from(val: u8) -> Result<Self, Self::Error> {
+        if val >= Self::PRESET_BANKS * Self::PRESETS {
+            return Err(Error::ProgramNumberOutOfRange(val));
+        }
+
+        Ok(ProgramNb(val))
+    }
+}
+
+impl From<ProgramNb> for u8 {
+    fn from(nb: ProgramNb) -> u8 {
+        nb.0
+    }
+}
+
+impl From<midi::ProgramNumber> for ProgramNb {
+    fn from(midi_prog_nb: midi::ProgramNumber) -> Self {
+        let midi_prog_nb: u8 = midi_prog_nb.into();
+
+        ProgramNb(midi_prog_nb % (ProgramNb::PRESET_BANKS * ProgramNb::PRESETS))
+    }
+}
+
+impl fmt::Display for ProgramNb {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}.{}", self.preset_bank(), self.preset()))
+    }
+}
+
+pub struct ProgramNbIter {
+    cur: u8,
+}
+
+impl Iterator for ProgramNbIter {
+    type Item = ProgramNb;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let cur = self.cur;
+
+        if cur == ProgramNb::PRESET_BANKS * ProgramNb::PRESETS {
+            return None;
+        }
+
+        self.cur += 1;
+
+        Some(ProgramNb(cur))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub enum ProgramsBank {
+    #[default]
+    User,
+    Factory,
+}
+
+impl ProgramsBank {
+    const USER: u8 = 1;
+    const FACTORY: u8 = 0;
+
+    pub fn is_user(self) -> bool {
+        matches!(self, ProgramsBank::User)
+    }
+
+    pub fn into_prog_id(self, nb: ProgramNb) -> ProgramId {
+        use ProgramsBank::*;
         match self {
-            ProgramBank::User => f.write_str("user"),
-            ProgramBank::Factory => f.write_str("factory"),
-            ProgramBank::Unknown(other) => write!(f, "unknown ({other})"),
+            User => ProgramId::new_user(nb),
+            Factory => ProgramId::new_factory(nb),
+        }
+    }
+
+    fn midi_offset(self) -> u8 {
+        use ProgramsBank::*;
+        match self {
+            User => 0,
+            Factory => ProgramNb::PRESET_BANKS * ProgramNb::PRESETS,
         }
     }
 }
 
-impl From<u8> for ProgramBank {
-    fn from(val: u8) -> Self {
-        match val {
-            1 => ProgramBank::User,
-            0 => ProgramBank::Factory,
-            other => ProgramBank::Unknown(other),
+impl TryFrom<u8> for ProgramsBank {
+    type Error = Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            Self::USER => Ok(ProgramsBank::User),
+            Self::FACTORY => Ok(ProgramsBank::Factory),
+            other => Err(Error::ProgramsBank(other)),
         }
     }
 }
 
-impl From<ProgramBank> for u8 {
-    fn from(val: ProgramBank) -> Self {
-        match val {
-            ProgramBank::User => 1,
-            ProgramBank::Factory => 0,
-            ProgramBank::Unknown(other) => other,
+impl From<ProgramsBank> for u8 {
+    fn from(progs_bank: ProgramsBank) -> Self {
+        use ProgramsBank::*;
+        match progs_bank {
+            User => ProgramsBank::USER,
+            Factory => ProgramsBank::FACTORY,
+        }
+    }
+}
+
+impl fmt::Display for ProgramsBank {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use ProgramsBank::*;
+        f.write_str(match self {
+            User => "User",
+            Factory => "Factory",
+        })
+    }
+}
+
+impl From<midi::ProgramNumber> for ProgramsBank {
+    fn from(midi_prog_nb: midi::ProgramNumber) -> Self {
+        let midi_prog_nb: u8 = midi_prog_nb.into();
+
+        if midi_prog_nb < ProgramNb::PRESET_BANKS * ProgramNb::PRESETS {
+            ProgramsBank::User
+        } else {
+            ProgramsBank::Factory
         }
     }
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
-pub struct ProgramNumber(u8);
+pub struct ProgramId {
+    progs_bank: ProgramsBank,
+    nb: ProgramNb,
+}
 
-impl ProgramNumber {
-    pub fn as_u8(self) -> u8 {
-        self.0
+impl ProgramId {
+    pub fn new(progs_bank: ProgramsBank, nb: ProgramNb) -> Self {
+        ProgramId { progs_bank, nb }
+    }
+
+    pub fn new_user(nb: ProgramNb) -> Self {
+        ProgramId {
+            progs_bank: ProgramsBank::User,
+            nb,
+        }
+    }
+
+    pub fn new_factory(nb: ProgramNb) -> Self {
+        ProgramId {
+            progs_bank: ProgramsBank::Factory,
+            nb,
+        }
+    }
+
+    pub fn try_from_raw(progs_bank: u8, nb: u8) -> Result<Self, Error> {
+        Ok(ProgramId {
+            progs_bank: ProgramsBank::try_from(progs_bank)?,
+            nb: ProgramNb::try_from(nb)?,
+        })
+    }
+
+    pub fn progs_bank(self) -> ProgramsBank {
+        self.progs_bank
+    }
+
+    pub fn nb(self) -> ProgramNb {
+        self.nb
     }
 }
 
-impl From<u8> for ProgramNumber {
-    fn from(nb: u8) -> Self {
-        ProgramNumber(nb)
+impl From<midi::ProgramNumber> for ProgramId {
+    fn from(midi_prog_nb: midi::ProgramNumber) -> Self {
+        ProgramId {
+            progs_bank: ProgramsBank::from(midi_prog_nb),
+            nb: ProgramNb::from(midi_prog_nb),
+        }
     }
 }
 
-impl From<ProgramNumber> for u8 {
-    fn from(nb: ProgramNumber) -> Self {
-        nb.0
+impl From<ProgramId> for midi::ProgramNumber {
+    fn from(id: ProgramId) -> Self {
+        midi::ProgramNumber::from(id.nb.0 + id.progs_bank.midi_offset())
     }
 }
 
-impl From<midi::ProgramNumber> for ProgramNumber {
-    fn from(nb: midi::ProgramNumber) -> Self {
-        // FIXME need to return ProgramBank when nb > 29
-        ProgramNumber(u8::from(nb))
-    }
-}
-
-impl From<ProgramNumber> for midi::ProgramNumber {
-    fn from(nb: ProgramNumber) -> Self {
-        // FIXME need to also use ProgramBank
-        nb.0.into()
-    }
-}
-
-impl fmt::Display for ProgramNumber {
+impl fmt::Display for ProgramId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}.{}", self.0 / 3, self.0 % 3 + 1))
+        fmt::Display::fmt(&self.nb, f)?;
+        f.write_fmt(format_args!("({})", self.progs_bank))
     }
 }

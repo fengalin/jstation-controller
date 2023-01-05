@@ -164,7 +164,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
                     if let Err(err) = self.#field.set_raw(data) {
                         if err.is_inactive_param() {
                             // Don't propagate
-                            log::debug!("set_raw: {}", err);
+                            log::trace!("set_raw: {}", err);
                         } else {
                             return Err(err);
                         }

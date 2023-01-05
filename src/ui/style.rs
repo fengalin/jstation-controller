@@ -3,6 +3,7 @@ use iced::{
     Background, Color,
 };
 
+#[derive(Clone, Copy)]
 pub enum Button {
     Default,
     ModalClose,

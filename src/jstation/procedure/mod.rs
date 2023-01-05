@@ -89,4 +89,5 @@ declare_procs!(
     program_indices: ProgramIndicesReq, ProgramIndicesResp;
     program_update: ProgramUpdateReq, ProgramUpdateResp;
     who_am_i: WhoAmIReq, WhoAmIResp;
+    result: ToMessageResp;
 );

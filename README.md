@@ -10,14 +10,13 @@ While it is usable to control a J-Station, this application is a work in progres
 
 - [X] Scan the available MIDI ports for a J-Station device.
 - [X] Download device Programs.
-- [X] Show the parameters for selected Program. FIXME: Bank selection not handled ATM.
+- [X] Show the parameters for selected Program.
 - [X] Use the UI to update a parameter.
 - [X] Reflect device parameters updates on the UI.
-- [X] Show the list of Programs. FIXME: Bank selection not handled ATM.
-- [X] Change Program from the UI. FIXME: Bank selection not handled ATM.
+- [X] Show the list of Programs.
+- [X] Change Program from the UI.
 - [ ] Rename a Program.
-- [ ] Store modifications to current Program.
-- [ ] Undo pending modifications.
+- [ ] Store / undo pending modifications.
 - [ ] Import a Program bank from a file.
 - [ ] Export a Program bank to a file.
 

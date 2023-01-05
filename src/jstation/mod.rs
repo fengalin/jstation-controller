@@ -2,7 +2,7 @@ pub mod channel_voice;
 pub use channel_voice::ChannelVoice;
 
 pub mod data;
-pub use data::{CCParameter, Parameter, Program, ProgramNumber};
+pub use data::{CCParameter, Parameter, Program, ProgramId, ProgramNb, ProgramsBank};
 
 mod error;
 pub use error::Error;
@@ -13,7 +13,7 @@ pub use interface::{Interface, Listener};
 mod sysex;
 pub use sysex::{
     take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len, take_split_bytes_u16,
-    take_split_bytes_u8, BufferBuilder,
+    take_split_bytes_u8, take_u8, BufferBuilder,
 };
 
 pub mod procedure;
