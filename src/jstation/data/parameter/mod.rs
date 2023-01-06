@@ -11,7 +11,7 @@ mod normal;
 pub use normal::Normal;
 
 mod raw;
-pub use raw::{RawParameterSetter, RawValue};
+pub use raw::RawValue;
 
 mod variable_range;
 pub use variable_range::{VariableRange, VariableRangeParameter};
@@ -19,11 +19,6 @@ pub use variable_range::{VariableRange, VariableRangeParameter};
 use std::fmt;
 
 use crate::{jstation::Error, midi};
-
-pub trait BaseParameter: ParameterSetter<Parameter = Self> {
-    fn nb(self) -> Option<ParameterNumber>;
-    fn raw_value(self) -> RawValue;
-}
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct ParameterNumber(u8);
@@ -39,6 +34,10 @@ impl ParameterNumber {
 
     pub const fn as_u8(self) -> u8 {
         self.0
+    }
+
+    pub const fn as_usize(self) -> usize {
+        self.0 as usize
     }
 }
 

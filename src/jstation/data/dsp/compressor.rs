@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::jstation::data::BaseParameter;
+use crate::jstation::data::DiscreteParameter;
 use jstation_derive::ParameterSetter;
 
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]

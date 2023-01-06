@@ -1,7 +1,14 @@
-use crate::jstation::data::{BaseParameter, RawValue};
+use crate::jstation::data::{ParameterSetter, RawValue};
 
 pub trait BoolParameter:
-    From<bool> + Into<bool> + BaseParameter + Default + Clone + Copy + Eq + PartialEq
+    From<bool>
+    + Into<bool>
+    + ParameterSetter<Parameter = Self>
+    + Clone
+    + Copy
+    + Default
+    + Eq
+    + PartialEq
 {
     const TRUE: Self;
     const FALSE: Self;
@@ -10,6 +17,14 @@ pub trait BoolParameter:
 
     fn from_raw(raw: RawValue) -> Self {
         (raw.as_u8() == 0).into()
+    }
+
+    fn raw_value(self) -> RawValue {
+        RawValue::new(if self.into() {
+            0
+        } else {
+            RawValue::MAX.as_u8()
+        })
     }
 
     fn is_true(&self) -> bool {

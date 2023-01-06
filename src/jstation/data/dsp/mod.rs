@@ -1,6 +1,6 @@
 use crate::{
     jstation::{
-        data::{CCParameter, CCParameterSetter, ParameterSetter, RawParameterSetter, RawValue},
+        data::{CCParameter, CCParameterSetter, ParameterSetter, ProgramData, ProgramParameter},
         Error,
     },
     midi,
@@ -35,6 +35,7 @@ pub use wah_expr::WahExpr;
 
 #[derive(Debug, Default)]
 pub struct Dsp {
+    pub name: String,
     pub amp: Amp,
     pub cabinet: Cabinet,
     pub compressor: Compressor,
@@ -46,16 +47,29 @@ pub struct Dsp {
     pub utility_settings: UtilitySettings,
 }
 
-impl RawParameterSetter for Dsp {
-    fn set_raw(&mut self, data: &[RawValue]) -> Result<(), Error> {
-        self.compressor.set_raw(data)?;
-        self.wah_expr.set_raw(data)?;
-        self.amp.set_raw(data)?;
-        self.cabinet.set_raw(data)?;
-        self.noise_gate.set_raw(data)?;
-        self.effect.set_raw(data)?;
-        self.delay.set_raw(data)?;
-        self.reverb.set_raw(data)
+impl ProgramParameter for Dsp {
+    fn set_from(&mut self, data: &ProgramData) -> Result<(), Error> {
+        self.name = data.name().to_string();
+        self.compressor.set_from(data)?;
+        self.wah_expr.set_from(data)?;
+        self.amp.set_from(data)?;
+        self.cabinet.set_from(data)?;
+        self.noise_gate.set_from(data)?;
+        self.effect.set_from(data)?;
+        self.delay.set_from(data)?;
+        self.reverb.set_from(data)
+    }
+
+    fn has_changed(&self, original: &ProgramData) -> bool {
+        self.compressor.has_changed(original)
+            || self.wah_expr.has_changed(original)
+            || self.amp.has_changed(original)
+            || self.cabinet.has_changed(original)
+            || self.noise_gate.has_changed(original)
+            || self.effect.has_changed(original)
+            || self.delay.has_changed(original)
+            || self.reverb.has_changed(original)
+            || self.name.as_str() != original.name()
     }
 }
 

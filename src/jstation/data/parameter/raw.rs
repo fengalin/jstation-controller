@@ -1,11 +1,5 @@
-use std::fmt;
-
-use crate::jstation::Error;
 use crate::midi;
-
-pub trait RawParameterSetter {
-    fn set_raw(&mut self, data: &[RawValue]) -> Result<(), Error>;
-}
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct RawValue(u8);
