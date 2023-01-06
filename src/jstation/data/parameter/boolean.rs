@@ -20,11 +20,7 @@ pub trait BoolParameter:
     }
 
     fn raw_value(self) -> RawValue {
-        RawValue::new(if self.into() {
-            0
-        } else {
-            RawValue::MAX.as_u8()
-        })
+        RawValue::new(u8::from(self.into()))
     }
 
     fn is_true(&self) -> bool {

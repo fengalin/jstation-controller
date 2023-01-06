@@ -54,7 +54,8 @@ impl BufferBuilder {
 
     #[track_caller]
     pub fn push_variable_size_data(&mut self, data: impl ExactSizeIterator<Item = u8>) {
-        let len: u16 = (data.len() / 2)
+        let len: u16 = data
+            .len()
             .try_into()
             .expect("variable size data length overflow");
 
@@ -68,6 +69,17 @@ impl BufferBuilder {
 
     pub fn build(mut self) -> Vec<u8> {
         self.buf.extend([self.checksum, midi::sysex::END_TAG]);
+
+        // Set to true to dump buffers
+        if false {
+            println!(
+                "Buffer {:?}\n",
+                self.buf
+                    .iter()
+                    .map(|byte| format!("x{byte:02x}"))
+                    .collect::<Vec<String>>(),
+            );
+        }
 
         self.buf
     }

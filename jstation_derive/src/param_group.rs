@@ -188,23 +188,34 @@ impl<'a> ToTokens for ParamGroup<'a> {
                 set_field
             });
 
-            let has_changed_field =
-                self.sorted_by_param_nb()
-                    .unwrap()
-                    .enumerate()
-                    .map(|(idx, p)| {
-                        let field = p.field();
+            let has_changed_field = self
+                .sorted_by_param_nb()
+                .expect("availability checked above")
+                .enumerate()
+                .map(|(idx, p)| {
+                    let field = p.field();
 
-                        if idx == 0 {
-                            quote! {
-                                self.#field.has_changed(data)
-                            }
-                        } else {
-                            quote! {
-                                || self.#field.has_changed(data)
-                            }
+                    if idx == 0 {
+                        quote! {
+                            self.#field.has_changed(data)
                         }
-                    });
+                    } else {
+                        quote! {
+                            || self.#field.has_changed(data)
+                        }
+                    }
+                });
+
+            let store_field = self
+                .sorted_by_param_nb()
+                .expect("availability checked above")
+                .map(|p| {
+                    let field = p.field();
+
+                    quote! {
+                        self.#field.store(data);
+                    }
+                });
 
             tokens.extend(quote! {
                 impl crate::jstation::data::ProgramParameter for #group_name {
@@ -220,6 +231,11 @@ impl<'a> ToTokens for ParamGroup<'a> {
                     #[inline]
                     fn has_changed(&self, data: &crate::jstation::ProgramData) -> bool {
                         #( #has_changed_field )*
+                    }
+
+                    #[inline]
+                    fn store(&mut self, data: &mut crate::jstation::ProgramData) {
+                        #( #store_field )*
                     }
                 }
             });

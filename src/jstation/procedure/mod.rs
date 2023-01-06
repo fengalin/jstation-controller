@@ -9,12 +9,12 @@ use crate::{
     midi,
 };
 
-//pub const MERGE_RESPONSE: u8 = 0x7f;
-
 pub trait ProcedureBuilder {
     const ID: u8;
     const VERSION: u8;
 
+    // FIXME these are error-prone because the user must use the proper
+    // BufferBuilder method in the functions.
     fn push_fixed_size_data(&self, _buffer: &mut sysex::BufferBuilder) {}
     fn push_variable_size_data(&self, _buffer: &mut sysex::BufferBuilder) {}
 
@@ -92,3 +92,6 @@ declare_procs!(
     who_am_i: WhoAmIReq, WhoAmIResp;
     result: ToMessageResp;
 );
+
+pub use one_program::OneProgramRefResp;
+pub use program_update::ProgramUpdateRefResp;

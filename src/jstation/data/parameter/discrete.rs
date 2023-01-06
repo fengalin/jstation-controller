@@ -40,7 +40,11 @@ impl DiscreteRange {
     const ROUNDING: u32 = Self::SCALE / 2;
     const MAX_CC_SCALED: u32 = Self::MAX_CC_U32 * Self::SCALE;
 
-    /// Builds a new `DiscreteRange` from the provided value.
+    /// Builds a new `DiscreteRange` from the provided values.
+    ///
+    /// # Panic
+    ///
+    /// Panics if min >= max.
     pub const fn new(min: RawValue, max: RawValue) -> Self {
         let min = min.as_u8();
         let max = max.as_u8();

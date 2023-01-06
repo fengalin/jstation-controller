@@ -128,24 +128,53 @@ impl<'a> ToTokens for VariableRange<'a> {
                         const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
                         // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
-                        unsafe {
-                            *self = Self::try_from_raw(
+                        let res = unsafe {
+                            Self::try_from_raw(
                                 self.discr,
                                 *data.buf().get_unchecked(PARAM_NB.as_usize())
-                            )?;
-                        }
+                            )
+                        };
 
-                        Ok(())
+                        match res {
+                            Ok(val) => {
+                                *self = val;
+                                Ok(())
+                            }
+                            Err(err) if err.is_inactive_param() => Ok(()),
+                            Err(err) => Err(err),
+
+                        }
                     }
 
                     #[inline]
                     fn has_changed(&self, data: &crate::jstation::ProgramData) -> bool {
+                        use crate::jstation::data::DiscreteParameter;
                         use crate::jstation::data::ParameterNumber;
                         const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
+
+                        if !self.is_active() {
+                            return false;
+                        }
 
                         // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
                         unsafe {
                             *data.buf().get_unchecked(PARAM_NB.as_usize()) != self.value
+                        }
+                    }
+
+                    #[inline]
+                    fn store(&mut self, data: &mut crate::jstation::ProgramData) {
+                        use crate::jstation::data::DiscreteParameter;
+                        use crate::jstation::data::ParameterNumber;
+                        const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
+
+                        if !self.is_active() {
+                            return;
+                        }
+
+                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
+                        unsafe {
+                            *data.buf_mut().get_unchecked_mut(PARAM_NB.as_usize()) = self.value;
                         }
                     }
                 }

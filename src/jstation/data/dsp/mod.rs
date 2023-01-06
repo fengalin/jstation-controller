@@ -71,6 +71,21 @@ impl ProgramParameter for Dsp {
             || self.reverb.has_changed(original)
             || self.name.as_str() != original.name()
     }
+
+    fn store(&mut self, data: &mut ProgramData) {
+        self.compressor.store(data);
+        self.wah_expr.store(data);
+        self.amp.store(data);
+        self.cabinet.store(data);
+        self.noise_gate.store(data);
+        self.effect.store(data);
+        self.delay.store(data);
+        self.reverb.store(data);
+
+        // FIXME find a solution to reduce String clones
+        data.store_name(&self.name);
+        self.name = data.name().to_string();
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
