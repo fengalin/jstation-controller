@@ -1,6 +1,6 @@
 use nom::IResult;
 
-use crate::jstation::{take_split_bytes_u16, take_split_bytes_bool, ProcedureBuilder, data::ProgramData};
+use crate::jstation::{take_split_bytes_u16, take_split_bytes_bool, BufferBuilder, ProcedureBuilder, data::ProgramData};
 
 #[derive(Debug)]
 pub struct ProgramUpdateReq;
@@ -26,6 +26,13 @@ impl ProgramUpdateResp {
     pub const ID: u8 = 0x61;
     pub const VERSION: u8 = 2;
 
+    pub fn from_changed(prog_data: &ProgramData) -> ProgramUpdateRefResp<'_> {
+        ProgramUpdateRefResp {
+            has_changed: true,
+            prog_data,
+        }
+    }
+
     pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], ProgramUpdateResp> {
         let (i, mut len) = take_split_bytes_u16(input, checksum)?;
 
@@ -43,5 +50,23 @@ impl ProgramUpdateResp {
             })?;
 
         Ok((i, ProgramUpdateResp { has_changed, prog_data } ))
+    }
+}
+
+#[derive(Debug)]
+pub struct ProgramUpdateRefResp<'a> {
+    pub has_changed: bool,
+    pub prog_data: &'a ProgramData,
+}
+
+impl<'a> ProcedureBuilder for ProgramUpdateRefResp<'a> {
+    const ID: u8 = ProgramUpdateResp::ID;
+    const VERSION: u8 = ProgramUpdateResp::VERSION;
+
+    fn push_variable_size_data(&self, buffer: &mut BufferBuilder) {
+        let mut buf = vec![u8::from(self.has_changed)];
+        buf.extend(self.prog_data.serialize());
+
+        buffer.push_variable_size_data(buf.into_iter());
     }
 }

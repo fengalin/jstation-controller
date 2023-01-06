@@ -1,12 +1,11 @@
-use crate::jstation::{
-    split_bytes, take_split_bytes_u8, BufferBuilder, ProcedureBuilder
-};
+use crate::jstation::{take_split_bytes_u8, BufferBuilder, ProcedureBuilder};
 
 #[derive(Debug)]
 pub struct ToMessageResp {
     pub res: Result<u8, Error>,
 }
 
+// FIXME remove if not needed
 impl ProcedureBuilder for ToMessageResp {
     const ID: u8 = 0x7f;
     const VERSION: u8 = 1;
@@ -17,10 +16,7 @@ impl ProcedureBuilder for ToMessageResp {
             Err(err) => err.into(),
         };
 
-        buffer.push_fixed_size_data(
-            split_bytes::from_u8(req_proc).into_iter()
-            .chain(split_bytes::from_u8(code).into_iter())
-        );
+        buffer.push_fixed_size_data([req_proc ,code].into_iter());
     }
 }
 

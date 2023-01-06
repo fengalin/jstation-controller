@@ -87,10 +87,13 @@ impl App {
                         self.programs.insert(resp.prog.id(), resp.prog);
                     }
                     ProgramUpdateResp(resp) => {
+                        self.dsp.set_from(&resp.prog_data)?;
+                        self.has_changed = resp.has_changed;
+
                         let prog = self
                             .programs
                             .iter()
-                            .find(|(_, prog)| *prog == &resp.prog_data);
+                            .find(|(_, prog)| !self.dsp.has_changed(prog.data()));
 
                         if let Some((_, prog)) = prog {
                             self.cur_prog_id = Some(prog.id());
@@ -100,9 +103,6 @@ impl App {
                             self.cur_prog_id = None;
                             self.show_error(&Error::ProgramIdenticationFailure);
                         }
-
-                        self.dsp.set_from(&resp.prog_data)?;
-                        self.has_changed = resp.has_changed;
                     }
                     StartBankDumpResp(_) => {
                         self.progs_bank = ProgramsBank::default();
@@ -278,7 +278,19 @@ impl Application for App {
                 self.progs_bank = progs_bank;
             }
             Store => {
-                // TODO
+                let prog = self
+                    .cur_prog_id
+                    .and_then(|prog_id| self.programs.get_mut(&prog_id))
+                    .expect("Store available for selected and known program");
+
+                self.dsp.store(prog.data_mut());
+
+                // Technically, the program is actually stored on
+                // device after reception of the Ok ack for proc x02.
+                match self.jstation.store_program(prog) {
+                    Ok(()) => self.has_changed = false,
+                    Err(err) => self.show_error(&err),
+                }
             }
             StoreTo => {
                 // TODO

@@ -91,6 +91,18 @@ impl<'a> ToTokens for Boolean<'a> {
                             data_bool != self.0
                         }
                     }
+
+                    #[inline]
+                    fn store(&mut self, data: &mut crate::jstation::ProgramData) {
+                        use crate::jstation::data::BoolParameter;
+                        use crate::jstation::data::ParameterNumber;
+                        const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
+
+                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
+                        unsafe {
+                            *data.buf_mut().get_unchecked_mut(PARAM_NB.as_usize()) = self.raw_value();
+                        }
+                    }
                 }
             });
         }

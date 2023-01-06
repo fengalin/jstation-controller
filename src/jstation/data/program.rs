@@ -1,4 +1,4 @@
-use std::{cmp, fmt};
+use std::fmt;
 
 use nom::IResult;
 
@@ -27,14 +27,12 @@ impl Program {
         &self.data
     }
 
+    pub fn data_mut(&mut self) -> &mut ProgramData {
+        &mut self.data
+    }
+
     pub fn name(&self) -> &str {
         self.data.name()
-    }
-}
-
-impl cmp::PartialEq<ProgramData> for Program {
-    fn eq(&self, other: &ProgramData) -> bool {
-        self.data.eq(other)
     }
 }
 
@@ -58,15 +56,21 @@ impl ProgramData {
         Ok(ProgramData { buf, name })
     }
 
+    #[inline]
     pub fn buf(&self) -> &[RawValue; Self::PARAM_COUNT] {
         self.buf.as_ref()
+    }
+
+    #[inline]
+    pub fn buf_mut(&mut self) -> &mut [RawValue; Self::PARAM_COUNT] {
+        self.buf.as_mut()
     }
 
     pub fn name(&self) -> &str {
         self.name.as_ref()
     }
 
-    pub fn format_name(&mut self, mut name: String) -> String {
+    pub fn format_name(mut name: String) -> String {
         // Truncate the name so as to comply with the device's limits
         let buf = name.as_bytes();
         if buf.len() > Self::NAME_MAX_LEN {
@@ -75,21 +79,18 @@ impl ProgramData {
 
         name
     }
-}
 
-impl cmp::PartialEq for ProgramData {
-    fn eq(&self, other: &Self) -> bool {
-        for (val1, val2) in self.buf.iter().zip(other.buf.iter()) {
-            if val1 != val2 {
-                return false;
-            }
-        }
+    pub fn store_name(&mut self, name: &str) {
+        self.name = Self::format_name(name.to_string());
+    }
 
-        if self.name != other.name {
-            return false;
-        }
-
-        true
+    pub fn serialize(&self) -> impl '_ + Iterator<Item = u8> {
+        self.buf
+            .iter()
+            .map(u8::from)
+            .chain(self.name.as_bytes().iter().cloned())
+            // terminal \0 for name
+            .chain(std::iter::once(0u8))
     }
 }
 
@@ -150,6 +151,12 @@ pub trait ProgramParameter {
     ///
     /// Returns `true` if at least one Parameter has changed.
     fn has_changed(&self, data: &ProgramData) -> bool;
+
+    /// Stores changes in `Self` to the provided `ProgramData`.
+    ///
+    /// `Self` may also change to comply with devices constraints
+    /// such as the name length.
+    fn store(&mut self, data: &mut ProgramData);
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]

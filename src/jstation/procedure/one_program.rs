@@ -2,7 +2,7 @@ use nom::{error::{self, Error}, IResult};
 
 use crate::jstation::{
     data::{Program, ProgramData, ProgramId},
-    split_bytes, take_split_bytes_u16, take_split_bytes_u8, take_u8, BufferBuilder, ProcedureBuilder
+    take_split_bytes_u16, take_split_bytes_u8, take_u8, BufferBuilder, ProcedureBuilder
 };
 
 #[derive(Debug)]
@@ -44,23 +44,41 @@ pub struct OneProgramResp {
     pub prog: Program,
 }
 
+impl OneProgramResp {
+    pub fn from(prog: &Program) -> OneProgramRefResp<'_> {
+        OneProgramRefResp(prog)
+    }
+}
+
 impl ProcedureBuilder for OneProgramResp {
     const ID: u8 = 0x02;
     const VERSION: u8 = 1;
 
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
-        buffer.push_fixed_size_data(
-            split_bytes::from_u8(self.prog.id().progs_bank().into()).into_iter()
-            .chain(split_bytes::from_u8(self.prog.id().nb().into()).into_iter())
-        );
+        OneProgramRefResp(&self.prog).push_fixed_size_data(buffer)
     }
 
-    fn push_variable_size_data(&self, buffer: &mut crate::jstation::sysex::BufferBuilder) {
-        let mut buf: Vec<u8> = self.prog.data().buf().iter().map(Into::into).collect();
-        buf.extend(self.prog.name().as_bytes());
-        // Terminal 0 for name
-        buf.push(0x00);
+    fn push_variable_size_data(&self, buffer: &mut BufferBuilder) {
+        OneProgramRefResp(&self.prog).push_variable_size_data(buffer)
+    }
+}
 
+#[derive(Debug)]
+pub struct OneProgramRefResp<'a>(pub &'a Program);
+
+impl<'a> ProcedureBuilder for OneProgramRefResp<'a> {
+    const ID: u8 = OneProgramResp::ID;
+    const VERSION: u8 = OneProgramResp::VERSION;
+
+    fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
+        buffer.push_fixed_size_data([
+            self.0.id().progs_bank().into(),
+            self.0.id().nb().into(),
+        ].into_iter());
+    }
+
+    fn push_variable_size_data(&self, buffer: &mut BufferBuilder) {
+        let buf = Vec::<u8>::from_iter(self.0.data().serialize());
         buffer.push_variable_size_data(buf.into_iter());
     }
 }

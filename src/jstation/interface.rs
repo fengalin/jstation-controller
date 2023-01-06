@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::{
     jstation::{
         self, parse_raw_midi_msg, procedure, sysex, Error, Message, Procedure, ProcedureBuilder,
+        Program,
     },
     midi,
 };
@@ -81,7 +82,14 @@ impl Interface {
             .map_err(|err| Error::with_context("Reload Program req.", err))
     }
 
-    fn send_sysex(&mut self, proc: impl ProcedureBuilder) -> Result<(), Error> {
+    pub fn store_program(&mut self, prog: &Program) -> Result<(), Error> {
+        // Note: gstation-edit also sends a ProgramUpdateResp, but the
+        // result seems to be the same with only OneProgramResp.
+        self.send_sysex(procedure::OneProgramResp::from(prog))
+            .map_err(|err| Error::with_context("Store One Program resp.", err))
+    }
+
+    fn send_sysex<'a>(&mut self, proc: impl 'a + ProcedureBuilder) -> Result<(), Error> {
         self.send(&proc.build_for(self.sysex_chan))
     }
 

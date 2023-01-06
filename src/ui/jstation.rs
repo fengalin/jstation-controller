@@ -1,7 +1,7 @@
 use std::{cell::Cell, sync::Arc};
 
 use crate::{
-    jstation::{self, procedure, Error, Listener, Message},
+    jstation::{self, procedure, Error, Listener, Message, Program},
     midi,
 };
 
@@ -58,6 +58,10 @@ impl Interface {
 
     pub fn reload_program(&mut self) -> Result<(), Error> {
         self.iface.reload_program()
+    }
+
+    pub fn store_program(&mut self, prog: &Program) -> Result<(), Error> {
+        self.iface.store_program(prog)
     }
 
     pub fn send_cc(&mut self, cc: midi::CC) -> Result<(), Error> {
