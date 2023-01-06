@@ -23,16 +23,6 @@ impl<'a> ToTokens for VariableRange<'a> {
         let param_name = self.base.name();
 
         tokens.extend({
-            let nb_impl = match &self.base.param_nb {
-                Some(param_nb) => quote! {
-                    use crate::jstation::data::ParameterNumber;
-                    const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
-
-                    Some(PARAM_NB)
-                },
-                None => quote! { None },
-            };
-
             quote! {
                 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
                 pub struct #param {
@@ -40,13 +30,9 @@ impl<'a> ToTokens for VariableRange<'a> {
                     value: crate::jstation::data::RawValue,
                 }
 
-                impl crate::jstation::data::BaseParameter for #param {
-                    fn nb(self) -> Option<crate::jstation::data::ParameterNumber> {
-                        #nb_impl
-                    }
-
-                    fn raw_value(self) -> crate::jstation::data::RawValue {
-                        self.value
+                impl From<#param> for crate::jstation::data::RawValue {
+                    fn from(param: #param) -> Self {
+                        param.value
                     }
                 }
 
@@ -132,17 +118,35 @@ impl<'a> ToTokens for VariableRange<'a> {
 
         if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
-                impl crate::jstation::data::RawParameterSetter for #param {
-                    fn set_raw(
+                impl crate::jstation::data::ProgramParameter for #param {
+                    fn set_from(
                         &mut self,
-                        data: &[crate::jstation::data::RawValue],
+                        data: &crate::jstation::ProgramData,
                     ) -> Result<(), crate::jstation::Error> {
                         use crate::jstation::data::VariableRangeParameter;
-                        let param = Self::try_from_raw(self.discr, data[#param_nb as usize])?;
+                        use crate::jstation::data::ParameterNumber;
+                        const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
-                        *self = param;
+                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
+                        unsafe {
+                            *self = Self::try_from_raw(
+                                self.discr,
+                                *data.buf().get_unchecked(PARAM_NB.as_usize())
+                            )?;
+                        }
 
                         Ok(())
+                    }
+
+                    #[inline]
+                    fn has_changed(&self, data: &crate::jstation::ProgramData) -> bool {
+                        use crate::jstation::data::ParameterNumber;
+                        const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
+
+                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
+                        unsafe {
+                            *data.buf().get_unchecked(PARAM_NB.as_usize()) != self.value
+                        }
                     }
                 }
             });

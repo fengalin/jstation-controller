@@ -115,114 +115,115 @@ impl<'a> ToTokens for ConstRange<'a> {
             (param_min, quote! { MIN })
         };
 
-        tokens.extend({
-            let nb_impl = match &self.base.param_nb {
-                Some(param_nb) => quote! {
-                    use crate::jstation::data::ParameterNumber;
-                    const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
+        tokens.extend(quote! {
+            #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+            pub struct #param(crate::jstation::data::RawValue);
 
-                    Some(PARAM_NB)
-                },
-                None => quote! { None },
-            };
+            impl From<#param> for crate::jstation::data::RawValue {
+                fn from(param: #param) -> Self {
+                    param.0
+                }
+            }
 
-            quote! {
-                #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-                pub struct #param(crate::jstation::data::RawValue);
+            impl crate::jstation::data::ConstRangeParameter for #param {
+                const RANGE: crate::jstation::data::DiscreteRange =
+                    crate::jstation::data::DiscreteRange::new(
+                        crate::jstation::data::RawValue::new(#param_min),
+                        crate::jstation::data::RawValue::new(#param_max),
+                    );
 
-                impl crate::jstation::data::BaseParameter for #param {
-                    fn nb(self) -> Option<crate::jstation::data::ParameterNumber> {
-                        #nb_impl
-                    }
-
-                    fn raw_value(self) -> crate::jstation::data::RawValue {
-                        self.0
-                    }
+                fn from_normal(normal: crate::jstation::data::Normal) -> Self {
+                    use crate::jstation::data::ConstRangeParameter;
+                    #param(Self::RANGE.normal_to_raw(normal))
                 }
 
-                impl crate::jstation::data::ConstRangeParameter for #param {
-                    const RANGE: crate::jstation::data::DiscreteRange =
-                        crate::jstation::data::DiscreteRange::new(
-                            crate::jstation::data::RawValue::new(#param_min),
-                            crate::jstation::data::RawValue::new(#param_max),
-                        );
+                fn try_from_raw(
+                    raw: crate::jstation::data::RawValue,
+                ) -> Result<Self, crate::jstation::Error> {
+                    use crate::jstation::data::ConstRangeParameter;
+                    let value = Self::RANGE
+                        .check(raw)
+                        .map_err(|err| crate::jstation::Error::with_context(#param_name, err))?;
 
-                    fn from_normal(normal: crate::jstation::data::Normal) -> Self {
-                        use crate::jstation::data::ConstRangeParameter;
-                        #param(Self::RANGE.normal_to_raw(normal))
-                    }
+                    Ok(#param(value))
+                }
+            }
 
-                    fn try_from_raw(
-                        raw: crate::jstation::data::RawValue,
-                    ) -> Result<Self, crate::jstation::Error> {
-                        use crate::jstation::data::ConstRangeParameter;
-                        let value = Self::RANGE
-                            .check(raw)
-                            .map_err(|err| crate::jstation::Error::with_context(#param_name, err))?;
-
-                        Ok(#param(value))
-                    }
+            impl crate::jstation::data::DiscreteParameter for #param {
+                fn param_name(self) -> &'static str {
+                    #param_name
                 }
 
-                impl crate::jstation::data::DiscreteParameter for #param {
-                    fn param_name(self) -> &'static str {
-                        #param_name
-                    }
-
-                    fn normal_default(self) -> Option<crate::jstation::data::Normal> {
-                        Some(crate::jstation::data::Normal::#normal_default)
-                    }
-
-                    fn normal(self) -> Option<crate::jstation::data::Normal> {
-                        use crate::jstation::data::ConstRangeParameter;
-                        Some(Self::RANGE.try_normalize(self.0).unwrap())
-                    }
-
-                    fn reset(&mut self) -> Option<Self> {
-                        let default = Self::default();
-                        if *self == default {
-                            return None;
-                        }
-
-                        Some(default)
-                    }
+                fn normal_default(self) -> Option<crate::jstation::data::Normal> {
+                    Some(crate::jstation::data::Normal::#normal_default)
                 }
 
-                impl crate::jstation::data::ParameterSetter for #param {
-                    type Parameter = Self;
-
-                    fn set(&mut self, new: Self) -> Option<Self> {
-                        if self.0 == new.0 {
-                            return None;
-                        }
-
-                        *self = new;
-
-                        Some(new)
-                    }
+                fn normal(self) -> Option<crate::jstation::data::Normal> {
+                    use crate::jstation::data::ConstRangeParameter;
+                    Some(Self::RANGE.try_normalize(self.0).unwrap())
                 }
 
-                impl Default for #param {
-                    fn default() -> Self {
-                        Self(crate::jstation::data::RawValue::new(#param_default))
+                fn reset(&mut self) -> Option<Self> {
+                    let default = Self::default();
+                    if *self == default {
+                        return None;
                     }
+
+                    Some(default)
+                }
+            }
+
+            impl crate::jstation::data::ParameterSetter for #param {
+                type Parameter = Self;
+
+                fn set(&mut self, new: Self) -> Option<Self> {
+                    if self.0 == new.0 {
+                        return None;
+                    }
+
+                    *self = new;
+
+                    Some(new)
+                }
+            }
+
+            impl Default for #param {
+                fn default() -> Self {
+                    Self(crate::jstation::data::RawValue::new(#param_default))
                 }
             }
         });
 
         if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
-                impl crate::jstation::data::RawParameterSetter for #param {
-                    fn set_raw(
+                impl crate::jstation::data::ProgramParameter for #param {
+                    fn set_from(
                         &mut self,
-                        data: &[crate::jstation::data::RawValue],
+                        data: &crate::jstation::ProgramData,
                     ) -> Result<(), crate::jstation::Error> {
                         use crate::jstation::data::ConstRangeParameter;
-                        let param = Self::try_from_raw(data[#param_nb as usize])?;
+                        use crate::jstation::data::ParameterNumber;
+                        const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
-                        *self = param;
+                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
+                        unsafe {
+                            *self = Self::try_from_raw(
+                                *data.buf().get_unchecked(PARAM_NB.as_usize())
+                            )?;
+                        }
 
                         Ok(())
+                    }
+
+                    #[inline]
+                    fn has_changed(&self, data: &crate::jstation::ProgramData) -> bool {
+                        use crate::jstation::data::ParameterNumber;
+                        const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
+
+                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
+                        unsafe {
+                            *data.buf().get_unchecked(PARAM_NB.as_usize()) != self.0
+                        }
                     }
                 }
             });

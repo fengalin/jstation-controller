@@ -10,7 +10,7 @@ use smol::future::FutureExt;
 
 use crate::jstation::{
     self,
-    data::{dsp, BaseParameter, Program, ProgramId, ProgramNb, ProgramsBank, RawParameterSetter},
+    data::{dsp, Program, ProgramId, ProgramNb, ProgramParameter, ProgramsBank},
 };
 use crate::midi;
 use crate::ui::{self, style, widget};
@@ -81,7 +81,7 @@ impl App {
                     ProgramIndicesResp(_) => (),
                     OneProgramResp(resp) => {
                         if self.cur_prog_id.is_some() {
-                            self.dsp.set_raw(resp.prog.data())?;
+                            self.dsp.set_from(resp.prog.data())?;
                         }
 
                         self.programs.insert(resp.prog.id(), resp.prog);
@@ -94,11 +94,6 @@ impl App {
 
                         if let Some((_, prog)) = prog {
                             self.cur_prog_id = Some(prog.id());
-                            log::debug!(
-                                "Program Update {}. Has-changed flag: {}",
-                                prog.id(),
-                                resp.has_changed
-                            );
                         } else {
                             // This can occur on startup when the program on device `has_changed`
                             // or if a factory program is selected.
@@ -106,7 +101,7 @@ impl App {
                             self.show_error(&Error::ProgramIdenticationFailure);
                         }
 
-                        self.dsp.set_raw(resp.prog_data.data())?;
+                        self.dsp.set_from(&resp.prog_data)?;
                         self.has_changed = resp.has_changed;
                     }
                     StartBankDumpResp(_) => {
@@ -129,30 +124,15 @@ impl App {
                 use jstation::data::CCParameterSetter;
                 match cv.msg {
                     CC(cc) => match self.dsp.set_cc(cc) {
-                        Ok(Some(param)) => {
-                            let cur_prog =
-                                self.cur_prog_id.map(|prog_id| self.programs.get(&prog_id));
-                            if let Some(cur_prog) = cur_prog {
-                                // FIXME
-                                /*
-                                if param.raw_value() != cur_prog.data[param.] {
-                                }
-                                */
-                            }
-                        }
-                        Ok(None) => log::debug!("Unchanged param for {cc:?}"),
+                        Ok(Some(_)) => self.update_has_changed(),
+                        Ok(None) => (),
                         Err(err) => log::warn!("{err}"),
                     },
                     ProgramChange(prog_id) => {
                         self.cur_prog_id = Some(prog_id);
                         self.progs_bank = prog_id.progs_bank();
 
-                        if let Some(prog) = self.programs.get(&prog_id) {
-                            self.dsp.set_raw(prog.data()).unwrap();
-                        } else if let Err(err) = self.jstation.request_program(prog_id) {
-                            self.cur_prog_id = None;
-                            self.show_error(&err);
-                        }
+                        self.load_prog(prog_id);
                     }
                 }
             }
@@ -180,6 +160,22 @@ impl App {
         }
 
         Ok(Command::none())
+    }
+
+    fn load_prog(&mut self, prog_id: ProgramId) {
+        if let Some(prog) = self.programs.get(&prog_id) {
+            self.dsp.set_from(prog.data()).unwrap();
+        } else if let Err(err) = self.jstation.request_program(prog_id) {
+            self.cur_prog_id = None;
+            self.show_error(&err);
+        }
+    }
+
+    fn update_has_changed(&mut self) {
+        let cur_prog = self.cur_prog_id.map(|prog_id| self.programs.get(&prog_id));
+        if let Some(cur_prog) = cur_prog.flatten() {
+            self.has_changed = self.dsp.has_changed(cur_prog.data());
+        }
     }
 }
 
@@ -250,13 +246,15 @@ impl Application for App {
             Parameter(param) => {
                 use jstation::data::{CCParameter, ParameterSetter};
 
-                self.dsp.set(param).unwrap();
+                if self.dsp.set(param).is_some() {
+                    if let Some(cc) = param.to_cc() {
+                        // FIXME handle the error
+                        let _ = self.jstation.send_cc(cc);
+                    } else {
+                        log::error!("No CC for {:?}", param);
+                    }
 
-                if let Some(cc) = param.to_cc() {
-                    // FIXME handle the error
-                    let _ = self.jstation.send_cc(cc);
-                } else {
-                    log::error!("No CC for {:?}", param);
+                    self.update_has_changed();
                 }
             }
             Midi(ui::midi::Selection { port_in, port_out }) => {
@@ -272,12 +270,7 @@ impl Application for App {
                     self.cur_prog_id = Some(prog_id);
                     self.has_changed = false;
 
-                    if let Some(prog) = self.programs.get(&prog_id) {
-                        self.dsp.set_raw(prog.data()).unwrap();
-                    } else if let Err(err) = self.jstation.request_program(prog_id) {
-                        self.cur_prog_id = None;
-                        self.show_error(&err);
-                    }
+                    self.load_prog(prog_id);
                 }
                 Err(err) => self.show_error(&err),
             },
@@ -296,12 +289,7 @@ impl Application for App {
                 }
 
                 if let Some(cur_prog_id) = self.cur_prog_id {
-                    if let Some(prog) = self.programs.get(&cur_prog_id) {
-                        self.dsp.set_raw(prog.data()).unwrap();
-                    } else if let Err(err) = self.jstation.request_program(cur_prog_id) {
-                        self.cur_prog_id = None;
-                        self.show_error(&err);
-                    }
+                    self.load_prog(cur_prog_id);
                 }
 
                 self.has_changed = false;

@@ -23,8 +23,8 @@ impl Program {
         self.id
     }
 
-    pub fn data(&self) -> &[RawValue] {
-        self.data.data()
+    pub fn data(&self) -> &ProgramData {
+        &self.data
     }
 
     pub fn name(&self) -> &str {
@@ -40,24 +40,26 @@ impl cmp::PartialEq<ProgramData> for Program {
 
 #[derive(Clone, Debug)]
 pub struct ProgramData {
-    data: Box<[RawValue; Self::PARAM_COUNT]>,
+    buf: Box<[RawValue; Self::PARAM_COUNT]>,
     name: String,
 }
 
 impl ProgramData {
+    // Safety: the link between `ParameterNumber::MAX` and `PARAM_COUNT`
+    // is used as an invariant for optimizations in some operations.
     pub const PARAM_COUNT: usize = (ParameterNumber::MAX.as_u8() + 1) as usize;
     const NAME_MAX_LEN: usize = 20;
 
-    fn try_new(data: Box<[RawValue; Self::PARAM_COUNT]>, name: String) -> Result<Self, Error> {
+    fn try_new(buf: Box<[RawValue; Self::PARAM_COUNT]>, name: String) -> Result<Self, Error> {
         if name.len() > Self::NAME_MAX_LEN {
             return Err(Error::ProgramNameOutOfRange(name.len()));
         }
 
-        Ok(ProgramData { data, name })
+        Ok(ProgramData { buf, name })
     }
 
-    pub fn data(&self) -> &[RawValue; Self::PARAM_COUNT] {
-        self.data.as_ref()
+    pub fn buf(&self) -> &[RawValue; Self::PARAM_COUNT] {
+        self.buf.as_ref()
     }
 
     pub fn name(&self) -> &str {
@@ -77,7 +79,7 @@ impl ProgramData {
 
 impl cmp::PartialEq for ProgramData {
     fn eq(&self, other: &Self) -> bool {
-        for (val1, val2) in self.data.iter().zip(other.data.iter()) {
+        for (val1, val2) in self.buf.iter().zip(other.buf.iter()) {
             if val1 != val2 {
                 return false;
             }
@@ -139,6 +141,15 @@ impl ProgramData {
 
         Ok((i, prog_data))
     }
+}
+
+pub trait ProgramParameter {
+    fn set_from(&mut self, data: &ProgramData) -> Result<(), Error>;
+
+    /// Checks changes in `Self` compared to the provided `ProgramData`.
+    ///
+    /// Returns `true` if at least one Parameter has changed.
+    fn has_changed(&self, data: &ProgramData) -> bool;
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]

@@ -161,10 +161,10 @@ impl<'a> ToTokens for ParamGroup<'a> {
                 let field = p.field();
 
                 let mut set_field = quote! {
-                    if let Err(err) = self.#field.set_raw(data) {
+                    if let Err(err) = self.#field.set_from(data) {
                         if err.is_inactive_param() {
                             // Don't propagate
-                            log::trace!("set_raw: {}", err);
+                            log::trace!("set_from: {}", err);
                         } else {
                             return Err(err);
                         }
@@ -188,15 +188,38 @@ impl<'a> ToTokens for ParamGroup<'a> {
                 set_field
             });
 
+            let has_changed_field =
+                self.sorted_by_param_nb()
+                    .unwrap()
+                    .enumerate()
+                    .map(|(idx, p)| {
+                        let field = p.field();
+
+                        if idx == 0 {
+                            quote! {
+                                self.#field.has_changed(data)
+                            }
+                        } else {
+                            quote! {
+                                || self.#field.has_changed(data)
+                            }
+                        }
+                    });
+
             tokens.extend(quote! {
-                impl crate::jstation::data::RawParameterSetter for #group_name {
-                    fn set_raw(
+                impl crate::jstation::data::ProgramParameter for #group_name {
+                    fn set_from(
                         &mut self,
-                        data: &[crate::jstation::data::RawValue]
+                        data: &crate::jstation::ProgramData,
                     ) -> Result<(), crate::jstation::Error> {
                         #( #set_field )*
 
                         Ok(())
+                    }
+
+                    #[inline]
+                    fn has_changed(&self, data: &crate::jstation::ProgramData) -> bool {
+                        #( #has_changed_field )*
                     }
                 }
             });

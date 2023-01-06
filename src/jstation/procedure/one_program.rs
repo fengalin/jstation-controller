@@ -56,7 +56,7 @@ impl ProcedureBuilder for OneProgramResp {
     }
 
     fn push_variable_size_data(&self, buffer: &mut crate::jstation::sysex::BufferBuilder) {
-        let mut buf: Vec<u8> = self.prog.data().iter().map(Into::into).collect();
+        let mut buf: Vec<u8> = self.prog.data().buf().iter().map(Into::into).collect();
         buf.extend(self.prog.name().as_bytes());
         // Terminal 0 for name
         buf.push(0x00);

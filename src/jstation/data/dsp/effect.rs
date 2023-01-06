@@ -3,8 +3,7 @@ use std::fmt;
 use jstation_derive::ParameterSetter;
 
 use crate::jstation::data::{
-    BaseParameter, DiscreteParameter, DiscreteRange, Normal, RawValue, VariableRange,
-    VariableRangeParameter,
+    DiscreteParameter, DiscreteRange, Normal, RawValue, VariableRange, VariableRangeParameter,
 };
 
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]
