@@ -88,6 +88,7 @@ declare_procs!(
     one_program: OneProgramReq, OneProgramResp;
     program_indices: ProgramIndicesReq, ProgramIndicesResp;
     program_update: ProgramUpdateReq, ProgramUpdateResp;
+    reload_program: ReloadProgramReq;
     who_am_i: WhoAmIReq, WhoAmIResp;
     result: ToMessageResp;
 );

@@ -3,7 +3,8 @@ use std::fmt;
 use jstation_derive::ParameterSetter;
 
 use crate::jstation::data::{
-    DiscreteParameter, DiscreteRange, Normal, RawValue, VariableRange, VariableRangeParameter,
+    BaseParameter, DiscreteParameter, DiscreteRange, Normal, RawValue, VariableRange,
+    VariableRangeParameter,
 };
 
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]
@@ -50,7 +51,7 @@ pub enum Discriminant {
 impl From<Type> for Discriminant {
     fn from(typ: Type) -> Self {
         use Discriminant::*;
-        match typ.raw_value().unwrap().as_u8() {
+        match typ.raw_value().as_u8() {
             0 => Chorus,
             1 => Flanger,
             2 => Phaser,
@@ -128,10 +129,6 @@ impl DiscreteParameter for Speed {
         Some(range.try_normalize(self.value).unwrap())
     }
 
-    fn raw_value(self) -> Option<RawValue> {
-        Some(self.value)
-    }
-
     fn reset(&mut self) -> Option<Self> {
         let default = RawValue::new(match self.discr {
             Discriminant::PitchDetune => 24,
@@ -162,10 +159,10 @@ impl Speed {
 impl fmt::Display for Speed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value = match self.discr {
-            Discriminant::AutoWah => self.raw_value().unwrap().as_u8() as i32,
+            Discriminant::AutoWah => self.raw_value().as_u8() as i32,
             Discriminant::PitchDetune => {
                 // -24 to +24 semitones.
-                self.raw_value().unwrap().as_u8() as i32 - 24i32
+                self.raw_value().as_u8() as i32 - 24i32
             }
             _ => self.range().unwrap().to_cents(self.value).unwrap() as i32,
         };
@@ -236,10 +233,6 @@ impl DiscreteParameter for Depth {
         Some(range.try_normalize(self.value).unwrap())
     }
 
-    fn raw_value(self) -> Option<RawValue> {
-        Some(self.value)
-    }
-
     fn reset(&mut self) -> Option<Self> {
         let default = RawValue::new(match self.discr {
             Discriminant::PitchDetune => 30,
@@ -261,7 +254,7 @@ impl fmt::Display for Depth {
         let value = match self.discr {
             Discriminant::PitchDetune => {
                 // -30 to +30 cents.
-                self.raw_value().unwrap().as_u8() as i32 - 30i32
+                self.raw_value().as_u8() as i32 - 30i32
             }
             _ => self.range().unwrap().to_cents(self.value).unwrap() as i32,
         };
@@ -303,14 +296,6 @@ impl DiscreteParameter for Regen {
     fn normal(self) -> Option<Normal> {
         let range = self.range()?;
         Some(range.try_normalize(self.value).unwrap())
-    }
-
-    fn raw_value(self) -> Option<RawValue> {
-        if !self.is_active() {
-            return None;
-        }
-
-        Some(self.value)
     }
 
     fn reset(&mut self) -> Option<Self> {

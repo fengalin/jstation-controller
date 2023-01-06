@@ -22,101 +22,123 @@ impl<'a> ToTokens for VariableRange<'a> {
         let param = &self.base.field.ty;
         let param_name = self.base.name();
 
-        tokens.extend(quote! {
-            #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-            pub struct #param {
-                discr: <Self as crate::jstation::data::VariableRange>::Discriminant,
-                value: crate::jstation::data::RawValue,
-            }
+        tokens.extend({
+            let nb_impl = match &self.base.param_nb {
+                Some(param_nb) => quote! {
+                    use crate::jstation::data::ParameterNumber;
+                    const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
-            impl crate::jstation::data::VariableRangeParameter for #param {
-                fn range(self) -> Option<DiscreteRange> {
-                    <Self as crate::jstation::data::VariableRange>::range_from(self.discr)
+                    Some(PARAM_NB)
+                },
+                None => quote! { None },
+            };
+
+            quote! {
+                #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+                pub struct #param {
+                    discr: <Self as crate::jstation::data::VariableRange>::Discriminant,
+                    value: crate::jstation::data::RawValue,
                 }
 
-                fn set_discriminant(&mut self, discr: Self::Discriminant) {
-                    if self.discr != discr {
-                        let cur_range = <Self as crate::jstation::data::VariableRange>::range_from(self.discr);
-                        self.discr = discr;
+                impl crate::jstation::data::BaseParameter for #param {
+                    fn nb(self) -> Option<crate::jstation::data::ParameterNumber> {
+                        #nb_impl
+                    }
 
-                        if let Some(range) = <Self as crate::jstation::data::VariableRange>::range_from(discr) {
-                            if cur_range.map_or(true, |cur_range| cur_range != range) {
-                                crate::jstation::data::DiscreteParameter::reset(self);
+                    fn raw_value(self) -> crate::jstation::data::RawValue {
+                        self.value
+                    }
+                }
+
+                impl crate::jstation::data::VariableRangeParameter for #param {
+                    fn range(self) -> Option<DiscreteRange> {
+                        <Self as crate::jstation::data::VariableRange>::range_from(self.discr)
+                    }
+
+                    fn set_discriminant(&mut self, discr: Self::Discriminant) {
+                        if self.discr != discr {
+                            let cur_range = <Self as crate::jstation::data::VariableRange>::range_from(self.discr);
+                            self.discr = discr;
+
+                            if let Some(range) = <Self as crate::jstation::data::VariableRange>::range_from(discr) {
+                                if cur_range.map_or(true, |cur_range| cur_range != range) {
+                                    crate::jstation::data::DiscreteParameter::reset(self);
+                                }
                             }
                         }
                     }
-                }
 
-                fn from_normal(
-                    discr: <Self as crate::jstation::data::VariableRange>::Discriminant,
-                    normal: crate::jstation::data::Normal,
-                ) -> Option<Self> {
-                    let range = <Self as crate::jstation::data::VariableRange>::range_from(discr)?;
-                    let value = range.normal_to_raw(normal);
+                    fn from_normal(
+                        discr: <Self as crate::jstation::data::VariableRange>::Discriminant,
+                        normal: crate::jstation::data::Normal,
+                    ) -> Option<Self> {
+                        let range = <Self as crate::jstation::data::VariableRange>::range_from(discr)?;
+                        let value = range.normal_to_raw(normal);
 
-                    Some(#param {
-                        discr,
-                        value,
-                    })
-                }
-
-                fn try_from_raw(
-                    discr: <Self as crate::jstation::data::VariableRange>::Discriminant,
-                    raw: crate::jstation::data::RawValue,
-                ) -> Result<Self, crate::jstation::Error> {
-                    use crate::jstation::Error;
-
-                    let range = <Self as crate::jstation::data::VariableRange>::range_from(discr)
-                        .ok_or_else(|| Error::ParameterInactive {
-                            param: stringify!(#param).to_string(),
-                            discriminant: format!("{:?}", discr),
-                            value: raw.into(),
-                        })?;
-                    let value = range
-                        .check(raw)
-                        .map_err(|err| crate::jstation::Error::with_context(
-                            format!("{} ({:?})", #param_name, discr),
-                            err,
-                        ))?;
-
-                    Ok(#param {
-                        discr,
-                        value,
-                    })
-                }
-            }
-
-            impl crate::jstation::data::ParameterSetter for #param {
-                type Parameter = Self;
-
-                fn set(&mut self, new: Self) -> Option<Self> {
-                    use crate::jstation::data::DiscreteParameter;
-
-                    if self.discr != new.discr {
-                        *self = new;
-                        return Some(new);
+                        Some(#param {
+                            discr,
+                            value,
+                        })
                     }
 
-                    if !self.is_active() || self.value == new.value {
-                        return None;
+                    fn try_from_raw(
+                        discr: <Self as crate::jstation::data::VariableRange>::Discriminant,
+                        raw: crate::jstation::data::RawValue,
+                    ) -> Result<Self, crate::jstation::Error> {
+                        use crate::jstation::Error;
+
+                        let range = <Self as crate::jstation::data::VariableRange>::range_from(discr)
+                            .ok_or_else(|| Error::ParameterInactive {
+                                param: stringify!(#param).to_string(),
+                                discriminant: format!("{:?}", discr),
+                                value: raw.into(),
+                            })?;
+                        let value = range
+                            .check(raw)
+                            .map_err(|err| crate::jstation::Error::with_context(
+                                format!("{} ({:?})", #param_name, discr),
+                                err,
+                            ))?;
+
+                        Ok(#param {
+                            discr,
+                            value,
+                        })
                     }
+                }
 
-                    self.value = new.value;
+                impl crate::jstation::data::ParameterSetter for #param {
+                    type Parameter = Self;
 
-                    Some(new)
+                    fn set(&mut self, new: Self) -> Option<Self> {
+                        use crate::jstation::data::DiscreteParameter;
+
+                        if self.discr != new.discr {
+                            *self = new;
+                            return Some(new);
+                        }
+
+                        if !self.is_active() || self.value == new.value {
+                            return None;
+                        }
+
+                        self.value = new.value;
+
+                        Some(new)
+                    }
                 }
             }
         });
 
         if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
-                impl crate::jstation::data::RawParameter for #param {
+                impl crate::jstation::data::RawParameterSetter for #param {
                     fn set_raw(
                         &mut self,
                         data: &[crate::jstation::data::RawValue],
                     ) -> Result<(), crate::jstation::Error> {
                         use crate::jstation::data::VariableRangeParameter;
-                        let param = Self::try_from_raw(self.discr, data[#param_nb])?;
+                        let param = Self::try_from_raw(self.discr, data[#param_nb as usize])?;
 
                         *self = param;
 

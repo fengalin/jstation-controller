@@ -1,6 +1,6 @@
 use crate::{
     jstation::{
-        data::{CCParameter, CCParameterSetter, ParameterSetter, RawValue},
+        data::{CCParameter, CCParameterSetter, ParameterSetter, RawParameterSetter, RawValue},
         Error,
     },
     midi,
@@ -46,10 +46,8 @@ pub struct Dsp {
     pub utility_settings: UtilitySettings,
 }
 
-impl Dsp {
-    pub fn set_raw(&mut self, data: &[RawValue]) -> Result<(), Error> {
-        use crate::jstation::data::RawParameter;
-
+impl RawParameterSetter for Dsp {
+    fn set_raw(&mut self, data: &[RawValue]) -> Result<(), Error> {
         self.compressor.set_raw(data)?;
         self.wah_expr.set_raw(data)?;
         self.amp.set_raw(data)?;

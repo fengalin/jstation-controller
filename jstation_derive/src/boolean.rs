@@ -22,10 +22,34 @@ impl<'a> ToTokens for Boolean<'a> {
         let param = &self.base.field.ty;
         let param_name = self.base.name();
 
-        tokens.extend(quote! {
-            #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-            pub struct #param(bool);
+        tokens.extend({
+            let nb_impl = match &self.base.param_nb {
+                Some(param_nb) => quote! {
+                    use crate::jstation::data::ParameterNumber;
+                    const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
+                    Some(PARAM_NB)
+                },
+                None => quote! { None },
+            };
+
+            quote! {
+                #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+                pub struct #param(bool);
+
+                impl crate::jstation::data::BaseParameter for #param {
+                    fn nb(self) -> Option<crate::jstation::data::ParameterNumber> {
+                        #nb_impl
+                    }
+
+                    fn raw_value(self) -> crate::jstation::data::RawValue {
+                        crate::jstation::data::RawValue::new(if self.0 { 0 } else { u8::MAX })
+                    }
+                }
+            }
+        });
+
+        tokens.extend(quote! {
             impl crate::jstation::data::ParameterSetter for #param {
                 type Parameter = Self;
 
@@ -64,12 +88,12 @@ impl<'a> ToTokens for Boolean<'a> {
 
         if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
-                impl crate::jstation::data::RawParameter for #param {
+                impl crate::jstation::data::RawParameterSetter for #param {
                     fn set_raw(
                         &mut self,
                         data: &[crate::jstation::data::RawValue],
                     ) -> Result<(), crate::jstation::Error> {
-                        self.0 = data[#param_nb].as_u8() != 0;
+                        self.0 = data[#param_nb as usize].as_u8() != 0;
 
                         Ok(())
                     }

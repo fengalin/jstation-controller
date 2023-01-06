@@ -1,17 +1,15 @@
 use crate::jstation::{
-    data::{Normal, ParameterSetter, RawValue},
+    data::{BaseParameter, Normal, RawValue},
     Error,
 };
 use crate::midi;
 
-pub trait DiscreteParameter: ParameterSetter<Parameter = Self> + Clone + Copy {
+pub trait DiscreteParameter: BaseParameter + Clone + Copy {
     fn param_name(self) -> &'static str;
 
     fn normal_default(self) -> Option<Normal>;
 
     fn normal(self) -> Option<Normal>;
-
-    fn raw_value(self) -> Option<RawValue>;
 
     /// Resets the parameter to its default value.
     fn reset(&mut self) -> Option<Self>;
