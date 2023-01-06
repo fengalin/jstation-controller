@@ -9,6 +9,7 @@ pub enum Button {
     ModalClose,
     ListItem,
     ListItemSelected,
+    Store,
 }
 
 impl button::StyleSheet for Button {
@@ -25,13 +26,13 @@ impl button::StyleSheet for Button {
                 ..appearance
             },
             ListItem => button::Appearance {
-                background: None,
-                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                background: Some(Background::Color(Color::from_rgba(0.1, 0.1, 0.1, 0.1))),
+                text_color: Color::from_rgb(0.6, 0.6, 0.65),
                 ..appearance
             },
-            ListItemSelected => button::Appearance {
+            ListItemSelected | Store => button::Appearance {
                 background: Some(Background::Color(Color::from_rgb(0.55, 0.0, 0.0))),
-                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                text_color: Color::from_rgb(0.9, 0.9, 0.95),
                 ..appearance
             },
             ModalClose => button::Appearance {
@@ -54,12 +55,12 @@ impl button::StyleSheet for Button {
             },
             ListItem => button::Appearance {
                 background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
-                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                text_color: Color::from_rgb(0.6, 0.6, 0.65),
                 ..appearance
             },
-            ListItemSelected => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.55, 0.0, 0.0))),
-                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+            ListItemSelected | Store => button::Appearance {
+                background: Some(Background::Color(Color::from_rgb(0.75, 0.0, 0.0))),
+                text_color: Color::WHITE,
                 ..appearance
             },
             ModalClose => button::Appearance {

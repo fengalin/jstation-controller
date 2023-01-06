@@ -16,7 +16,7 @@ pub const DEFAULT_DSP_WIDTH: Length = Length::Units(622);
 pub const DSP_PROGRAM_SPACING: Length = Length::Units(10);
 
 pub fn button<'a, Message>(title: &str) -> Button<'a, Message, iced::Renderer> {
-    Button::new(text(title).size(15)).style(style::Button::Default.into())
+    Button::new(text(title).size(15))
 }
 
 pub fn checkbox<'a, Message, F>(
@@ -96,8 +96,9 @@ where
 {
     container(
         column![
-            button("X")
+            Button::new(text("X").size(15).horizontal_alignment(Horizontal::Center))
                 .on_press(on_hide)
+                .width(Length::Units(25))
                 .style(style::Button::ModalClose.into()),
             vertical_space(Length::Units(10)),
             element.into(),

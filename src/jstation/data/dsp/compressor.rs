@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::jstation::data::DiscreteParameter;
+use crate::jstation::data::BaseParameter;
 use jstation_derive::ParameterSetter;
 
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]
@@ -19,11 +19,11 @@ pub struct Compressor {
 
 impl fmt::Display for Threshold {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let raw_value = self.raw_value().unwrap().as_u8();
+        let raw_value = self.raw_value().as_u8();
 
         // Don't display `-` if value is 0.
         let db_value = if raw_value > 0 {
-            -1.0 * (self.raw_value().unwrap().as_u8() as f32)
+            -1.0 * (raw_value as f32)
         } else {
             0.0
         };
@@ -45,7 +45,7 @@ impl fmt::Display for Ratio {
 
 impl fmt::Display for Gain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let db_value = self.raw_value().unwrap().as_u8() as f32;
+        let db_value = self.raw_value().as_u8() as f32;
 
         fmt::Display::fmt(&db_value, f)?;
         f.write_str(" dB")

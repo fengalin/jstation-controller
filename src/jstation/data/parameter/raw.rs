@@ -1,8 +1,9 @@
 use std::fmt;
 
-use crate::{jstation::Error, midi};
+use crate::jstation::Error;
+use crate::midi;
 
-pub trait RawParameter {
+pub trait RawParameterSetter {
     fn set_raw(&mut self, data: &[RawValue]) -> Result<(), Error>;
 }
 

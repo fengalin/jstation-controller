@@ -76,6 +76,11 @@ impl Interface {
             .map_err(|err| Error::with_context("Program req.", err))
     }
 
+    pub fn reload_program(&mut self) -> Result<(), Error> {
+        self.send_sysex(procedure::ReloadProgramReq)
+            .map_err(|err| Error::with_context("Reload Program req.", err))
+    }
+
     fn send_sysex(&mut self, proc: impl ProcedureBuilder) -> Result<(), Error> {
         self.send(&proc.build_for(self.sysex_chan))
     }

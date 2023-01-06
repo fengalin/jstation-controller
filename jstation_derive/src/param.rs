@@ -76,7 +76,7 @@ impl<'a> Param<'a> {
         self.base().cc_nb
     }
 
-    pub fn param_nb(&self) -> Option<usize> {
+    pub fn param_nb(&self) -> Option<u8> {
         self.base().param_nb
     }
 
@@ -91,7 +91,7 @@ impl<'a> Param<'a> {
 pub struct ParamBase<'a> {
     pub field: &'a Field,
     pub name: String,
-    pub param_nb: Option<usize>,
+    pub param_nb: Option<u8>,
     pub cc_nb: Option<u8>,
 }
 
@@ -108,7 +108,7 @@ impl<'a> ParamBase<'a> {
     pub fn have_arg(&mut self, arg: Arg) {
         let name = arg.name.to_string();
         match name.as_str() {
-            "param_nb" => self.param_nb = Some(arg.u8_or_abort(self.field) as usize),
+            "param_nb" => self.param_nb = Some(arg.u8_or_abort(self.field)),
             "cc_nb" => self.cc_nb = Some(arg.u8_or_abort(self.field)),
             other => {
                 abort!(

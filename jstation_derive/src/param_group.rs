@@ -71,9 +71,9 @@ impl<'a> ToTokens for ParamGroup<'a> {
                     #( #param_enum(#param_enum), )*
                 }
 
-                impl From<Parameter> for crate::jstation::Parameter {
+                impl From<Parameter> for crate::jstation::dsp::Parameter {
                     fn from(param: Parameter) -> Self {
-                        crate::jstation::Parameter::#group_name(param)
+                        crate::jstation::dsp::Parameter::#group_name(param)
                     }
                 }
 
@@ -189,7 +189,7 @@ impl<'a> ToTokens for ParamGroup<'a> {
             });
 
             tokens.extend(quote! {
-                impl crate::jstation::data::RawParameter for #group_name {
+                impl crate::jstation::data::RawParameterSetter for #group_name {
                     fn set_raw(
                         &mut self,
                         data: &[crate::jstation::data::RawValue]

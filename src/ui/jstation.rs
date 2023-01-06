@@ -56,6 +56,10 @@ impl Interface {
         self.iface.request_program(id)
     }
 
+    pub fn reload_program(&mut self) -> Result<(), Error> {
+        self.iface.reload_program()
+    }
+
     pub fn send_cc(&mut self, cc: midi::CC) -> Result<(), Error> {
         self.iface.send_cc(cc)
     }

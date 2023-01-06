@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp, fmt};
+use std::{cmp, fmt};
 
 use nom::IResult;
 
@@ -11,20 +11,12 @@ use crate::midi;
 #[derive(Debug)]
 pub struct Program {
     id: ProgramId,
-
-    original: ProgramData,
-    cur: ProgramData,
+    data: ProgramData,
 }
 
 impl Program {
     pub fn new(id: ProgramId, data: ProgramData) -> Self {
-        let original = data;
-
-        Program {
-            id,
-            cur: original.clone(),
-            original,
-        }
+        Program { id, data }
     }
 
     pub fn id(&self) -> ProgramId {
@@ -32,122 +24,67 @@ impl Program {
     }
 
     pub fn data(&self) -> &[RawValue] {
-        &self.cur.data
+        self.data.data()
     }
 
     pub fn name(&self) -> &str {
-        self.cur.name.as_ref()
-    }
-
-    pub fn has_changed(&self) -> bool {
-        self.cur.has_changed()
-    }
-
-    pub fn undo(&mut self) {
-        self.cur = self.original.clone();
-    }
-
-    pub fn apply(&mut self) {
-        if matches!(self.cur.data, Cow::Owned(_)) {
-            std::mem::swap(&mut self.original.data, &mut self.cur.data);
-            self.cur.data = self.original.data.clone();
-        }
-
-        assert!(matches!(self.cur.data, Cow::Borrowed(_)));
-
-        if matches!(self.cur.name, Cow::Owned(_)) {
-            std::mem::swap(&mut self.original.name, &mut self.cur.name);
-            self.cur.name = self.original.name.clone();
-        }
-
-        assert!(matches!(self.cur.name, Cow::Borrowed(_)));
-    }
-
-    pub fn rename_as(&mut self, name: String) {
-        self.cur.rename_as(&self.original.name, name);
+        self.data.name()
     }
 }
 
 impl cmp::PartialEq<ProgramData> for Program {
     fn eq(&self, other: &ProgramData) -> bool {
-        self.original.eq(other)
+        self.data.eq(other)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct ProgramData {
-    data: Cow<'static, [RawValue]>,
-    name: Cow<'static, str>,
+    data: Box<[RawValue; Self::PARAM_COUNT]>,
+    name: String,
 }
 
 impl ProgramData {
     pub const PARAM_COUNT: usize = (ParameterNumber::MAX.as_u8() + 1) as usize;
     const NAME_MAX_LEN: usize = 20;
 
-    pub fn try_new(data: Vec<RawValue>, name: String) -> Result<Self, Error> {
-        if data.len() > Self::PARAM_COUNT {
-            return Err(Error::ProgramDataOutOfRange(data.len()));
-        }
-
+    fn try_new(data: Box<[RawValue; Self::PARAM_COUNT]>, name: String) -> Result<Self, Error> {
         if name.len() > Self::NAME_MAX_LEN {
             return Err(Error::ProgramNameOutOfRange(name.len()));
         }
 
-        let data = Cow::<[RawValue]>::from(data);
-        let name = Cow::<str>::from(name);
-
         Ok(ProgramData { data, name })
     }
 
-    pub fn data(&self) -> &[RawValue] {
-        &self.data
+    pub fn data(&self) -> &[RawValue; Self::PARAM_COUNT] {
+        self.data.as_ref()
     }
 
     pub fn name(&self) -> &str {
         self.name.as_ref()
     }
 
-    // FIXME need to check whether a changed param value is back to
-    // its original value to figure out it has changed.
-    fn has_changed(&self) -> bool {
-        matches!(self.data, Cow::Owned(_)) | matches!(self.name, Cow::Owned(_))
-    }
-
-    #[allow(clippy::ptr_arg)]
-    fn rename_as(&mut self, original_name: &Cow<'static, str>, mut name: String) {
+    pub fn format_name(&mut self, mut name: String) -> String {
         // Truncate the name so as to comply with the device's limits
         let buf = name.as_bytes();
         if buf.len() > Self::NAME_MAX_LEN {
             name = String::from_utf8_lossy(&buf[..Self::NAME_MAX_LEN]).to_string();
         }
 
-        if name == self.name {
-            return;
-        }
-
-        if name == *original_name {
-            if matches!(self.name, Cow::Owned(_)) {
-                // renaming as the original name
-                self.name = original_name.clone();
-            }
-
-            return;
-        }
-
-        self.name = Cow::<str>::from(name);
+        name
     }
 }
 
 impl cmp::PartialEq for ProgramData {
     fn eq(&self, other: &Self) -> bool {
-        if self.name.as_ref() != other.name.as_ref() {
-            return false;
-        }
-
-        for data in self.data.iter().zip(other.data.iter()) {
-            if data.0 != data.1 {
+        for (val1, val2) in self.data.iter().zip(other.data.iter()) {
+            if val1 != val2 {
                 return false;
             }
+        }
+
+        if self.name != other.name {
+            return false;
         }
 
         true
@@ -162,11 +99,15 @@ impl ProgramData {
     ) -> IResult<&'i [u8], ProgramData> {
         let mut i = input;
 
-        let mut data = Vec::<RawValue>::new();
-        for _ in 0..Self::PARAM_COUNT {
+        // FIXME could use new_uninit / assume_init if they were stable
+        // since we will overide all zeros anyway.
+        let mut data: Box<[RawValue; Self::PARAM_COUNT]> =
+            [RawValue::ZERO; Self::PARAM_COUNT].into();
+
+        for raw_value in data.iter_mut() {
             let (i_, byte) = take_split_bytes_u8(i, checksum)?;
             i = i_;
-            data.push(byte.into());
+            *raw_value = byte.into();
         }
 
         len -= Self::PARAM_COUNT as u16;

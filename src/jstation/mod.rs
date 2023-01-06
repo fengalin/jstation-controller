@@ -2,7 +2,7 @@ pub mod channel_voice;
 pub use channel_voice::ChannelVoice;
 
 pub mod data;
-pub use data::{CCParameter, Parameter, Program, ProgramId, ProgramNb, ProgramsBank};
+pub use data::{dsp, CCParameter, Program, ProgramId, ProgramNb, ProgramsBank};
 
 mod error;
 pub use error::Error;

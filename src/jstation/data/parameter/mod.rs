@@ -11,7 +11,7 @@ mod normal;
 pub use normal::Normal;
 
 mod raw;
-pub use raw::{RawParameter, RawValue};
+pub use raw::{RawParameterSetter, RawValue};
 
 mod variable_range;
 pub use variable_range::{VariableRange, VariableRangeParameter};
@@ -20,6 +20,11 @@ use std::fmt;
 
 use crate::{jstation::Error, midi};
 
+pub trait BaseParameter: ParameterSetter<Parameter = Self> {
+    fn nb(self) -> Option<ParameterNumber>;
+    fn raw_value(self) -> RawValue;
+}
+
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct ParameterNumber(u8);
 
@@ -27,6 +32,8 @@ impl ParameterNumber {
     pub const MAX: ParameterNumber = ParameterNumber(43);
 
     pub const fn new(nb: u8) -> Self {
+        assert!(nb <= Self::MAX.0);
+
         ParameterNumber(nb)
     }
 

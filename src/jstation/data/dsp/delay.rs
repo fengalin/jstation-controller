@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::jstation::data::DiscreteParameter;
+use crate::jstation::data::BaseParameter;
 use jstation_derive::ParameterSetter;
 
 #[derive(Clone, Copy, Debug, Default, ParameterSetter)]
@@ -25,7 +25,7 @@ const TYPE_NAMES: [&str; 4] = ["Mono", "Analog", "Pong", "Analog Pong"];
 
 impl fmt::Display for TimeCourse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let value = self.raw_value().unwrap().as_u8();
+        let value = self.raw_value().as_u8();
         if value > 9 {
             f.write_fmt(format_args!("{:0.1} s", value as f32 / 10.0))
         } else {
@@ -37,7 +37,7 @@ impl fmt::Display for TimeCourse {
 
 impl fmt::Display for TimeFine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.raw_value().unwrap().as_u8(), f)?;
+        fmt::Display::fmt(&self.raw_value().as_u8(), f)?;
         f.write_str(" ms")
     }
 }

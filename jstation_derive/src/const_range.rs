@@ -115,93 +115,110 @@ impl<'a> ToTokens for ConstRange<'a> {
             (param_min, quote! { MIN })
         };
 
-        tokens.extend(quote! {
-            #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-            pub struct #param(crate::jstation::data::RawValue);
+        tokens.extend({
+            let nb_impl = match &self.base.param_nb {
+                Some(param_nb) => quote! {
+                    use crate::jstation::data::ParameterNumber;
+                    const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
-            impl crate::jstation::data::ConstRangeParameter for #param {
-                const RANGE: crate::jstation::data::DiscreteRange =
-                    crate::jstation::data::DiscreteRange::new(
-                        crate::jstation::data::RawValue::new(#param_min),
-                        crate::jstation::data::RawValue::new(#param_max),
-                    );
+                    Some(PARAM_NB)
+                },
+                None => quote! { None },
+            };
 
-                fn from_normal(normal: crate::jstation::data::Normal) -> Self {
-                    use crate::jstation::data::ConstRangeParameter;
-                    #param(Self::RANGE.normal_to_raw(normal))
-                }
+            quote! {
+                #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+                pub struct #param(crate::jstation::data::RawValue);
 
-                fn try_from_raw(
-                    raw: crate::jstation::data::RawValue,
-                ) -> Result<Self, crate::jstation::Error> {
-                    use crate::jstation::data::ConstRangeParameter;
-                    let value = Self::RANGE
-                        .check(raw)
-                        .map_err(|err| crate::jstation::Error::with_context(#param_name, err))?;
-
-                    Ok(#param(value))
-                }
-            }
-
-            impl crate::jstation::data::DiscreteParameter for #param {
-                fn param_name(self) -> &'static str {
-                    #param_name
-                }
-
-                fn normal_default(self) -> Option<crate::jstation::data::Normal> {
-                    Some(crate::jstation::data::Normal::#normal_default)
-                }
-
-                fn normal(self) -> Option<crate::jstation::data::Normal> {
-                    use crate::jstation::data::ConstRangeParameter;
-                    Some(Self::RANGE.try_normalize(self.0).unwrap())
-                }
-
-                fn raw_value(self) -> Option<crate::jstation::data::RawValue> {
-                    use crate::jstation::data::ConstRangeParameter;
-                    Some(self.0)
-                }
-
-                fn reset(&mut self) -> Option<Self> {
-                    let default = Self::default();
-                    if *self == default {
-                        return None;
+                impl crate::jstation::data::BaseParameter for #param {
+                    fn nb(self) -> Option<crate::jstation::data::ParameterNumber> {
+                        #nb_impl
                     }
 
-                    Some(default)
+                    fn raw_value(self) -> crate::jstation::data::RawValue {
+                        self.0
+                    }
                 }
-            }
 
-            impl crate::jstation::data::ParameterSetter for #param {
-                type Parameter = Self;
+                impl crate::jstation::data::ConstRangeParameter for #param {
+                    const RANGE: crate::jstation::data::DiscreteRange =
+                        crate::jstation::data::DiscreteRange::new(
+                            crate::jstation::data::RawValue::new(#param_min),
+                            crate::jstation::data::RawValue::new(#param_max),
+                        );
 
-                fn set(&mut self, new: Self) -> Option<Self> {
-                    if self.0 == new.0 {
-                        return None;
+                    fn from_normal(normal: crate::jstation::data::Normal) -> Self {
+                        use crate::jstation::data::ConstRangeParameter;
+                        #param(Self::RANGE.normal_to_raw(normal))
                     }
 
-                    *self = new;
+                    fn try_from_raw(
+                        raw: crate::jstation::data::RawValue,
+                    ) -> Result<Self, crate::jstation::Error> {
+                        use crate::jstation::data::ConstRangeParameter;
+                        let value = Self::RANGE
+                            .check(raw)
+                            .map_err(|err| crate::jstation::Error::with_context(#param_name, err))?;
 
-                    Some(new)
+                        Ok(#param(value))
+                    }
                 }
-            }
 
-            impl Default for #param {
-                fn default() -> Self {
-                    Self(crate::jstation::data::RawValue::new(#param_default))
+                impl crate::jstation::data::DiscreteParameter for #param {
+                    fn param_name(self) -> &'static str {
+                        #param_name
+                    }
+
+                    fn normal_default(self) -> Option<crate::jstation::data::Normal> {
+                        Some(crate::jstation::data::Normal::#normal_default)
+                    }
+
+                    fn normal(self) -> Option<crate::jstation::data::Normal> {
+                        use crate::jstation::data::ConstRangeParameter;
+                        Some(Self::RANGE.try_normalize(self.0).unwrap())
+                    }
+
+                    fn reset(&mut self) -> Option<Self> {
+                        let default = Self::default();
+                        if *self == default {
+                            return None;
+                        }
+
+                        Some(default)
+                    }
+                }
+
+                impl crate::jstation::data::ParameterSetter for #param {
+                    type Parameter = Self;
+
+                    fn set(&mut self, new: Self) -> Option<Self> {
+                        if self.0 == new.0 {
+                            return None;
+                        }
+
+                        *self = new;
+
+                        Some(new)
+                    }
+                }
+
+                impl Default for #param {
+                    fn default() -> Self {
+                        Self(crate::jstation::data::RawValue::new(#param_default))
+                    }
                 }
             }
         });
 
         if let Some(param_nb) = &self.base.param_nb {
             tokens.extend(quote! {
-                impl crate::jstation::data::RawParameter for #param {
+                impl crate::jstation::data::RawParameterSetter for #param {
                     fn set_raw(
                         &mut self,
                         data: &[crate::jstation::data::RawValue],
                     ) -> Result<(), crate::jstation::Error> {
                         use crate::jstation::data::ConstRangeParameter;
-                        let param = Self::try_from_raw(data[#param_nb])?;
+                        let param = Self::try_from_raw(data[#param_nb as usize])?;
 
                         *self = param;
 
