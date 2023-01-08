@@ -200,7 +200,7 @@ mod tests {
 
         let res = RANGE.try_normalize(OO_MAX_BOUND);
         if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
-            assert_eq!(value, OO_MAX_BOUND.as_u8() as u8);
+            assert_eq!(value, OO_MAX_BOUND.as_u8());
             assert_eq!(min, MIN_BOUND.as_u8());
             assert_eq!(max, MAX_BOUND.as_u8());
         }
@@ -214,7 +214,7 @@ mod tests {
 
         let res = RANGE.try_ccize(OO_MAX_BOUND);
         if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
-            assert_eq!(value, OO_MAX_BOUND.as_u8() as u8);
+            assert_eq!(value, OO_MAX_BOUND.as_u8());
             assert_eq!(min, MIN_BOUND.as_u8());
             assert_eq!(max, MAX_BOUND.as_u8());
         }
@@ -228,7 +228,7 @@ mod tests {
 
         let res = RANGE.to_cents(OO_MAX_BOUND);
         if let Error::ValueOutOfRange { value, min, max } = res.unwrap_err() {
-            assert_eq!(value, OO_MAX_BOUND.as_u8() as u8);
+            assert_eq!(value, OO_MAX_BOUND.as_u8());
             assert_eq!(min, MIN_BOUND.as_u8());
             assert_eq!(max, MAX_BOUND.as_u8());
         }
