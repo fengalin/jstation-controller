@@ -435,20 +435,22 @@ impl Application for App {
                 ]
                 .width(widget::DEFAULT_DSP_WIDTH);
 
-                if self.has_changed {
-                    left_header = left_header.push(
-                        ui::button("Undo")
-                            .on_press(Undo)
-                            .style(style::Button::Default.into()),
-                    );
-                    left_header = left_header.push(horizontal_space(Length::Units(10)));
-                }
+                if self.jstation.iface().is_connected() {
+                    if self.has_changed {
+                        left_header = left_header.push(
+                            ui::button("Undo")
+                                .on_press(Undo)
+                                .style(style::Button::Default.into()),
+                        );
+                        left_header = left_header.push(horizontal_space(Length::Units(10)));
+                    }
 
-                left_header = left_header.push(
-                    ui::button("Store...")
-                        .on_press(ShowStoreTo)
-                        .style(style::Button::Store.into()),
-                );
+                    left_header = left_header.push(
+                        ui::button("Store...")
+                            .on_press(ShowStoreTo)
+                            .style(style::Button::Store.into()),
+                    );
+                }
 
                 let right_header =
                     row![
