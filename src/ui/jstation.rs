@@ -155,7 +155,7 @@ impl Interface {
             }
         }
 
-        if self.iface.midi_out.is_some() {
+        if self.iface.is_connected() {
             // Only listen if midi_out is connected
             // otherwise handshake would timeout for nothing.
             if let Some(subscription) = self.subscription.as_ref() {

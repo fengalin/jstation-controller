@@ -15,7 +15,7 @@ const HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(200);
 pub struct Interface {
     pub ins: midi::PortsIn,
     pub outs: midi::PortsOut,
-    pub midi_out: Option<midir::MidiOutputConnection>,
+    midi_out: Option<midir::MidiOutputConnection>,
     cc_chan: midi::Channel,
     sysex_chan: midi::Channel,
 }
@@ -30,6 +30,10 @@ impl Interface {
             cc_chan: midi::Channel::ALL,
             sysex_chan: midi::Channel::ALL,
         }
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.midi_out.is_some()
     }
 
     pub fn refresh(&mut self) -> Result<(), Error> {
