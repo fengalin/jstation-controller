@@ -62,7 +62,7 @@ where
         let mut modeling = column![
             row![
                 ui::amp_cabinet_label(self.amp.modeling.param_name()),
-                ui::checkbox("nick", state.show_nick, Event::MustShowNicks),
+                ui::checkbox(state.show_nick, "nick", Event::MustShowNicks),
             ],
             vertical_space(Length::Units(5)),
         ];

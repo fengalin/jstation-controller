@@ -20,15 +20,15 @@ pub fn button<'a, Message>(title: &str) -> Button<'a, Message, iced::Renderer> {
 }
 
 pub fn checkbox<'a, Message, F>(
-    title: &str,
     is_checked: bool,
+    title: impl Into<String>,
     f: F,
 ) -> Checkbox<'a, Message, iced::Renderer>
 where
     Message: 'a,
     F: 'a + Fn(bool) -> Message,
 {
-    Checkbox::new(is_checked, title, f)
+    Checkbox::new(title, is_checked, f)
         .size(16)
         .text_size(15)
         .spacing(6)
@@ -36,15 +36,15 @@ where
 }
 
 pub fn settings_checkbox<'a, Message, F>(
-    title: &str,
     is_checked: bool,
+    title: impl Into<String>,
     f: F,
 ) -> Checkbox<'a, Message, iced::Renderer>
 where
     Message: 'a,
     F: 'a + Fn(bool) -> Message,
 {
-    Checkbox::new(is_checked, title, f)
+    Checkbox::new(title, is_checked, f)
         .size(19)
         .text_size(18)
         .style(style::Checkbox)
@@ -171,7 +171,7 @@ pub fn toggler<'a, Message>(
     is_active: bool,
     f: impl 'a + Fn(bool) -> Message,
 ) -> Toggler<'a, Message, iced::Renderer> {
-    Toggler::new(is_active, None, f)
+    Toggler::new(None, is_active, f)
         .width(Length::Shrink)
         .style(style::Toggler)
 }

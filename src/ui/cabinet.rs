@@ -64,7 +64,7 @@ where
             vertical_space(Length::Units(10)),
             row![
                 ui::amp_cabinet_label(self.cabinet.typ.param_name()),
-                ui::checkbox("nick", state.show_nick, Event::MustShowNicks),
+                ui::checkbox(state.show_nick, "nick", Event::MustShowNicks),
             ],
             vertical_space(Length::Units(5)),
         ]

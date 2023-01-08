@@ -40,3 +40,9 @@ iced_graphics = { git = "https://github.com/fengalin/iced", branch = "subscripti
 iced_lazy = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
 iced_native = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
 iced_wgpu = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
+#iced = { path = "../iced" }
+#iced_core = { path = "../iced/core" }
+#iced_graphics = { path = "../iced/graphics" }
+#iced_lazy = { path = "../iced/lazy" }
+#iced_native = { path = "../iced/native" }
+#iced_wgpu = { path = "../iced/wgpu" }
