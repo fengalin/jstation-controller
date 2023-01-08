@@ -19,37 +19,44 @@ jobs:
           - stable
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        override: true
     - name: Install deps
       run: |
         sudo apt update
         sudo apt upgrade
         sudo apt install libwayland-dev libasound2-dev
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "rust-cache-linux.1"
+    - uses: dtolnay/rust-toolchain@stable
     - name: fmt
       run: cargo fmt -- --check
     - name: clippy
-      run: cargo clippy --tests
+      run: cargo clippy --no-deps --all-targets -- -D warnings
+
+  cargo-deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: EmbarkStudios/cargo-deny-action@v1
+      with:
+        log-level: warn
+        command: check
+        arguments: --all-features
 
   build:
     name: "Build & Test"
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust:
-          - stable
     steps:
     - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        override: true
     - name: Install deps
       run: |
         sudo apt update
         sudo apt upgrade
         sudo apt install libwayland-dev libasound2-dev
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "rust-cache-linux.1"
+    - uses: dtolnay/rust-toolchain@stable
     - name: Test default features
       run: cargo test --verbose

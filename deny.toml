@@ -1,0 +1,50 @@
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "ISC",
+    "MPL-2.0",
+    "OFL-1.1",
+    "Zlib",
+    "BSL-1.0",
+    "BSD-2-Clause",
+    "CC0-1.0",
+    "Unicode-DFS-2016",
+    "MIT-0",
+]
+
+[bans]
+multiple-versions = "deny"
+skip = [
+    { name = "arrayvec", version = "0.5"},
+    { name = "foreign-types", version = "0.3"},
+    { name = "foreign-types-shared", version = "0.1"},
+    { name = "memoffset", version = "0.6"},
+    { name = "nix", version = "0.22"},
+    { name = "nix", version = "0.23"},
+    { name = "nix", version = "0.24"},
+    { name = "parking_lot", version = "0.11"},
+    { name = "parking_lot_core", version = "0.8"},
+    { name = "raw-window-handle", version = "0.3"},
+    { name = "raw-window-handle", version = "0.4"},
+    { name = "windows-sys", version = "0.36"},
+    { name = "windows_aarch64_msvc", version = "0.32"},
+    { name = "windows_aarch64_msvc", version = "0.36"},
+    { name = "windows_i686_gnu", version = "0.32"},
+    { name = "windows_i686_gnu", version = "0.36"},
+    { name = "windows_i686_msvc", version = "0.32"},
+    { name = "windows_i686_msvc", version = "0.36"},
+    { name = "windows_x86_64_gnu", version = "0.32"},
+    { name = "windows_x86_64_gnu", version = "0.36"},
+    { name = "windows_x86_64_msvc", version = "0.32"},
+    { name = "windows_x86_64_msvc", version = "0.36"},
+]
+
+[sources]
+unknown-git = "deny"
+allow-git = [
+  "https://github.com/fengalin/iced",
+  #"https://github.com/iced-rs/iced",
+  "https://github.com/iced-rs/winit",
+]
