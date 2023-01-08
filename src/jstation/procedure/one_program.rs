@@ -15,18 +15,19 @@ impl ProcedureBuilder for OneProgramReq {
     const VERSION: u8 = 1;
 
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
-        buffer.push_fixed_size_data(
-            [self.id.progs_bank().into(), self.id.nb().into()].into_iter()
-        );
+        buffer.push_fixed_size_data([
+            self.id.bank().into(),
+            self.id.nb().into(),
+        ].into_iter());
     }
 }
 
 impl OneProgramReq {
     pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramReq> {
-        let (i, progs_bank) = take_u8(input, checksum)?;
+        let (i, bank) = take_u8(input, checksum)?;
         let (i, nb) = take_u8(i, checksum)?;
 
-        let id = ProgramId::try_from_raw(progs_bank, nb).map_err(|err| {
+        let id = ProgramId::try_from_raw(bank, nb).map_err(|err| {
             log::error!("OneProgramReq: {err}");
 
             nom::Err::Failure(nom::error::Error::new(
@@ -72,7 +73,7 @@ impl<'a> ProcedureBuilder for OneProgramRefResp<'a> {
 
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_fixed_size_data([
-            self.0.id().progs_bank().into(),
+            self.0.id().bank().into(),
             self.0.id().nb().into(),
         ].into_iter());
     }
@@ -85,10 +86,10 @@ impl<'a> ProcedureBuilder for OneProgramRefResp<'a> {
 
 impl OneProgramResp {
     pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], OneProgramResp> {
-        let (i, progs_bank) = take_split_bytes_u8(input, checksum)?;
+        let (i, bank) = take_split_bytes_u8(input, checksum)?;
         let (i, nb) = take_split_bytes_u8(i, checksum)?;
 
-        let id = ProgramId::try_from_raw(progs_bank, nb).map_err(|err| {
+        let id = ProgramId::try_from_raw(bank, nb).map_err(|err| {
             log::error!("OneProgramResp: {err}");
 
             nom::Err::Failure(nom::error::Error::new(
