@@ -16,7 +16,7 @@ While it is usable to control a J-Station, this application is a work in progres
 - [X] Show the list of Programs.
 - [X] Change Program from the UI.
 - [ ] Rename a Program.
-- [ ] Store / undo pending modifications.
+- [X] Store / undo pending modifications.
 - [ ] Import a Program bank from a file.
 - [ ] Export a Program bank to a file.
 

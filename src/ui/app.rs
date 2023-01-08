@@ -1,7 +1,7 @@
 use std::{borrow::Cow, cell::RefCell, collections::BTreeMap, future, rc::Rc, sync::Arc};
 
 use iced::{
-    widget::{column, container, horizontal_space, row, text, vertical_space, Column},
+    widget::{column, container, horizontal_space, row, scrollable, text, vertical_space, Column},
     Alignment, Application, Command, Element, Length, Theme,
 };
 use iced_native::command::Action;
@@ -23,7 +23,7 @@ static PROGRAMS_BANKS: Lazy<Cow<'static, [ProgramsBank]>> =
 pub struct App {
     jstation: ui::jstation::Interface,
     dsp: dsp::Dsp,
-    progs_bank: ProgramsBank,
+    bank: ProgramsBank,
     programs: BTreeMap<ProgramId, Program>,
     cur_prog_id: Option<ProgramId>,
     has_changed: bool,
@@ -105,7 +105,7 @@ impl App {
                         }
                     }
                     StartBankDumpResp(_) => {
-                        self.progs_bank = ProgramsBank::default();
+                        self.bank = ProgramsBank::default();
                     }
                     EndBankDumpResp(_) => {
                         self.jstation.program_update_req()?;
@@ -130,7 +130,7 @@ impl App {
                     },
                     ProgramChange(prog_id) => {
                         self.cur_prog_id = Some(prog_id);
-                        self.progs_bank = prog_id.progs_bank();
+                        self.bank = prog_id.bank();
 
                         self.load_prog(prog_id);
                     }
@@ -165,6 +165,7 @@ impl App {
     fn load_prog(&mut self, prog_id: ProgramId) {
         if let Some(prog) = self.programs.get(&prog_id) {
             self.dsp.set_from(prog.data()).unwrap();
+            self.output_text.clear();
         } else if let Err(err) = self.jstation.request_program(prog_id) {
             self.cur_prog_id = None;
             self.show_error(&err);
@@ -172,8 +173,10 @@ impl App {
     }
 
     fn update_has_changed(&mut self) {
-        let cur_prog = self.cur_prog_id.map(|prog_id| self.programs.get(&prog_id));
-        if let Some(cur_prog) = cur_prog.flatten() {
+        let cur_prog = self
+            .cur_prog_id
+            .and_then(|prog_id| self.programs.get(&prog_id));
+        if let Some(cur_prog) = cur_prog {
             self.has_changed = self.dsp.has_changed(cur_prog.data());
         }
     }
@@ -205,7 +208,7 @@ impl Application for App {
             jstation,
 
             dsp: dsp::Dsp::default(),
-            progs_bank: ProgramsBank::default(),
+            bank: ProgramsBank::default(),
             programs: BTreeMap::new(),
             cur_prog_id: None,
             has_changed: false,
@@ -274,26 +277,48 @@ impl Application for App {
                 }
                 Err(err) => self.show_error(&err),
             },
-            SelectProgramsBank(progs_bank) => {
-                self.progs_bank = progs_bank;
+            SelectProgramsBank(bank) => {
+                self.bank = bank;
             }
-            Store => {
-                let prog = self
+            StoreTo(prog_nb) => {
+                self.panel = Panel::Main;
+
+                let prog_id = ProgramId::new_user(prog_nb);
+
+                if self
                     .cur_prog_id
-                    .and_then(|prog_id| self.programs.get_mut(&prog_id))
-                    .expect("Store available for selected and known program");
+                    .map_or(true, |cur_prog_id| cur_prog_id != prog_id)
+                {
+                    self.jstation
+                        .change_program(prog_id)
+                        .expect("Changing to known user program");
+                    self.bank = ProgramsBank::User;
+                    self.cur_prog_id = Some(prog_id);
+                }
 
-                self.dsp.store(prog.data_mut());
+                let prog = self
+                    .programs
+                    .get_mut(&prog_id)
+                    .expect("Storing to selected and known program");
 
-                // Technically, the program is actually stored on
-                // device after reception of the Ok ack for proc x02.
-                match self.jstation.store_program(prog) {
-                    Ok(()) => self.has_changed = false,
-                    Err(err) => self.show_error(&err),
+                if self.dsp.has_changed(prog.data()) {
+                    self.dsp.store(prog.data_mut());
+
+                    // Technically, the program is actually stored on
+                    // device after reception of the Ok ack for proc x02.
+                    match self.jstation.store_program(prog) {
+                        Ok(()) => {
+                            self.output_text = format!("{} changed", prog_id.nb());
+                            self.has_changed = false;
+                        }
+                        Err(err) => self.show_error(&err),
+                    }
+                } else {
+                    self.output_text = format!("{} unchanged", prog_id.nb());
                 }
             }
-            StoreTo => {
-                // TODO
+            ShowStoreTo => {
+                self.panel = Panel::StoreTo;
             }
             Undo => {
                 if let Err(err) = self.jstation.reload_program() {
@@ -369,7 +394,7 @@ impl Application for App {
                 let progs = Column::with_children(
                     ProgramNb::enumerate()
                         .map(|prog_nb| {
-                            let prog_id = ProgramId::new(self.progs_bank, prog_nb);
+                            let prog_id = ProgramId::new(self.bank, prog_nb);
 
                             let style = if self
                                 .cur_prog_id
@@ -402,50 +427,36 @@ impl Application for App {
                     ui::button("Utility Settings...")
                         .on_press(ShowUtilitySettings)
                         .style(style::Button::Default.into()),
-                    horizontal_space(Length::Units(20)),
+                    horizontal_space(Length::Units(10)),
                     ui::button("MIDI Connection...")
                         .on_press(ShowMidiConnection)
                         .style(style::Button::Default.into()),
+                    horizontal_space(Length::Fill),
                 ]
                 .width(widget::DEFAULT_DSP_WIDTH);
 
                 if self.has_changed {
-                    left_header = left_header.push(horizontal_space(Length::Fill));
-
-                    if self
-                        .cur_prog_id
-                        .map_or(false, |cur_prog_id| cur_prog_id.progs_bank().is_user())
-                    {
-                        left_header = left_header.push(
-                            ui::button("Store")
-                                .on_press(Store)
-                                .style(style::Button::Store.into()),
-                        );
-                        left_header = left_header.push(horizontal_space(Length::Units(10)));
-                    }
-
-                    left_header = left_header.push(
-                        ui::button("Store to...")
-                            .on_press(StoreTo)
-                            .style(style::Button::Store.into()),
-                    );
-                    left_header = left_header.push(horizontal_space(Length::Units(20)));
                     left_header = left_header.push(
                         ui::button("Undo")
                             .on_press(Undo)
                             .style(style::Button::Default.into()),
                     );
+                    left_header = left_header.push(horizontal_space(Length::Units(10)));
                 }
 
-                let right_header = row![
-                    ui::pick_list(
-                        PROGRAMS_BANKS.clone(),
-                        Some(self.progs_bank),
-                        move |progs_bank| { SelectProgramsBank(progs_bank) }
-                    )
-                    .width(Length::Units(100)),
-                    // FIXME add rename button
-                ];
+                left_header = left_header.push(
+                    ui::button("Store...")
+                        .on_press(ShowStoreTo)
+                        .style(style::Button::Store.into()),
+                );
+
+                let right_header =
+                    row![
+                        ui::pick_list(PROGRAMS_BANKS.clone(), Some(self.bank), move |bank| {
+                            SelectProgramsBank(bank)
+                        })
+                        .width(Length::Fill),
+                    ];
 
                 column![
                     row![
@@ -454,11 +465,51 @@ impl Application for App {
                         right_header
                     ],
                     vertical_space(Length::Units(10)),
-                    row![dspes, horizontal_space(widget::DSP_PROGRAM_SPACING), progs]
+                    row![
+                        scrollable(dspes),
+                        horizontal_space(widget::DSP_PROGRAM_SPACING),
+                        scrollable(progs),
+                    ],
                 ]
                 .into()
             }
+            Panel::StoreTo => {
+                let progs = scrollable(Column::with_children(
+                    ProgramNb::enumerate()
+                        .map(|prog_nb| {
+                            let prog_id = ProgramId::new_user(prog_nb);
+
+                            let style = if self
+                                .cur_prog_id
+                                .map_or(false, |cur_prog_id| cur_prog_id.nb() == prog_id.nb())
+                            {
+                                ui::style::Button::ListItemSelected
+                            } else {
+                                ui::style::Button::ListItem
+                            };
+
+                            iced::widget::Button::new(row![
+                                ui::value_label(prog_id.nb().to_string()),
+                                horizontal_space(Length::Units(5)),
+                                ui::value_label(
+                                    self.programs
+                                        .get(&prog_id)
+                                        .map_or("", Program::name)
+                                        .to_string()
+                                )
+                                .width(Length::Fill),
+                            ])
+                            .on_press(StoreTo(prog_id.nb()))
+                            .style(style.into())
+                            .into()
+                        })
+                        .collect(),
+                ));
+
+                ui::modal("Store to...", progs, HideModal).into()
+            }
             Panel::MidiConnection => ui::modal(
+                "MIDI Connection",
                 column![
                     ui::midi::Panel::new(self.ports.clone(), Midi),
                     vertical_space(Length::Units(20)),
@@ -471,6 +522,7 @@ impl Application for App {
             )
             .into(),
             Panel::UtilitySettings => ui::modal(
+                "Utility Settings",
                 ui::utility_settings::Panel::new(self.dsp.utility_settings, Message::from),
                 HideModal,
             )
@@ -511,8 +563,8 @@ pub enum Message {
     StartScan,
     ShowUtilitySettings,
     ShowMidiConnection,
-    Store,
-    StoreTo,
+    ShowStoreTo,
+    StoreTo(ProgramNb),
     Undo,
     HideModal,
     UseDarkTheme(bool),
@@ -580,6 +632,7 @@ impl From<dsp::wah_expr::Parameter> for Message {
 enum Panel {
     #[default]
     Main,
+    StoreTo,
     MidiConnection,
     UtilitySettings,
 }

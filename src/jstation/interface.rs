@@ -85,6 +85,8 @@ impl Interface {
     pub fn store_program(&mut self, prog: &Program) -> Result<(), Error> {
         // Note: gstation-edit also sends a ProgramUpdateResp, but the
         // result seems to be the same with only OneProgramResp.
+        // Or is it needed to change program's name?
+
         self.send_sysex(procedure::OneProgramResp::from(prog))
             .map_err(|err| Error::with_context("Store One Program resp.", err))
     }

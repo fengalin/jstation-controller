@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt, marker::PhantomData};
 
 use iced::{
-    alignment::{Horizontal, Vertical},
+    alignment::Horizontal,
     widget::{
         column, container, row, text, vertical_space, Button, Checkbox, Column, Container,
         PickList, Radio, Text, Toggler,
@@ -88,27 +88,34 @@ pub fn value_label(text: impl ToString) -> Text<'static, iced::Renderer> {
 }
 
 pub fn modal<'a, Message>(
+    title: &str,
     element: impl Into<Element<'a, Message, iced::Renderer>>,
     on_hide: Message,
 ) -> Container<'a, Message>
 where
     Message: 'a + Clone,
 {
+    const CLOSE_BTN_WIDTH: u16 = 25;
+
     container(
         column![
-            Button::new(text("X").size(15).horizontal_alignment(Horizontal::Center))
-                .on_press(on_hide)
-                .width(Length::Units(25))
-                .style(style::Button::ModalClose.into()),
-            vertical_space(Length::Units(10)),
-            element.into(),
+            row![
+                container(text(title)).width(Length::Fill).center_x(),
+                Button::new(text("X").size(15).horizontal_alignment(Horizontal::Center))
+                    .on_press(on_hide)
+                    .width(Length::Units(CLOSE_BTN_WIDTH))
+                    .style(style::Button::ModalClose.into()),
+            ]
+            .align_items(Alignment::Center),
+            vertical_space(Length::Units(30)),
+            container(element.into()).width(Length::Fill).center_x(),
         ]
-        .align_items(Alignment::End),
+        .width(Length::Units(350)),
     )
     .width(Length::Fill)
+    .center_x()
     .height(Length::Fill)
-    .align_x(Horizontal::Center)
-    .align_y(Vertical::Center)
+    .center_y()
 }
 
 pub fn pick_list<'a, T, Message>(

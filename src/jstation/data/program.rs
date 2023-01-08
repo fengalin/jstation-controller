@@ -246,6 +246,10 @@ impl ProgramsBank {
         matches!(self, ProgramsBank::User)
     }
 
+    pub fn is_factory(self) -> bool {
+        matches!(self, ProgramsBank::Factory)
+    }
+
     pub fn into_prog_id(self, nb: ProgramNb) -> ProgramId {
         use ProgramsBank::*;
         match self {
@@ -276,9 +280,9 @@ impl TryFrom<u8> for ProgramsBank {
 }
 
 impl From<ProgramsBank> for u8 {
-    fn from(progs_bank: ProgramsBank) -> Self {
+    fn from(bank: ProgramsBank) -> Self {
         use ProgramsBank::*;
-        match progs_bank {
+        match bank {
             User => ProgramsBank::USER,
             Factory => ProgramsBank::FACTORY,
         }
@@ -289,8 +293,8 @@ impl fmt::Display for ProgramsBank {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ProgramsBank::*;
         f.write_str(match self {
-            User => "User",
-            Factory => "Factory",
+            User => "User Bank",
+            Factory => "Factory Bank",
         })
     }
 }
@@ -309,38 +313,38 @@ impl From<midi::ProgramNumber> for ProgramsBank {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ProgramId {
-    progs_bank: ProgramsBank,
+    bank: ProgramsBank,
     nb: ProgramNb,
 }
 
 impl ProgramId {
-    pub fn new(progs_bank: ProgramsBank, nb: ProgramNb) -> Self {
-        ProgramId { progs_bank, nb }
+    pub fn new(bank: ProgramsBank, nb: ProgramNb) -> Self {
+        ProgramId { bank, nb }
     }
 
     pub fn new_user(nb: ProgramNb) -> Self {
         ProgramId {
-            progs_bank: ProgramsBank::User,
+            bank: ProgramsBank::User,
             nb,
         }
     }
 
     pub fn new_factory(nb: ProgramNb) -> Self {
         ProgramId {
-            progs_bank: ProgramsBank::Factory,
+            bank: ProgramsBank::Factory,
             nb,
         }
     }
 
-    pub fn try_from_raw(progs_bank: u8, nb: u8) -> Result<Self, Error> {
+    pub fn try_from_raw(bank: u8, nb: u8) -> Result<Self, Error> {
         Ok(ProgramId {
-            progs_bank: ProgramsBank::try_from(progs_bank)?,
+            bank: ProgramsBank::try_from(bank)?,
             nb: ProgramNb::try_from(nb)?,
         })
     }
 
-    pub fn progs_bank(self) -> ProgramsBank {
-        self.progs_bank
+    pub fn bank(self) -> ProgramsBank {
+        self.bank
     }
 
     pub fn nb(self) -> ProgramNb {
@@ -351,7 +355,7 @@ impl ProgramId {
 impl From<midi::ProgramNumber> for ProgramId {
     fn from(midi_prog_nb: midi::ProgramNumber) -> Self {
         ProgramId {
-            progs_bank: ProgramsBank::from(midi_prog_nb),
+            bank: ProgramsBank::from(midi_prog_nb),
             nb: ProgramNb::from(midi_prog_nb),
         }
     }
@@ -359,13 +363,13 @@ impl From<midi::ProgramNumber> for ProgramId {
 
 impl From<ProgramId> for midi::ProgramNumber {
     fn from(id: ProgramId) -> Self {
-        midi::ProgramNumber::from(id.nb.0 + id.progs_bank.midi_offset())
+        midi::ProgramNumber::from(id.nb.0 + id.bank.midi_offset())
     }
 }
 
 impl fmt::Display for ProgramId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.nb, f)?;
-        f.write_fmt(format_args!("({})", self.progs_bank))
+        f.write_fmt(format_args!("({})", self.bank))
     }
 }
