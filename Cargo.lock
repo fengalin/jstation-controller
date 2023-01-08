@@ -10,9 +10,9 @@ checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 
 [[package]]
 name = "ab_glyph"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dcdbc68024b653943864d436fe8a24b028095bc1cf91a8926f8241e4aaffe59"
+checksum = "e5568a4aa5ba8adf5175c5c460b030e27d8893412976cc37bef0e4fbc16cfbba"
 dependencies = [
  "ab_glyph_rasterizer",
  "owned_ttf_parser",
@@ -313,9 +313,9 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "calloop"
-version = "0.10.4"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19457a0da465234abd76134a5c2a910c14bd3c5558463e4396ab9a37a328e465"
+checksum = "1a59225be45a478d772ce015d9743e49e92798ece9e34eda9a6aa2a6a7f40192"
 dependencies = [
  "log",
  "nix 0.25.1",
@@ -1266,7 +1266,7 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 [[package]]
 name = "iced"
 version = "0.6.0"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1293,7 +1293,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.6.2"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "bitflags",
  "palette",
@@ -1303,7 +1303,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.5.1"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "futures",
  "log",
@@ -1315,7 +1315,7 @@ dependencies = [
 [[package]]
 name = "iced_glow"
 version = "0.5.1"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "bytemuck",
  "euclid",
@@ -1330,7 +1330,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.5.0"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -1347,7 +1347,7 @@ dependencies = [
 [[package]]
 name = "iced_lazy"
 version = "0.3.0"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "iced_native",
  "ouroboros",
@@ -1356,7 +1356,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.7.0"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1369,7 +1369,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.5.1"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "iced_core",
  "once_cell",
@@ -1379,7 +1379,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.7.0"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -1399,7 +1399,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.6.0"
-source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#3ab18d23b7df3b8de88aec27322d225590b057cb"
+source = "git+https://github.com/fengalin/iced?branch=subscription-unfold-none-handling#0246fc130cefa585a71ecad46467a6692baebbe0"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -1625,9 +1625,9 @@ dependencies = [
 
 [[package]]
 name = "lyon_tessellation"
-version = "1.0.7"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66b19b1b39823ddc178d98cbb42c70ffcd3bfbcbde589f38752bedde982269c3"
+checksum = "2e48a1d4a9cef1075ebe0afbf16521db6c7942e6563c136fb15676dafc5135d7"
 dependencies = [
  "float_next_after",
  "lyon_path",
@@ -1880,9 +1880,9 @@ dependencies = [
 
 [[package]]
 name = "nom"
-version = "7.1.1"
+version = "7.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8903e5a29a317527874d0402f867152a3d21c908bb0b933e416c65e301d4c36"
+checksum = "e5507769c4919c998e69e49c839d9dc6e693ede4cc4290d6ad8b41d4f09c548c"
 dependencies = [
  "memchr",
  "minimal-lexical",
@@ -1970,9 +1970,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.16.0"
+version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
+checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
 name = "ordered-float"
@@ -2009,9 +2009,9 @@ dependencies = [
 
 [[package]]
 name = "owned_ttf_parser"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18904d3c65493a9f0d7542293d1a7f69bfdc309a6b9ef4f46dc3e58b0577edc5"
+checksum = "2a5f3c7ca08b6879e7965fb25e24d1f5eeb32ea73f9ad99b3854778a38c57e93"
 dependencies = [
  "ttf-parser",
 ]
@@ -2121,9 +2121,9 @@ checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "pest"
-version = "2.5.1"
+version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc8bed3549e0f9b0a2a78bf7c0018237a2cdf085eecbbc048e52612438e4e9d0"
+checksum = "0f6e86fb9e7026527a0d46bc308b841d73170ef8f443e1807f6ef88526a816d4"
 dependencies = [
  "thiserror",
  "ucd-trie",
@@ -2446,9 +2446,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.36.5"
+version = "0.36.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3807b5d10909833d3e9acd1eb5fb988f79376ff10fce42937de71a449c4c588"
+checksum = "4feacf7db682c6c329c4ede12649cd36ecab0f3be5b7d74e6a20304725db4549"
 dependencies = [
  "bitflags",
  "errno",
@@ -2520,15 +2520,15 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.151"
+version = "1.0.152"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97fed41fc1a24994d044e6db6935e69511a1153b52c15eb42493b26fa87feba0"
+checksum = "bb7d1f0d3021d347a83e556fc4683dea2ea09d87bccdf88ff5c12545d89d5efb"
 
 [[package]]
 name = "serde_derive"
-version = "1.0.151"
+version = "1.0.152"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "255abe9a125a985c05190d687b320c12f9b1f0b99445e608c21ba0782c719ad8"
+checksum = "af487d118eecd09402d70a5d72551860e788df87b464af30e5ea6a38c75c541e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2786,9 +2786,9 @@ dependencies = [
 
 [[package]]
 name = "ttf-parser"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "375812fa44dab6df41c195cd2f7fecb488f6c09fbaafb62807488cefab642bff"
+checksum = "dbf554b6e535f9a160b2ed4ea83f99000f21cbc0a693df26e258eaf2c226a151"
 
 [[package]]
 name = "twox-hash"

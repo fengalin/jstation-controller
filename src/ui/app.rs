@@ -535,7 +535,7 @@ impl Application for App {
             row![
                 text(&self.output_text).size(18),
                 horizontal_space(Length::Fill),
-                ui::checkbox("Dark Theme", self.use_dark_them, UseDarkTheme),
+                ui::checkbox(self.use_dark_them, "Dark Theme", UseDarkTheme),
             ],
         ])
         .padding(10)
