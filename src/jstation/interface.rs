@@ -58,6 +58,10 @@ impl Interface {
         self.sysex_chan = resp.sysex_chan;
 
         log::debug!("Sending UtilitySettingsReq");
+        self.request_utility_settings()
+    }
+
+    pub fn request_utility_settings(&mut self) -> Result<(), Error> {
         self.send_sysex(procedure::UtilitySettingsReq)
             .map_err(|err| Error::with_context("Utility Settings req.", err))
     }

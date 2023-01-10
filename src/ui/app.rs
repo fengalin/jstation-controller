@@ -60,6 +60,11 @@ impl App {
                             .expect("Not connected");
                         self.has_changed = false;
                     }
+                    NotifyUtility(_) => {
+                        self.jstation
+                            .request_utility_settings()
+                            .expect("Not connected");
+                    }
                     WhoAmIResp(resp) => {
                         self.programs.clear();
 
@@ -83,8 +88,9 @@ impl App {
                     UtilitySettingsResp(resp) => {
                         self.dsp.utility_settings = resp.try_into()?;
 
-                        // FIXME handle ui consequence of the error
-                        self.jstation.bank_dump()?;
+                        if self.programs.is_empty() {
+                            self.jstation.bank_dump()?;
+                        }
                     }
                     ProgramIndicesResp(_) => (),
                     OneProgramResp(resp) => {
