@@ -182,7 +182,7 @@ jobs:
         cd packages
         $archive = "${{ env.app_variant }}.zip"
         Compress-Archive -Path "..\temp\${{ env.app_variant }}" -DestinationPath $archive -CompressionLevel Optimal
-        Get-FileHash $archive -Algorithm SHA256 > $archive.sha256
+        Get-FileHash $archive -Algorithm SHA256 > "$archive.sha256"
 
     - name: Upload windows packages
       uses: actions/upload-artifact@v3
