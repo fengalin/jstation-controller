@@ -40,6 +40,10 @@ impl Interface {
         self.iface.have_who_am_i_resp(resp)
     }
 
+    pub fn request_utility_settings(&mut self) -> Result<(), Error> {
+        self.iface.request_utility_settings()
+    }
+
     pub fn bank_dump(&mut self) -> Result<(), Error> {
         self.iface.bank_dump()
     }
