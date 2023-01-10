@@ -2,6 +2,8 @@
 
 `jstation-controller` is a cross-platform interface to control the J-Station guitar and bass modeling and effect processing system.
 
+Pre-built packages are available from the [release page](https://github.com/fengalin/jstation-controller/releases). See below for build instructions.
+
 ![jstation-controller UI](assets/screenshot_20230110.png "jstation-controller UI")
 
 ## Features
