@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=jstation-controller
+Comment=Controller for J-Station guitar and bass modeling and effect processing system.
+Comment[fr]=Contrôleur pour J-Station, système de modélisation d'amplificateur et d'effets pour guitare et basse.
+GenericName=J-Station Controller
+Exec=jstation-controller
+Icon=multimedia-volume-control
+Type=Application
+Categories=Audio;
+Keywords=Audio;Guitar;
+Keywords[fr]=Son;Guitare;
