@@ -2,9 +2,7 @@
 
 `jstation-controller` is a cross-platform interface to control the J-Station guitar and bass modeling and effect processing system.
 
-While it is usable to control a J-Station, this application is a work in progress and lacks functionalities. See [gstation-edit](https://github.com/fengalin/gstation-edit) for a full-featured Linux alternative.
-
-![jstation-controller UI](assets/screenshot_20221224.png "jstation-controller UI")
+![jstation-controller UI](assets/screenshot_20230110.png "jstation-controller UI")
 
 ## Features
 
@@ -15,7 +13,7 @@ While it is usable to control a J-Station, this application is a work in progres
 - [X] Reflect device parameters updates on the UI.
 - [X] Show the list of Programs.
 - [X] Change Program from the UI.
-- [ ] Rename a Program.
+- [X] Rename a Program.
 - [X] Store / undo pending modifications.
 - [ ] Import a Program bank from a file.
 - [ ] Export a Program bank to a file.
