@@ -44,17 +44,16 @@ jobs:
       shell: bash
 
     - name: Build linux-x86_64
-      run: |
-        cargo build --release
-        mkdir -p temp/${{ env.app_variant }}
-        cp target/release/${APP_NAME} temp/${{ env.app_variant }}/
-      shell: bash
+      run: cargo build --release
 
     - name: Install cargo-about
       run: cargo install cargo-about
 
     - name: Package
       run: |
+        mkdir -p temp/${{ env.app_variant }}
+        cp target/release/${APP_NAME} temp/${{ env.app_variant }}/
+        cp res/org.fengalin.${APP_NAME}.desktop temp/${{ env.app_variant }}/
         cargo-about generate -o temp/${{ env.app_variant }}/LICENSES.html about.hbs
         mkdir -p packages
         cd packages
