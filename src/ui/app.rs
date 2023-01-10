@@ -52,6 +52,14 @@ impl App {
             Ok(SysEx(sysex)) => {
                 use jstation::Procedure::*;
                 match Arc::try_unwrap(sysex).unwrap().proc {
+                    NotifyStore(resp) => {
+                        let prog_id = ProgramId::new_user(resp.nb);
+                        self.cur_prog_id = Some(prog_id);
+                        self.jstation
+                            .request_program(prog_id)
+                            .expect("Not connected");
+                        self.has_changed = false;
+                    }
                     WhoAmIResp(resp) => {
                         self.programs.clear();
 
