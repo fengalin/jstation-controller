@@ -1,0 +1,33 @@
+name: Clippy
+
+on:
+  pull_request:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-and-test:
+    uses: ./.github/workflows/check_and_test.yml
+  deny:
+    uses: ./.github/workflows/deny.yml
+
+  clippy:
+    name: Clippy
+    needs: [ check-and-test, deny ]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install deps
+      run: sudo apt install libwayland-dev libasound2-dev
+
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
+    - uses: Swatinem/rust-cache@v2
+
+    - name: clippy
+      run: cargo clippy --no-deps --all-targets -- -D warnings

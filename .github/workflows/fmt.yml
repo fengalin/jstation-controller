@@ -1,0 +1,25 @@
+name: Fmt
+
+on: workflow_call
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install deps
+      run: sudo apt install libwayland-dev libasound2-dev
+
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt
+    - uses: Swatinem/rust-cache@v2
+
+    - name: fmt
+      run: cargo fmt --all -- --check

@@ -1,0 +1,193 @@
+name: Package
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**'
+
+env:
+  CARGO_TERM_COLOR: always
+  APP_NAME: "jstation-controller"
+
+jobs:
+  clippy:
+    uses: ./.github/workflows/clippy.yml
+
+  build-linux-package:
+    name: "Build linux package"
+    needs: clippy
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install deps
+      run: sudo apt install libwayland-dev libasound2-dev libgl-dev libx11-xcb-dev libxcb1-dev libxcb-dri2-0-dev libxcb-icccm4-dev libxcursor-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Set env
+      run: |
+        if [[ ${{ github.ref }} == refs/heads/* ]]; then
+          VERSION=${git rev-parse --short $GITHUB_SHA}
+        elif [[ ${{ github.ref }} == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          VERSION=unknown
+        fi
+        echo "version=${VERSION}" >> $GITHUB_ENV
+        echo "app_version=${APP_NAME}-${VERSION}" >> $GITHUB_ENV
+        echo "app_variant=${APP_NAME}-${VERSION}.linux-x86_64" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Build linux-x86_64
+      run: |
+        cargo build --release
+        mkdir -p temp/${{ env.app_variant }}
+        cp target/release/${APP_NAME} temp/${{ env.app_variant }}/
+      shell: bash
+
+    - name: Install cargo-about
+      run: cargo install cargo-about
+
+    - name: Package
+      run: |
+        cargo-about generate -o temp/${{ env.app_variant }}/LICENSES.html about.hbs
+        mkdir -p packages
+        cd packages
+        TAR=${{ env.app_variant }}.tar.gz
+        tar -czf ${TAR} --directory=../temp ${{ env.app_variant }}
+        sha256sum ${TAR} > ${TAR}.sha256
+      shell: bash
+
+    - name: Upload linux packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.app_version }}-linux
+        path: packages/*
+        if-no-files-found: error
+        retention-days: 2
+
+  build-macos-package:
+    name: "Build macos package"
+    needs: clippy
+    runs-on: macos-11
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install latest Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+          targets: aarch64-apple-darwin
+
+    - name: Setup Rust dependency caching
+      uses: Swatinem/rust-cache@v2
+
+    - name: Set env
+      run: |
+        if [[ ${{ github.ref }} == refs/heads/* ]]; then
+          VERSION=${git rev-parse --short $GITHUB_SHA}
+        elif [[ ${{ github.ref }} == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          VERSION=unknown
+        fi
+        echo "version=${VERSION}" >> $GITHUB_ENV
+        echo "app_version=${APP_NAME}-${VERSION}" >> $GITHUB_ENV
+        echo "app_variant=${APP_NAME}-${VERSION}.linux-x86_64" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Build for x86_64
+      run: cargo build --release
+
+    - name: Build for aarch64
+      run: |
+        export SDKROOT=$(xcrun -sdk macosx11.1 --show-sdk-path)
+        echo "SDKROOT=$SDKROOT"
+        export MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.1 --show-sdk-platform-version)
+        echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
+        cargo build --release --target=aarch64-apple-darwin
+      env:
+        DEVELOPER_DIR: /Applications/Xcode_12.4.app/Contents/Developer
+      shell: bash
+
+    - name: Install cargo-about
+      run: cargo install cargo-about
+
+    - name: Package
+      run: |
+        mkdir -p temp/${{ env.app_variant }}
+        cargo-about generate -o temp/${{ env.app_variant }}/LICENSES.html about.hbs
+        lipo target/release/${APP_NAME} target/aarch64-apple-darwin/release/${APP_NAME} -output temp/${{ env.app_variant }}/${APP_NAME} -create
+        mkdir -p packages
+        cd packages
+        TAR=${{ env.app_variant }}.tar.gz
+        tar -czf ${TAR} --directory=../temp ${{ env.app_variant }}
+        shasum -a 256 ${TAR} > ${TAR}.sha256
+      shell: bash
+
+    - name: Upload macos packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.app_version }}-macos
+        path: packages/*
+        if-no-files-found: error
+        retention-days: 2
+
+  build-windows-package:
+    name: "Build windows package"
+    needs: clippy
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup MSVC shell
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Set env
+      run: |
+        if [[ ${{ github.ref }} == refs/heads/* ]]; then
+          VERSION=${git rev-parse --short $GITHUB_SHA}
+        elif [[ ${{ github.ref }} == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          VERSION=unknown
+        fi
+        echo "version=${VERSION}" >> $GITHUB_ENV
+        echo "app_version=${APP_NAME}-${VERSION}" >> $GITHUB_ENV
+        echo "app_name=${APP_NAME}" >> $GITHUB_ENV
+        echo "app_variant=${APP_NAME}-${VERSION}.windows-x86_64" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Build windows-x86_64
+      run: cargo build --release
+
+    - name: Install cargo-about
+      run: cargo install cargo-about
+
+    - name: Package
+      run: |
+        mkdir "temp\${{ env.app_variant }}"
+        Copy-Item "target\release\${{ env.app_name }}.exe" "temp\${{ env.app_variant }}\"
+        cargo-about generate -o "temp\${{ env.app_variant }}\LICENSES.html" about.hbs
+        mkdir packages
+        cd packages
+        $archive = "${{ env.app_variant }}.zip"
+        Compress-Archive -Path "..\temp\${{ env.app_variant }}" -DestinationPath $archive -CompressionLevel Optimal
+        Get-FileHash $archive -Algorithm SHA256 > $archive.sha256
+
+    - name: Upload windows packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.app_version }}-windows
+        path: packages/*
+        if-no-files-found: error
+        retention-days: 2

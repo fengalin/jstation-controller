@@ -1,0 +1,31 @@
+name: Deny
+
+# FIXME replace this with the followings when ready:
+#on:
+#  push:
+#    branches:
+#      - main
+#  pull_request:
+#  workflow_call:
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo-deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: EmbarkStudios/cargo-deny-action@v1
+      with:
+        log-level: warn
+        command: check
+        arguments: --all-features

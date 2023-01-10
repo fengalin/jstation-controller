@@ -1,6 +1,9 @@
 [package]
 name = "jstation_derive"
 version = "0.1.0"
+authors = ["François Laignel <fengalin@free.fr>"]
+license = "MIT"
+repository = "https://github.com/fengalin/jstation-controller"
 edition = "2021"
 
 [lib]
