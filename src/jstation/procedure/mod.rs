@@ -85,6 +85,7 @@ macro_rules! declare_procs {
 declare_procs!(
     bank_dump: BankDumpReq, StartBankDumpResp, EndBankDumpResp;
     utility_settings: UtilitySettingsReq, UtilitySettingsResp;
+    notify_store: NotifyStore;
     one_program: OneProgramReq, OneProgramResp;
     program_indices: ProgramIndicesReq, ProgramIndicesResp;
     program_update: ProgramUpdateReq, ProgramUpdateResp;
