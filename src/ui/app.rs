@@ -10,7 +10,7 @@ use smol::future::FutureExt;
 
 use crate::jstation::{
     self,
-    data::{dsp, Program, ProgramId, ProgramNb, ProgramParameter, ProgramsBank},
+    data::{dsp, Program, ProgramData, ProgramId, ProgramNb, ProgramParameter, ProgramsBank},
 };
 use crate::midi;
 use crate::ui::{self, style, widget};
@@ -260,14 +260,6 @@ impl Application for App {
                     self.update_has_changed();
                 }
             }
-            Midi(ui::midi::Selection { port_in, port_out }) => {
-                use midi::Scannable;
-                if let Err(err) = self.jstation.connect(port_in, port_out) {
-                    self.jstation.clear();
-                    self.ports.borrow_mut().set_disconnected();
-                    self.show_error(&err);
-                }
-            }
             SelectProgram(prog_id) => match self.jstation.change_program(prog_id) {
                 Ok(()) => {
                     self.cur_prog_id = Some(prog_id);
@@ -277,9 +269,6 @@ impl Application for App {
                 }
                 Err(err) => self.show_error(&err),
             },
-            SelectProgramsBank(bank) => {
-                self.bank = bank;
-            }
             StoreTo(prog_nb) => {
                 self.panel = Panel::Main;
 
@@ -331,6 +320,14 @@ impl Application for App {
 
                 self.has_changed = false;
             }
+            Rename(name) => {
+                self.dsp.name = ProgramData::format_name(name);
+                self.update_has_changed();
+            }
+            HideModal => self.panel = Panel::Main,
+            SelectProgramsBank(bank) => {
+                self.bank = bank;
+            }
             StartScan => {
                 log::debug!("Scanning Midi ports for J-Station");
                 self.scanner_ctx = self.jstation.start_scan();
@@ -344,10 +341,17 @@ impl Application for App {
                 self.dsp.utility_settings = settings;
                 // FIXME send message to device
             }
+            Midi(ui::midi::Selection { port_in, port_out }) => {
+                use midi::Scannable;
+                if let Err(err) = self.jstation.connect(port_in, port_out) {
+                    self.jstation.clear();
+                    self.ports.borrow_mut().set_disconnected();
+                    self.show_error(&err);
+                }
+            }
             UseDarkTheme(use_dark) => self.use_dark_them = use_dark,
             ShowMidiConnection => self.panel = Panel::MidiConnection,
             ShowUtilitySettings => self.panel = Panel::UtilitySettings,
-            HideModal => self.panel = Panel::Main,
         }
 
         Command::none()
@@ -428,9 +432,12 @@ impl Application for App {
                         .on_press(ShowUtilitySettings)
                         .style(style::Button::Default.into()),
                     horizontal_space(Length::Units(10)),
-                    ui::button("MIDI Connection...")
+                    ui::button("MIDI...")
                         .on_press(ShowMidiConnection)
                         .style(style::Button::Default.into()),
+                    horizontal_space(Length::Units(50)),
+                    ui::text_input("program name", self.dsp.name.as_str(), Rename)
+                        .width(Length::Units(200)),
                     horizontal_space(Length::Fill),
                 ]
                 .width(widget::DEFAULT_DSP_WIDTH);
@@ -558,18 +565,19 @@ impl Application for App {
 pub enum Message {
     JStation(Result<jstation::Message, jstation::Error>),
     Parameter(dsp::Parameter),
-    UtilitySettings(dsp::UtilitySettings),
     Midi(ui::midi::Selection),
+    Rename(String),
     SelectProgram(ProgramId),
     SelectProgramsBank(ProgramsBank),
-    StartScan,
     ShowUtilitySettings,
     ShowMidiConnection,
     ShowStoreTo,
+    StartScan,
     StoreTo(ProgramNb),
     Undo,
     HideModal,
     UseDarkTheme(bool),
+    UtilitySettings(dsp::UtilitySettings),
 }
 
 impl From<dsp::amp::Parameter> for Message {

@@ -4,7 +4,7 @@ use iced::{
     alignment::Horizontal,
     widget::{
         column, container, row, text, vertical_space, Button, Checkbox, Column, Container,
-        PickList, Radio, Text, Toggler,
+        PickList, Radio, Text, TextInput, Toggler,
     },
     Alignment, Element, Length,
 };
@@ -165,6 +165,17 @@ where
         toggler(field.is_true(), move |is_true| (on_change)(is_true).into())
     ]
     .align_items(Alignment::Start)
+}
+
+pub fn text_input<'a, Message>(
+    placeholder: &str,
+    value: &str,
+    on_change: impl Fn(String) -> Message + 'a,
+) -> TextInput<'a, Message, iced::Renderer>
+where
+    Message: 'a + Clone,
+{
+    TextInput::new(placeholder, value, on_change).size(15)
 }
 
 pub fn toggler<'a, Message>(
