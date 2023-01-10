@@ -97,7 +97,7 @@ jobs:
         fi
         echo "version=${VERSION}" >> $GITHUB_ENV
         echo "app_version=${APP_NAME}-${VERSION}" >> $GITHUB_ENV
-        echo "app_variant=${APP_NAME}-${VERSION}.linux-x86_64" >> $GITHUB_ENV
+        echo "app_variant=${APP_NAME}-${VERSION}.macos" >> $GITHUB_ENV
       shell: bash
 
     - name: Build for x86_64
