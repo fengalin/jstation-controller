@@ -32,7 +32,7 @@ jobs:
     - name: Set env
       run: |
         if [[ ${{ github.ref }} == refs/heads/* ]]; then
-          VERSION=${git rev-parse --short $GITHUB_SHA}
+          VERSION=`git rev-parse --short $GITHUB_SHA`
         elif [[ ${{ github.ref }} == refs/tags/* ]]; then
           VERSION=${GITHUB_REF#refs/tags/}
         else
@@ -90,7 +90,7 @@ jobs:
     - name: Set env
       run: |
         if [[ ${{ github.ref }} == refs/heads/* ]]; then
-          VERSION=${git rev-parse --short $GITHUB_SHA}
+          VERSION=`git rev-parse --short $GITHUB_SHA`
         elif [[ ${{ github.ref }} == refs/tags/* ]]; then
           VERSION=${GITHUB_REF#refs/tags/}
         else
@@ -155,7 +155,7 @@ jobs:
     - name: Set env
       run: |
         if [[ ${{ github.ref }} == refs/heads/* ]]; then
-          VERSION=${git rev-parse --short $GITHUB_SHA}
+          VERSION=`git rev-parse --short $GITHUB_SHA`
         elif [[ ${{ github.ref }} == refs/tags/* ]]; then
           VERSION=${GITHUB_REF#refs/tags/}
         else
