@@ -53,6 +53,7 @@ jobs:
       run: |
         mkdir -p temp/${{ env.app_variant }}
         cp target/release/${APP_NAME} temp/${{ env.app_variant }}/
+        cp README.md temp/${{ env.app_variant }}/
         cp res/org.fengalin.${APP_NAME}.desktop temp/${{ env.app_variant }}/
         cargo-about generate -o temp/${{ env.app_variant }}/LICENSES.html about.hbs
         mkdir -p packages
@@ -120,6 +121,7 @@ jobs:
     - name: Package
       run: |
         mkdir -p temp/${{ env.app_variant }}
+        cp README.md temp/${{ env.app_variant }}/
         cargo-about generate -o temp/${{ env.app_variant }}/LICENSES.html about.hbs
         lipo target/release/${APP_NAME} target/aarch64-apple-darwin/release/${APP_NAME} -output temp/${{ env.app_variant }}/${APP_NAME} -create
         mkdir -p packages
@@ -175,6 +177,7 @@ jobs:
     - name: Package
       run: |
         mkdir "temp\${{ env.app_variant }}"
+        Copy-Item README.md "temp\${{ env.app_variant }}\"
         Copy-Item "target\release\${{ env.app_name }}.exe" "temp\${{ env.app_variant }}\"
         cargo-about generate -o "temp\${{ env.app_variant }}\LICENSES.html" about.hbs
         mkdir packages
