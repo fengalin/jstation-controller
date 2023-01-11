@@ -16,6 +16,7 @@ static DISCONNECTED: Lazy<Arc<str>> = Lazy::new(|| "Disconnected".into());
 
 #[derive(Debug)]
 pub struct DirectionalPorts {
+    // use a Cow
     pub list: Vec<Arc<str>>,
     pub cur: Arc<str>,
 }
@@ -127,16 +128,17 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
 
         let ports = self.ports.borrow();
         let in_pick_list = ui::pick_list(
-            // FIXME optimize the lists clones?
             ports.ins.list.clone(),
             Some(ports.ins.cur.clone()),
             |port| (In, port).into(),
-        );
+        )
+        .width(Length::Fill);
         let out_pick_list = ui::pick_list(
             ports.outs.list.clone(),
             Some(ports.outs.cur.clone()),
             |port| (Out, port).into(),
-        );
+        )
+        .width(Length::Fill);
 
         // This is to force the labels to occupy the same column
         // whatever the length of the labels. We would need

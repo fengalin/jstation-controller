@@ -14,7 +14,7 @@ pub fn main() -> iced::Result {
     use iced::Application;
     ui::App::run(iced::Settings {
         window: iced::window::Settings {
-            size: (800, 780),
+            size: (800, 800),
             ..Default::default()
         },
         ..Default::default()
