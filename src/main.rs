@@ -1,3 +1,6 @@
+// Prevent console window from showing up on Windows
+#![windows_subsystem = "windows"]
+
 mod midi;
 
 mod jstation;
