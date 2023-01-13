@@ -1,7 +1,30 @@
 use iced::{
     widget::{button, checkbox, container, radio, toggler},
-    Background, Color,
+    Color,
 };
+
+pub struct Background;
+
+impl container::StyleSheet for Background {
+    type Style = iced::Theme;
+
+    fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        let appearance = style.appearance(&iced::theme::Container::default());
+        match style {
+            iced::Theme::Light => container::Appearance {
+                background: Some(iced::Background::Color(Color::from_rgb(0.98, 0.99, 0.99))),
+                ..appearance
+            },
+            _ => appearance,
+        }
+    }
+}
+
+impl From<Background> for iced::theme::Container {
+    fn from(style: Background) -> Self {
+        iced::theme::Container::Custom(Box::new(style))
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum Button {
@@ -21,23 +44,47 @@ impl button::StyleSheet for Button {
         use Button::*;
         match self {
             Default => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
+                background: match style {
+                    iced::Theme::Dark => {
+                        Some(iced::Background::Color(Color::from_rgb(0.2, 0.2, 0.2)))
+                    }
+                    iced::Theme::Light => {
+                        Some(iced::Background::Color(Color::from_rgb(0.7, 0.7, 0.7)))
+                    }
+                    _ => appearance.background,
+                },
                 text_color: Color::WHITE,
                 ..appearance
             },
             ListItem => button::Appearance {
-                background: Some(Background::Color(Color::from_rgba(0.1, 0.1, 0.1, 0.1))),
-                text_color: Color::from_rgb(0.6, 0.6, 0.65),
+                background: match style {
+                    iced::Theme::Dark => {
+                        Some(iced::Background::Color(Color::from_rgb(0.1, 0.1, 0.1)))
+                    }
+                    iced::Theme::Light => {
+                        Some(iced::Background::Color(Color::from_rgb(0.97, 0.98, 0.98)))
+                    }
+                    _ => appearance.background,
+                },
+                text_color: match style {
+                    iced::Theme::Dark => Color::from_rgb(0.7, 0.7, 0.75),
+                    iced::Theme::Light => Color::from_rgb(0.45, 0.4, 0.4),
+                    _ => appearance.text_color,
+                },
                 ..appearance
             },
             ListItemSelected | Store => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.55, 0.0, 0.0))),
+                background: Some(iced::Background::Color(Color::from_rgb(0.55, 0.0, 0.0))),
                 text_color: Color::from_rgb(0.9, 0.9, 0.95),
                 ..appearance
             },
             ModalClose => button::Appearance {
                 background: None,
-                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                text_color: match style {
+                    iced::Theme::Dark => Color::from_rgb(0.7, 0.7, 0.75),
+                    iced::Theme::Light => Color::from_rgb(0.25, 0.2, 0.2),
+                    _ => appearance.text_color,
+                },
                 ..appearance
             },
         }
@@ -49,23 +96,55 @@ impl button::StyleSheet for Button {
         use Button::*;
         match self {
             Default => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.3, 0.3, 0.3))),
+                background: match style {
+                    iced::Theme::Dark => {
+                        Some(iced::Background::Color(Color::from_rgb(0.3, 0.3, 0.3)))
+                    }
+                    iced::Theme::Light => {
+                        Some(iced::Background::Color(Color::from_rgb(0.5, 0.5, 0.5)))
+                    }
+                    _ => appearance.background,
+                },
                 text_color: Color::WHITE,
                 ..appearance
             },
             ListItem => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
-                text_color: Color::from_rgb(0.6, 0.6, 0.65),
+                background: match style {
+                    iced::Theme::Dark => {
+                        Some(iced::Background::Color(Color::from_rgb(0.2, 0.2, 0.2)))
+                    }
+                    iced::Theme::Light => {
+                        Some(iced::Background::Color(Color::from_rgb(0.7, 0.7, 0.7)))
+                    }
+                    _ => appearance.background,
+                },
+                text_color: match style {
+                    iced::Theme::Dark => Color::from_rgb(0.6, 0.6, 0.65),
+                    iced::Theme::Light => Color::from_rgb(0.35, 0.3, 0.3),
+                    _ => appearance.text_color,
+                },
                 ..appearance
             },
             ListItemSelected | Store => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.75, 0.0, 0.0))),
+                background: Some(iced::Background::Color(Color::from_rgb(0.75, 0.0, 0.0))),
                 text_color: Color::WHITE,
                 ..appearance
             },
             ModalClose => button::Appearance {
-                background: Some(Background::Color(Color::from_rgb(0.2, 0.2, 0.2))),
-                text_color: Color::from_rgb(0.5, 0.5, 0.55),
+                background: match style {
+                    iced::Theme::Dark => {
+                        Some(iced::Background::Color(Color::from_rgb(0.2, 0.2, 0.2)))
+                    }
+                    iced::Theme::Light => {
+                        Some(iced::Background::Color(Color::from_rgb(0.8, 0.8, 0.8)))
+                    }
+                    _ => appearance.background,
+                },
+                text_color: match style {
+                    iced::Theme::Dark => Color::from_rgb(0.7, 0.7, 0.75),
+                    iced::Theme::Light => Color::from_rgb(0.25, 0.2, 0.2),
+                    _ => appearance.text_color,
+                },
                 border_radius: 20.0,
                 ..appearance
             },
@@ -89,17 +168,28 @@ impl checkbox::StyleSheet for Checkbox {
     type Style = iced::Theme;
 
     fn active(&self, style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
+        let appearance = style.active(&iced::theme::Checkbox::Primary, is_checked);
         checkbox::Appearance {
-            background: Background::Color(Color::TRANSPARENT),
+            background: iced::Background::Color(Color::TRANSPARENT),
             border_color: Self::BORDER_COLOR,
-            ..style.active(&iced::theme::Checkbox::Primary, is_checked)
+            checkmark_color: match style {
+                iced::Theme::Light => Color::from_rgb(0.5, 0.5, 0.55),
+                _ => appearance.checkmark_color,
+            },
+            ..appearance
         }
     }
 
     fn hovered(&self, style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
+        let appearance = style.hovered(&iced::theme::Checkbox::Primary, is_checked);
         checkbox::Appearance {
+            background: match style {
+                iced::Theme::Dark => iced::Background::Color(Color::from_rgb8(101, 101, 102)),
+                iced::Theme::Light => iced::Background::Color(Color::from_rgb8(202, 201, 201)),
+                _ => appearance.background,
+            },
             border_color: Self::BORDER_COLOR,
-            ..style.hovered(&iced::theme::Checkbox::Primary, is_checked)
+            ..appearance
         }
     }
 }
@@ -112,22 +202,28 @@ impl From<Checkbox> for iced::theme::Checkbox {
 
 pub struct DspContainer;
 
-impl DspContainer {
-    const COLOR: Color = Color::from_rgb(0.5, 0.5, 0.55);
-}
-
 impl container::StyleSheet for DspContainer {
     type Style = iced::Theme;
 
-    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+    fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        let appearance = style.appearance(&iced::theme::Container::default());
         container::Appearance {
-            background: Some(Background::Color(Color {
-                a: 0.2,
-                ..Self::COLOR
-            })),
+            background: match style {
+                iced::Theme::Dark => {
+                    Some(iced::Background::Color(Color::from_rgb(0.28, 0.28, 0.3)))
+                }
+                iced::Theme::Light => {
+                    Some(iced::Background::Color(Color::from_rgb(0.925, 0.92, 0.92)))
+                }
+                _ => appearance.background,
+            },
             border_radius: 4.0,
-            border_color: Self::COLOR,
-            ..container::Appearance::default()
+            border_color: match style {
+                iced::Theme::Dark => Color::from_rgb(0.28, 0.28, 0.3),
+                iced::Theme::Light => Color::from_rgb(0.925, 0.92, 0.92),
+                _ => appearance.border_color,
+            },
+            ..appearance
         }
     }
 }
@@ -148,19 +244,25 @@ impl radio::StyleSheet for Radio {
     type Style = iced::Theme;
 
     fn active(&self, style: &Self::Style, is_selected: bool) -> radio::Appearance {
+        let appearance = style.active(&iced::theme::Radio::Default, is_selected);
         radio::Appearance {
-            background: Background::Color(Color::TRANSPARENT),
+            background: iced::Background::Color(Color::TRANSPARENT),
             dot_color: Self::BORDER_COLOR,
             border_color: Self::BORDER_COLOR,
-            ..style.active(&iced::theme::Radio::Default, is_selected)
+            ..appearance
         }
     }
 
     fn hovered(&self, style: &Self::Style, is_selected: bool) -> radio::Appearance {
+        let appearance = style.hovered(&iced::theme::Radio::Default, is_selected);
         radio::Appearance {
-            background: Background::Color(Color::from_rgb8(101, 101, 102)),
+            background: match style {
+                iced::Theme::Dark => iced::Background::Color(Color::from_rgb8(101, 101, 102)),
+                iced::Theme::Light => iced::Background::Color(Color::from_rgb8(202, 201, 201)),
+                _ => appearance.background,
+            },
             border_color: Self::BORDER_COLOR,
-            ..style.hovered(&iced::theme::Radio::Default, is_selected)
+            ..appearance
         }
     }
 }
