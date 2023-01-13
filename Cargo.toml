@@ -23,7 +23,7 @@ iced_native = "0.7"
 iced_wgpu = "0.7"
 jstation_derive = { path = "jstation_derive" }
 log = { version = "0.4", features = ["release_max_level_info"] }
-midir = "0.8"
+midir = "0.9"
 nom = "7.1.1"
 once_cell = "1.0"
 smallvec = { version = "1.10", features = [ "union" ] }
