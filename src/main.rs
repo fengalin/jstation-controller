@@ -16,6 +16,7 @@ pub fn main() -> iced::Result {
 
     use iced::Application;
     ui::App::run(iced::Settings {
+        id: Some("org.fengalin.jstation-controller".to_string()),
         window: iced::window::Settings {
             size: (800, 800),
             ..Default::default()
