@@ -564,6 +564,7 @@ impl Application for App {
         .padding(10)
         .width(Length::Fill)
         .height(Length::Fill)
+        .style(style::Background)
         .into();
 
         // Set to true to debug layout
