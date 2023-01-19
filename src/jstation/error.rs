@@ -32,6 +32,9 @@ pub enum Error {
     #[error("Unknown Programs Bank {}", .0)]
     ProgramsBank(u8),
 
+    #[error("Failed to identify Program update")]
+    ProgramIdenticationFailure,
+
     #[error("Error Parsing MIDI message")]
     Parse,
 

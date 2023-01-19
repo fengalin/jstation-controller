@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::RefCell, collections::BTreeMap, future, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::RefCell, future, rc::Rc, sync::Arc};
 
 use iced::{
     widget::{column, container, horizontal_space, row, scrollable, text, vertical_space, Column},
@@ -10,7 +10,7 @@ use smol::future::FutureExt;
 
 use crate::jstation::{
     self,
-    data::{dsp, Program, ProgramData, ProgramId, ProgramNb, ProgramParameter, ProgramsBank},
+    data::{dsp, Program, ProgramId, ProgramNb, ProgramsBank},
 };
 use crate::midi;
 use crate::ui::{self, style, widget};
@@ -21,12 +21,7 @@ static PROGRAMS_BANKS: Lazy<Cow<'static, [ProgramsBank]>> =
     Lazy::new(|| vec![ProgramsBank::User, ProgramsBank::Factory].into());
 
 pub struct App {
-    jstation: ui::jstation::Interface,
-    dsp: dsp::Dsp,
-    bank: ProgramsBank,
-    programs: BTreeMap<ProgramId, Program>,
-    cur_prog_id: Option<ProgramId>,
-    has_changed: bool,
+    jstation: ui::JStation,
 
     ports: Rc<RefCell<ui::midi::Ports>>,
     scanner_ctx: Option<midi::scanner::Context>,
@@ -43,7 +38,7 @@ impl App {
         self.output_text = err;
     }
 
-    fn handle_jstation_event(
+    fn handle_device_evt(
         &mut self,
         res: Result<jstation::Message, jstation::Error>,
     ) -> Result<Command<Message>, Error> {
@@ -51,25 +46,9 @@ impl App {
         match res {
             Ok(SysEx(sysex)) => {
                 use jstation::Procedure::*;
-                match Arc::try_unwrap(sysex).unwrap().proc {
-                    NotifyStore(resp) => {
-                        let prog_id = ProgramId::new_user(resp.nb);
-                        self.cur_prog_id = Some(prog_id);
-                        self.jstation
-                            .request_program(prog_id)
-                            .expect("Not connected");
-                        self.has_changed = false;
-                    }
-                    NotifyUtility(_) => {
-                        self.jstation
-                            .request_utility_settings()
-                            .expect("Not connected");
-                    }
-                    WhoAmIResp(resp) => {
-                        self.programs.clear();
-
-                        self.jstation.have_who_am_i_resp(resp).map_err(|err| {
-                            self.jstation.clear();
+                match sysex.proc {
+                    WhoAmIResp(_) => {
+                        self.jstation.handle_device(SysEx(sysex)).map_err(|err| {
                             self.ports.borrow_mut().set_disconnected();
 
                             err
@@ -77,79 +56,21 @@ impl App {
 
                         self.output_text = "Found J-Station".to_string();
 
-                        let (port_in, port_out) =
-                            self.jstation.connected_ports().expect("Not connected");
+                        let (port_in, port_out) = self
+                            .jstation
+                            .iface()
+                            .connected_ports()
+                            .expect("Not connected");
                         self.ports.borrow_mut().set_ports(port_in, port_out);
 
                         return Ok(Command::single(Action::Future(
                             future::ready(Message::HideModal).boxed(),
                         )));
                     }
-                    UtilitySettingsResp(resp) => {
-                        self.dsp.utility_settings = resp.try_into()?;
-
-                        if self.programs.is_empty() {
-                            self.jstation.bank_dump()?;
-                        }
-                    }
-                    ProgramIndicesResp(_) => (),
-                    OneProgramResp(resp) => {
-                        if self.cur_prog_id.is_some() {
-                            self.dsp.set_from(resp.prog.data())?;
-                        }
-
-                        self.programs.insert(resp.prog.id(), resp.prog);
-                    }
-                    ProgramUpdateResp(resp) => {
-                        self.dsp.set_from(&resp.prog_data)?;
-                        self.has_changed = resp.has_changed;
-
-                        let prog = self
-                            .programs
-                            .iter()
-                            .find(|(_, prog)| !self.dsp.has_changed(prog.data()));
-
-                        if let Some((_, prog)) = prog {
-                            self.cur_prog_id = Some(prog.id());
-                        } else {
-                            // This can occur on startup when the program on device `has_changed`
-                            // or if a factory program is selected.
-                            self.cur_prog_id = None;
-                            self.show_error(&Error::ProgramIdenticationFailure);
-                        }
-                    }
-                    StartBankDumpResp(_) => {
-                        self.bank = ProgramsBank::default();
-                    }
-                    EndBankDumpResp(_) => {
-                        self.jstation.program_update_req()?;
-                    }
-                    ToMessageResp(resp) => match resp.res {
-                        Ok(req_proc) => log::debug!("Proc. x{req_proc:02x}: Ok"),
-                        Err(err) => panic!("{err}"),
-                    },
-                    other => {
-                        log::debug!("Unhandled {other:?}");
-                    }
+                    _ => self.jstation.handle_device(SysEx(sysex))?,
                 }
             }
-            Ok(ChannelVoice(cv)) => {
-                use jstation::channel_voice::Message::*;
-                use jstation::data::CCParameterSetter;
-                match cv.msg {
-                    CC(cc) => match self.dsp.set_cc(cc) {
-                        Ok(Some(_)) => self.update_has_changed(),
-                        Ok(None) => (),
-                        Err(err) => log::warn!("{err}"),
-                    },
-                    ProgramChange(prog_id) => {
-                        self.cur_prog_id = Some(prog_id);
-                        self.bank = prog_id.bank();
-
-                        self.load_prog(prog_id);
-                    }
-                }
-            }
+            Ok(ChannelVoice(cv)) => self.jstation.handle_device(ChannelVoice(cv))?,
             Err(err) if err.is_handshake_timeout() => {
                 if let Some(scanner_ctx) = self.scanner_ctx.take() {
                     self.scanner_ctx = self.jstation.scan_next(scanner_ctx);
@@ -175,25 +96,6 @@ impl App {
 
         Ok(Command::none())
     }
-
-    fn load_prog(&mut self, prog_id: ProgramId) {
-        if let Some(prog) = self.programs.get(&prog_id) {
-            self.dsp.set_from(prog.data()).unwrap();
-            self.output_text.clear();
-        } else if let Err(err) = self.jstation.request_program(prog_id) {
-            self.cur_prog_id = None;
-            self.show_error(&err);
-        }
-    }
-
-    fn update_has_changed(&mut self) {
-        let cur_prog = self
-            .cur_prog_id
-            .and_then(|prog_id| self.programs.get(&prog_id));
-        if let Some(cur_prog) = cur_prog {
-            self.has_changed = self.dsp.has_changed(cur_prog.data());
-        }
-    }
 }
 
 impl Application for App {
@@ -205,7 +107,7 @@ impl Application for App {
     fn new(_flags: ()) -> (App, Command<Message>) {
         let mut output_text = " ".to_string();
 
-        let mut jstation = ui::jstation::Interface::new();
+        let mut jstation = ui::JStation::new();
         let mut ports = ui::midi::Ports::default();
 
         match jstation.refresh() {
@@ -220,12 +122,6 @@ impl Application for App {
 
         let app = App {
             jstation,
-
-            dsp: dsp::Dsp::default(),
-            bank: ProgramsBank::default(),
-            programs: BTreeMap::new(),
-            cur_prog_id: None,
-            has_changed: false,
 
             ports: RefCell::new(ports).into(),
             scanner_ctx: None,
@@ -256,92 +152,34 @@ impl Application for App {
     fn update(&mut self, event: Message) -> Command<Message> {
         use Message::*;
         match event {
-            JStation(res) => match self.handle_jstation_event(res) {
+            JStation(res) => match self.handle_device_evt(res) {
                 Ok(cmd) => return cmd,
                 Err(err) => self.show_error(&err),
             },
-            Parameter(param) => {
-                use jstation::data::{CCParameter, ParameterSetter};
-
-                if self.dsp.set(param).is_some() {
-                    if let Some(cc) = param.to_cc() {
-                        // FIXME handle the error
-                        let _ = self.jstation.send_cc(cc);
-                    } else {
-                        log::error!("No CC for {:?}", param);
-                    }
-
-                    self.update_has_changed();
+            Parameter(param) => self.jstation.update_param(param),
+            SelectProgram(prog_id) => {
+                if let Err(err) = self.jstation.change_program(prog_id) {
+                    self.show_error(&err);
                 }
             }
-            SelectProgram(prog_id) => match self.jstation.change_program(prog_id) {
-                Ok(()) => {
-                    self.cur_prog_id = Some(prog_id);
-                    self.has_changed = false;
-
-                    self.load_prog(prog_id);
-                }
-                Err(err) => self.show_error(&err),
-            },
             StoreTo(prog_nb) => {
                 self.panel = Panel::Main;
 
-                let prog_id = ProgramId::new_user(prog_nb);
-
-                if self
-                    .cur_prog_id
-                    .map_or(true, |cur_prog_id| cur_prog_id != prog_id)
-                {
-                    self.jstation
-                        .change_program(prog_id)
-                        .expect("Changing to known user program");
-                    self.bank = ProgramsBank::User;
-                    self.cur_prog_id = Some(prog_id);
-                }
-
-                let prog = self
-                    .programs
-                    .get_mut(&prog_id)
-                    .expect("Storing to selected and known program");
-
-                if self.dsp.has_changed(prog.data()) {
-                    self.dsp.store(prog.data_mut());
-
-                    // Technically, the program is actually stored on
-                    // device after reception of the Ok ack for proc x02.
-                    match self.jstation.store_program(prog) {
-                        Ok(()) => {
-                            self.output_text = format!("{} changed", prog_id.nb());
-                            self.has_changed = false;
-                        }
-                        Err(err) => self.show_error(&err),
-                    }
-                } else {
-                    self.output_text = format!("{} unchanged", prog_id.nb());
+                if let Err(err) = self.jstation.store_to(prog_nb) {
+                    self.show_error(&err);
                 }
             }
             ShowStoreTo => {
                 self.panel = Panel::StoreTo;
             }
             Undo => {
-                if let Err(err) = self.jstation.reload_program() {
+                if let Err(err) = self.jstation.undo() {
                     self.show_error(&err);
                 }
-
-                if let Some(cur_prog_id) = self.cur_prog_id {
-                    self.load_prog(cur_prog_id);
-                }
-
-                self.has_changed = false;
             }
-            Rename(name) => {
-                self.dsp.name = ProgramData::format_name(name);
-                self.update_has_changed();
-            }
+            Rename(name) => self.jstation.rename(name),
             HideModal => self.panel = Panel::Main,
-            SelectProgramsBank(bank) => {
-                self.bank = bank;
-            }
+            SelectProgramsBank(bank) => self.jstation.select_bank(bank),
             StartScan => {
                 log::debug!("Scanning Midi ports for J-Station");
                 self.scanner_ctx = self.jstation.start_scan();
@@ -352,8 +190,7 @@ impl Application for App {
             }
             UtilitySettings(settings) => {
                 log::debug!("Got UtilitySettings UI update");
-                self.dsp.utility_settings = settings;
-                // FIXME send message to device
+                self.jstation.update_utility_settings(settings);
             }
             Midi(ui::midi::Selection { port_in, port_out }) => {
                 use midi::Scannable;
@@ -383,39 +220,40 @@ impl Application for App {
                 use jstation::data::BoolParameter;
 
                 let mut dspes = column![
-                    ui::compressor::Panel::new(self.dsp.compressor),
-                    ui::wah_expr::Panel::new(self.dsp.wah_expr),
+                    ui::compressor::Panel::new(self.jstation.dsp().compressor),
+                    ui::wah_expr::Panel::new(self.jstation.dsp().wah_expr),
                 ]
                 .spacing(11);
 
-                let effect_post = self.dsp.effect.post;
+                let effect_post = self.jstation.dsp().effect.post;
 
                 if !effect_post.is_true() {
-                    dspes = dspes.push(ui::effect::Panel::new(self.dsp.effect));
+                    dspes = dspes.push(ui::effect::Panel::new(self.jstation.dsp().effect));
                 }
 
-                dspes = dspes.push(ui::amp::Panel::new(self.dsp.amp));
+                dspes = dspes.push(ui::amp::Panel::new(self.jstation.dsp().amp));
 
                 dspes = dspes.push(row![
-                    ui::dsp_keep_width(ui::cabinet::Panel::new(self.dsp.cabinet)),
+                    ui::dsp_keep_width(ui::cabinet::Panel::new(self.jstation.dsp().cabinet)),
                     horizontal_space(Length::Units(10)),
-                    ui::dsp_keep_width(ui::noise_gate::Panel::new(self.dsp.noise_gate)),
+                    ui::dsp_keep_width(ui::noise_gate::Panel::new(self.jstation.dsp().noise_gate)),
                 ]);
 
                 if effect_post.is_true() {
-                    dspes = dspes.push(ui::effect::Panel::new(self.dsp.effect));
+                    dspes = dspes.push(ui::effect::Panel::new(self.jstation.dsp().effect));
                 }
 
-                dspes = dspes.push(ui::delay::Panel::new(self.dsp.delay));
-                dspes = dspes.push(ui::reverb::Panel::new(self.dsp.reverb));
+                dspes = dspes.push(ui::delay::Panel::new(self.jstation.dsp().delay));
+                dspes = dspes.push(ui::reverb::Panel::new(self.jstation.dsp().reverb));
 
                 let progs = Column::with_children(
                     ProgramNb::enumerate()
                         .map(|prog_nb| {
-                            let prog_id = ProgramId::new(self.bank, prog_nb);
+                            let prog_id = ProgramId::new(self.jstation.programs_bank(), prog_nb);
 
                             let style = if self
-                                .cur_prog_id
+                                .jstation
+                                .cur_prog_id()
                                 .map_or(false, |cur_prog_id| cur_prog_id == prog_id)
                             {
                                 ui::style::Button::ListItemSelected
@@ -427,8 +265,8 @@ impl Application for App {
                                 ui::value_label(prog_id.nb().to_string()),
                                 horizontal_space(Length::Units(5)),
                                 ui::value_label(
-                                    self.programs
-                                        .get(&prog_id)
+                                    self.jstation
+                                        .get_program(prog_id)
                                         .map_or("", Program::name)
                                         .to_string()
                                 )
@@ -450,14 +288,14 @@ impl Application for App {
                         .on_press(ShowMidiConnection)
                         .style(style::Button::Default.into()),
                     horizontal_space(Length::Units(50)),
-                    ui::text_input("program name", self.dsp.name.as_str(), Rename)
+                    ui::text_input("program name", self.jstation.dsp().name.as_str(), Rename)
                         .width(Length::Units(200)),
                     horizontal_space(Length::Fill),
                 ]
                 .width(widget::DEFAULT_DSP_WIDTH);
 
                 if self.jstation.iface().is_connected() {
-                    if self.has_changed {
+                    if self.jstation.has_changed() {
                         left_header = left_header.push(
                             ui::button("Undo")
                                 .on_press(Undo)
@@ -473,13 +311,12 @@ impl Application for App {
                     );
                 }
 
-                let right_header =
-                    row![
-                        ui::pick_list(PROGRAMS_BANKS.clone(), Some(self.bank), move |bank| {
-                            SelectProgramsBank(bank)
-                        })
-                        .width(Length::Fill),
-                    ];
+                let right_header = row![ui::pick_list(
+                    PROGRAMS_BANKS.clone(),
+                    Some(self.jstation.programs_bank()),
+                    move |bank| { SelectProgramsBank(bank) }
+                )
+                .width(Length::Fill),];
 
                 column![
                     row![
@@ -503,7 +340,8 @@ impl Application for App {
                             let prog_id = ProgramId::new_user(prog_nb);
 
                             let style = if self
-                                .cur_prog_id
+                                .jstation
+                                .cur_prog_id()
                                 .map_or(false, |cur_prog_id| cur_prog_id.nb() == prog_id.nb())
                             {
                                 ui::style::Button::ListItemSelected
@@ -515,8 +353,8 @@ impl Application for App {
                                 ui::value_label(prog_id.nb().to_string()),
                                 horizontal_space(Length::Units(5)),
                                 ui::value_label(
-                                    self.programs
-                                        .get(&prog_id)
+                                    self.jstation
+                                        .get_program(prog_id)
                                         .map_or("", Program::name)
                                         .to_string()
                                 )
@@ -546,7 +384,10 @@ impl Application for App {
             .into(),
             Panel::UtilitySettings => ui::modal(
                 "Utility Settings",
-                ui::utility_settings::Panel::new(self.dsp.utility_settings, Message::from),
+                ui::utility_settings::Panel::new(
+                    self.jstation.dsp().utility_settings,
+                    Message::from,
+                ),
                 HideModal,
             )
             .into(),
@@ -675,8 +516,6 @@ pub enum Error {
     },
     #[error("Unexpected program received {}", .0)]
     UnexpectedProgram(ProgramId),
-    #[error("Failed to identify Program update")]
-    ProgramIdenticationFailure,
 }
 
 #[derive(Debug, Copy, Clone, Hash)]

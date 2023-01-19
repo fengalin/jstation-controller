@@ -1,75 +1,91 @@
 use std::{cell::Cell, sync::Arc};
 
 use crate::{
-    jstation::{self, procedure, Error, Listener, Message, Program},
+    jstation::{self, Error, Listener, Message},
     midi,
 };
 
-/// An UI oriented decorator for [`crate::jstation::Interface`].
+/// An UI oriented decorator for [`crate::jstation::JStation`].
 ///
 /// It mostly adds `iced` subscriptions handling.
-pub struct Interface {
-    iface: jstation::Interface,
+pub struct JStation {
+    inner: jstation::JStation,
     next_subscription_id: usize,
     subscription: Option<Subscription>,
 }
 
-impl Interface {
+impl JStation {
     pub fn new() -> Self {
-        Interface {
-            iface: jstation::Interface::new(crate::APP_NAME.clone()),
+        JStation {
+            inner: jstation::JStation::new(crate::APP_NAME.clone()),
             next_subscription_id: 0,
             subscription: None,
         }
     }
 
     pub fn iface(&self) -> &jstation::Interface {
-        &self.iface
+        self.inner.iface()
+    }
+
+    pub fn dsp(&self) -> &jstation::dsp::Dsp {
+        self.inner.dsp()
+    }
+
+    pub fn cur_prog_id(&self) -> Option<jstation::ProgramId> {
+        self.inner.cur_prog_id()
+    }
+
+    pub fn programs_bank(&self) -> jstation::ProgramsBank {
+        self.inner.programs_bank()
+    }
+
+    pub fn get_program(&self, prog_id: jstation::ProgramId) -> Option<&jstation::Program> {
+        self.inner.get_program(prog_id)
+    }
+
+    pub fn has_changed(&self) -> bool {
+        self.inner.has_changed()
     }
 
     pub fn refresh(&mut self) -> Result<(), Error> {
-        self.iface.refresh()
+        self.inner.iface_mut().refresh()
     }
 
     pub fn clear(&mut self) {
-        self.iface.clear();
+        self.inner.clear();
         self.subscription = None;
     }
 
-    pub fn have_who_am_i_resp(&mut self, resp: procedure::WhoAmIResp) -> Result<(), Error> {
-        self.iface.have_who_am_i_resp(resp)
+    pub fn handle_device(&mut self, msg: Message) -> Result<(), Error> {
+        self.inner.handle_device(msg)
     }
 
-    pub fn request_utility_settings(&mut self) -> Result<(), Error> {
-        self.iface.request_utility_settings()
+    pub fn change_program(&mut self, id: jstation::ProgramId) -> Result<(), Error> {
+        self.inner.change_program(id)
     }
 
-    pub fn bank_dump(&mut self) -> Result<(), Error> {
-        self.iface.bank_dump()
+    pub fn store_to(&mut self, nb: jstation::ProgramNb) -> Result<(), Error> {
+        self.inner.store_to(nb)
     }
 
-    pub fn program_update_req(&mut self) -> Result<(), Error> {
-        self.iface.program_update_req()
+    pub fn undo(&mut self) -> Result<(), Error> {
+        self.inner.undo()
     }
 
-    pub fn change_program(&mut self, id: impl Into<midi::ProgramNumber>) -> Result<(), Error> {
-        self.iface.change_program(id)
+    pub fn rename(&mut self, name: impl ToString) {
+        self.inner.rename(name);
     }
 
-    pub fn request_program(&mut self, id: jstation::ProgramId) -> Result<(), Error> {
-        self.iface.request_program(id)
+    pub fn select_bank(&mut self, bank: jstation::ProgramsBank) {
+        self.inner.select_bank(bank);
     }
 
-    pub fn reload_program(&mut self) -> Result<(), Error> {
-        self.iface.reload_program()
+    pub fn update_param(&mut self, param: jstation::dsp::Parameter) {
+        self.inner.update_param(param);
     }
 
-    pub fn store_program(&mut self, prog: &Program) -> Result<(), Error> {
-        self.iface.store_program(prog)
-    }
-
-    pub fn send_cc(&mut self, cc: midi::CC) -> Result<(), Error> {
-        self.iface.send_cc(cc)
+    pub fn update_utility_settings(&mut self, settings: jstation::dsp::UtilitySettings) {
+        self.inner.update_utility_settings(settings);
     }
 
     fn set_listener(&mut self, listener: Listener) {
@@ -80,46 +96,42 @@ impl Interface {
 
         self.next_subscription_id += 1;
     }
-
-    pub fn connected_ports(&self) -> Option<(Arc<str>, Arc<str>)> {
-        self.iface.connected_ports()
-    }
 }
 
-impl midi::Scannable for Interface {
+impl midi::Scannable for JStation {
     type In = ();
     type Out = ();
     type Error = Error;
 
     fn ins(&self) -> &midi::PortsIn {
-        &self.iface.ins
+        &self.inner.iface().ins
     }
 
     fn outs(&self) -> &midi::PortsOut {
-        &self.iface.outs
+        &self.inner.iface().outs
     }
 
     fn connect(&mut self, port_in: Arc<str>, port_out: Arc<str>) -> Result<((), ()), Error> {
-        let (listener, ()) = self.iface.connect(port_in, port_out)?;
+        let (listener, ()) = self.inner.iface_mut().connect(port_in, port_out)?;
         self.set_listener(listener);
 
         Ok(((), ()))
     }
 
     fn connect_in(&mut self, port_name: Arc<str>) -> Result<(), Error> {
-        let listener = self.iface.connect_in(port_name)?;
+        let listener = self.inner.iface_mut().connect_in(port_name)?;
         self.set_listener(listener);
 
         Ok(())
     }
 
     fn connect_out(&mut self, port_name: Arc<str>) -> Result<(), Error> {
-        self.iface.connect_out(port_name)
+        self.inner.iface_mut().connect_out(port_name)
     }
 }
 
 /// Scanner helpers.
-impl Interface {
+impl JStation {
     pub fn start_scan(&mut self) -> Option<midi::scanner::Context> {
         midi::scanner::Context::new(self).connect_next(self)
     }
@@ -136,7 +148,7 @@ struct Subscription {
 }
 
 /// iced Subscription helper.
-impl Interface {
+impl JStation {
     pub fn subscription(&self) -> iced::Subscription<Result<Message, Error>> {
         async fn iface_subscription(
             mut listener: Option<Listener>,
@@ -159,7 +171,7 @@ impl Interface {
             }
         }
 
-        if self.iface.is_connected() {
+        if self.inner.iface().is_connected() {
             // Only listen if midi_out is connected
             // otherwise handshake would timeout for nothing.
             if let Some(subscription) = self.subscription.as_ref() {
