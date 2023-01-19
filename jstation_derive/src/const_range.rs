@@ -205,12 +205,9 @@ impl<'a> ToTokens for ConstRange<'a> {
                         use crate::jstation::data::ParameterNumber;
                         const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
-                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
-                        unsafe {
-                            *self = Self::try_from_raw(
-                                *data.buf().get_unchecked(PARAM_NB.as_usize())
-                            )?;
-                        }
+                        // `PARAM_NB` is guaranteed to be in the range of the constant sized
+                        // array returned by `data.buf()`, bound checking should get optimized out.
+                        *self = Self::try_from_raw(data.buf()[PARAM_NB.as_usize()])?;
 
                         Ok(())
                     }
@@ -220,10 +217,9 @@ impl<'a> ToTokens for ConstRange<'a> {
                         use crate::jstation::data::ParameterNumber;
                         const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
-                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
-                        unsafe {
-                            *data.buf().get_unchecked(PARAM_NB.as_usize()) != self.0
-                        }
+                        // `PARAM_NB` is guaranteed to be in the range of the constant sized
+                        // array returned by `data.buf()`, bound checking should get optimized out.
+                        data.buf()[PARAM_NB.as_usize()] != self.0
                     }
 
                     #[inline]
@@ -231,10 +227,9 @@ impl<'a> ToTokens for ConstRange<'a> {
                         use crate::jstation::data::ParameterNumber;
                         const PARAM_NB: ParameterNumber = ParameterNumber::new(#param_nb);
 
-                        // Safety: `ParameterNb` is guaranteed to be in the range `(0..PARAM_COUNT)`
-                        unsafe {
-                            *data.buf_mut().get_unchecked_mut(PARAM_NB.as_usize()) = self.0;
-                        }
+                        // `PARAM_NB` is guaranteed to be in the range of the constant sized
+                        // array returned by `data.buf_mut()`, bound checking should get optimized out.
+                        data.buf_mut()[PARAM_NB.as_usize()] = self.0;
                     }
                 }
             });
