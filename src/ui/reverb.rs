@@ -4,9 +4,9 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::jstation::data::{
-    dsp::{reverb, Reverb},
-    ConstRangeParameter,
+use crate::jstation::{
+    data::dsp::{reverb, Reverb},
+    prelude::*,
 };
 use crate::ui;
 
@@ -28,7 +28,6 @@ where
     type Event = reverb::Parameter;
 
     fn update(&mut self, _state: &mut Self::State, event: reverb::Parameter) -> Option<Message> {
-        use crate::jstation::data::ParameterSetter;
         self.reverb.set(event).map(Message::from)
     }
 

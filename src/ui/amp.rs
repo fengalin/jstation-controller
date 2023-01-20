@@ -4,9 +4,9 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::jstation::data::{
-    dsp::{amp, Amp},
-    ConstRangeParameter, DiscreteParameter,
+use crate::jstation::{
+    data::dsp::{amp, Amp},
+    prelude::*,
 };
 use crate::ui;
 
@@ -47,10 +47,7 @@ where
     fn update(&mut self, state: &mut Self::State, event: Event) -> Option<Message> {
         use Event::*;
         match event {
-            Parameter(param) => {
-                use crate::jstation::data::ParameterSetter;
-                self.amp.set(param).map(Message::from)
-            }
+            Parameter(param) => self.amp.set(param).map(Message::from),
             MustShowNicks(show_nick) => {
                 state.show_nick = show_nick;
                 None

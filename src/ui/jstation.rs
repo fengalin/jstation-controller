@@ -1,7 +1,7 @@
 use std::{cell::Cell, sync::Arc};
 
 use crate::{
-    jstation::{self, Error, Listener, Message},
+    jstation::{self, Error, JStationImpl, Listener, Message},
     midi,
 };
 
@@ -23,71 +23,6 @@ impl JStation {
         }
     }
 
-    pub fn iface(&self) -> &jstation::Interface {
-        self.inner.iface()
-    }
-
-    pub fn dsp(&self) -> &jstation::dsp::Dsp {
-        self.inner.dsp()
-    }
-
-    pub fn cur_prog_id(&self) -> Option<jstation::ProgramId> {
-        self.inner.cur_prog_id()
-    }
-
-    pub fn programs_bank(&self) -> jstation::ProgramsBank {
-        self.inner.programs_bank()
-    }
-
-    pub fn get_program(&self, prog_id: jstation::ProgramId) -> Option<&jstation::Program> {
-        self.inner.get_program(prog_id)
-    }
-
-    pub fn has_changed(&self) -> bool {
-        self.inner.has_changed()
-    }
-
-    pub fn refresh(&mut self) -> Result<(), Error> {
-        self.inner.iface_mut().refresh()
-    }
-
-    pub fn clear(&mut self) {
-        self.inner.clear();
-        self.subscription = None;
-    }
-
-    pub fn handle_device(&mut self, msg: Message) -> Result<(), Error> {
-        self.inner.handle_device(msg)
-    }
-
-    pub fn change_program(&mut self, id: jstation::ProgramId) -> Result<(), Error> {
-        self.inner.change_program(id)
-    }
-
-    pub fn store_to(&mut self, nb: jstation::ProgramNb) -> Result<(), Error> {
-        self.inner.store_to(nb)
-    }
-
-    pub fn undo(&mut self) -> Result<(), Error> {
-        self.inner.undo()
-    }
-
-    pub fn rename(&mut self, name: impl ToString) {
-        self.inner.rename(name);
-    }
-
-    pub fn select_bank(&mut self, bank: jstation::ProgramsBank) {
-        self.inner.select_bank(bank);
-    }
-
-    pub fn update_param(&mut self, param: jstation::dsp::Parameter) {
-        self.inner.update_param(param);
-    }
-
-    pub fn update_utility_settings(&mut self, settings: jstation::dsp::UtilitySettings) {
-        self.inner.update_utility_settings(settings);
-    }
-
     fn set_listener(&mut self, listener: Listener) {
         self.subscription = Some(Subscription {
             id: self.next_subscription_id,
@@ -95,6 +30,23 @@ impl JStation {
         });
 
         self.next_subscription_id += 1;
+    }
+}
+
+impl JStationImpl for JStation {
+    type Inner = jstation::JStation;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.inner
+    }
+
+    fn inner_mut(&mut self) -> &mut Self::Inner {
+        &mut self.inner
+    }
+
+    fn clear(&mut self) {
+        self.inner.clear();
+        self.subscription = None;
     }
 }
 

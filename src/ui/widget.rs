@@ -9,7 +9,7 @@ use iced::{
     Alignment, Element, Length,
 };
 
-use crate::jstation::data::{BoolParameter, DiscreteParameter, Normal};
+use crate::jstation::{data::Normal, prelude::*};
 use crate::ui::style;
 
 pub const DEFAULT_DSP_WIDTH: Length = Length::Units(622);

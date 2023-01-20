@@ -13,7 +13,17 @@ pub use midi::*;
 pub mod procedure;
 pub use procedure::{Procedure, ProcedureBuilder};
 
+pub mod prelude {
+    pub use super::data::{
+        BoolParameter, CCParameterSetter, ConstRangeParameter, DiscreteParameter, ParameterSetter,
+        ProgramParameter, VariableRangeParameter,
+    };
+    pub use super::JStationImpl;
+}
+
 use std::{collections::BTreeMap, sync::Arc};
+
+use prelude::*;
 
 pub struct JStation {
     iface: Interface,
@@ -36,7 +46,72 @@ impl JStation {
         }
     }
 
-    pub fn clear(&mut self) {
+    fn load_prog(&mut self, prog_id: ProgramId) -> Result<(), Error> {
+        if let Some(prog) = self.programs.get(&prog_id) {
+            self.dsp.set_from(prog.data()).unwrap();
+        } else if let Err(err) = self.iface.request_program(prog_id) {
+            self.cur_prog_id = None;
+
+            return Err(err);
+        }
+
+        Ok(())
+    }
+
+    fn update_has_changed(&mut self) {
+        let cur_prog = self
+            .cur_prog_id
+            .and_then(|prog_id| self.programs.get(&prog_id));
+        if let Some(cur_prog) = cur_prog {
+            self.has_changed = self.dsp.has_changed(cur_prog.data());
+        }
+    }
+}
+
+impl JStationImpl for JStation {
+    type Inner = Self;
+
+    fn inner(&self) -> &Self::Inner {
+        self
+    }
+
+    fn inner_mut(&mut self) -> &mut Self::Inner {
+        self
+    }
+
+    fn iface(&self) -> &Interface {
+        &self.iface
+    }
+
+    fn iface_mut(&mut self) -> &mut Interface {
+        &mut self.iface
+    }
+
+    fn dsp(&self) -> &dsp::Dsp {
+        &self.dsp
+    }
+
+    fn cur_prog_id(&self) -> Option<ProgramId> {
+        self.cur_prog_id
+    }
+
+    fn programs_bank(&self) -> ProgramsBank {
+        self.bank
+    }
+
+    fn get_program(&self, prog_id: ProgramId) -> Option<&Program> {
+        self.programs.get(&prog_id)
+    }
+
+    fn has_changed(&self) -> bool {
+        self.has_changed
+    }
+
+    fn refresh(&mut self) -> Result<(), Error> {
+        self.iface.refresh()
+    }
+
+    fn clear(&mut self) {
         self.iface.clear();
         self.bank = ProgramsBank::default();
         self.programs.clear();
@@ -44,39 +119,10 @@ impl JStation {
         self.has_changed = false;
     }
 
-    pub fn iface(&self) -> &Interface {
-        &self.iface
-    }
-
-    pub fn iface_mut(&mut self) -> &mut Interface {
-        &mut self.iface
-    }
-
-    pub fn dsp(&self) -> &dsp::Dsp {
-        &self.dsp
-    }
-
-    pub fn cur_prog_id(&self) -> Option<ProgramId> {
-        self.cur_prog_id
-    }
-
-    pub fn programs_bank(&self) -> ProgramsBank {
-        self.bank
-    }
-
-    pub fn get_program(&self, prog_id: ProgramId) -> Option<&Program> {
-        self.programs.get(&prog_id)
-    }
-
-    pub fn has_changed(&self) -> bool {
-        self.has_changed
-    }
-
-    pub fn handle_device(&mut self, msg: Message) -> Result<(), Error> {
+    fn handle_device(&mut self, msg: Message) -> Result<(), Error> {
         use Message::*;
         match msg {
             SysEx(sysex) => {
-                use data::ProgramParameter;
                 use Procedure::*;
                 match Arc::try_unwrap(sysex).unwrap().proc {
                     NotifyStore(resp) => {
@@ -149,7 +195,6 @@ impl JStation {
             }
             ChannelVoice(cv) => {
                 use channel_voice::Message::*;
-                use data::CCParameterSetter;
                 match cv.msg {
                     CC(cc) => match self.dsp.set_cc(cc) {
                         Ok(Some(_)) => self.update_has_changed(),
@@ -169,7 +214,7 @@ impl JStation {
         Ok(())
     }
 
-    pub fn change_program(&mut self, id: ProgramId) -> Result<(), Error> {
+    fn change_program(&mut self, id: ProgramId) -> Result<(), Error> {
         self.iface.change_program(id)?;
 
         self.cur_prog_id = Some(id);
@@ -180,9 +225,7 @@ impl JStation {
         Ok(())
     }
 
-    pub fn store_to(&mut self, nb: ProgramNb) -> Result<(), Error> {
-        use data::ProgramParameter;
-
+    fn store_to(&mut self, nb: ProgramNb) -> Result<(), Error> {
         let prog_id = ProgramId::new_user(nb);
 
         if self
@@ -214,7 +257,7 @@ impl JStation {
         Ok(())
     }
 
-    pub fn undo(&mut self) -> Result<(), Error> {
+    fn undo(&mut self) -> Result<(), Error> {
         self.iface.reload_program()?;
         if let Some(cur_prog_id) = self.cur_prog_id {
             self.load_prog(cur_prog_id)?;
@@ -225,18 +268,16 @@ impl JStation {
         Ok(())
     }
 
-    pub fn rename(&mut self, name: impl ToString) {
+    fn rename(&mut self, name: impl ToString) {
         self.dsp.name = ProgramData::format_name(name.to_string());
         self.update_has_changed();
     }
 
-    pub fn select_bank(&mut self, bank: ProgramsBank) {
+    fn select_bank(&mut self, bank: ProgramsBank) {
         self.bank = bank;
     }
 
-    pub fn update_param(&mut self, param: dsp::Parameter) {
-        use data::ParameterSetter;
-
+    fn update_param(&mut self, param: dsp::Parameter) {
         if self.dsp.set(param).is_some() {
             if let Some(cc) = param.to_cc() {
                 // FIXME handle the error
@@ -249,33 +290,89 @@ impl JStation {
         }
     }
 
-    pub fn update_utility_settings(&mut self, settings: dsp::UtilitySettings) {
+    fn update_utility_settings(&mut self, settings: dsp::UtilitySettings) {
         self.dsp.utility_settings = settings;
         // FIXME send message to device
     }
+}
 
-    fn load_prog(&mut self, prog_id: ProgramId) -> Result<(), Error> {
-        use data::ProgramParameter;
+/// `JStationImpl` common interface.
+///
+/// This trait can be implemented by decorators so they get
+/// access to base implementation without the need to redefine
+/// every methods.
+pub trait JStationImpl {
+    type Inner: JStationImpl;
 
-        if let Some(prog) = self.programs.get(&prog_id) {
-            self.dsp.set_from(prog.data()).unwrap();
-        } else if let Err(err) = self.iface.request_program(prog_id) {
-            self.cur_prog_id = None;
+    fn inner(&self) -> &Self::Inner;
 
-            return Err(err);
-        }
+    fn inner_mut(&mut self) -> &mut Self::Inner;
 
-        Ok(())
+    fn iface(&self) -> &Interface {
+        self.inner().iface()
     }
 
-    fn update_has_changed(&mut self) {
-        use data::ProgramParameter;
+    fn iface_mut(&mut self) -> &mut Interface {
+        self.inner_mut().iface_mut()
+    }
 
-        let cur_prog = self
-            .cur_prog_id
-            .and_then(|prog_id| self.programs.get(&prog_id));
-        if let Some(cur_prog) = cur_prog {
-            self.has_changed = self.dsp.has_changed(cur_prog.data());
-        }
+    fn dsp(&self) -> &dsp::Dsp {
+        self.inner().dsp()
+    }
+
+    fn cur_prog_id(&self) -> Option<ProgramId> {
+        self.inner().cur_prog_id()
+    }
+
+    fn programs_bank(&self) -> ProgramsBank {
+        self.inner().programs_bank()
+    }
+
+    fn get_program(&self, prog_id: ProgramId) -> Option<&Program> {
+        self.inner().get_program(prog_id)
+    }
+
+    fn has_changed(&self) -> bool {
+        self.inner().has_changed()
+    }
+
+    fn refresh(&mut self) -> Result<(), Error> {
+        self.inner_mut().refresh()
+    }
+
+    fn clear(&mut self) {
+        self.inner_mut().clear();
+    }
+
+    fn handle_device(&mut self, msg: Message) -> Result<(), Error> {
+        self.inner_mut().handle_device(msg)
+    }
+
+    fn change_program(&mut self, id: ProgramId) -> Result<(), Error> {
+        self.inner_mut().change_program(id)
+    }
+
+    fn store_to(&mut self, nb: ProgramNb) -> Result<(), Error> {
+        self.inner_mut().store_to(nb)
+    }
+
+    fn undo(&mut self) -> Result<(), Error> {
+        self.inner_mut().undo()
+    }
+
+    fn rename(&mut self, name: impl ToString) {
+        self.inner_mut().rename(name);
+    }
+
+    fn select_bank(&mut self, bank: ProgramsBank) {
+        self.inner_mut().select_bank(bank);
+    }
+
+    fn update_param(&mut self, param: dsp::Parameter) {
+        self.inner_mut().update_param(param);
+    }
+
+    fn update_utility_settings(&mut self, settings: dsp::UtilitySettings) {
+        self.inner_mut().update_utility_settings(settings);
     }
 }

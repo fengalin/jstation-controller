@@ -4,9 +4,9 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::jstation::data::{
-    dsp::{effect, Effect},
-    BoolParameter, ConstRangeParameter, DiscreteParameter, VariableRangeParameter,
+use crate::jstation::{
+    data::dsp::{effect, Effect},
+    prelude::*,
 };
 use crate::ui;
 
@@ -28,7 +28,6 @@ where
     type Event = effect::Parameter;
 
     fn update(&mut self, _state: &mut Self::State, param: effect::Parameter) -> Option<Message> {
-        use crate::jstation::data::ParameterSetter;
         self.effect.set(param).map(Message::from)
     }
 
