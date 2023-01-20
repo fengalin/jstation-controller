@@ -4,9 +4,9 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::jstation::data::{
-    dsp::{delay, Delay},
-    ConstRangeParameter,
+use crate::jstation::{
+    data::dsp::{delay, Delay},
+    prelude::*,
 };
 use crate::ui;
 
@@ -28,7 +28,6 @@ where
     type Event = delay::Parameter;
 
     fn update(&mut self, _state: &mut Self::State, event: delay::Parameter) -> Option<Message> {
-        use crate::jstation::data::ParameterSetter;
         self.delay.set(event).map(Message::from)
     }
 

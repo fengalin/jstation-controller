@@ -4,9 +4,9 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::jstation::data::{
-    dsp::{wah_expr, WahExpr},
-    ConstRangeParameter,
+use crate::jstation::{
+    data::dsp::{wah_expr, WahExpr},
+    prelude::*,
 };
 use crate::ui;
 
@@ -28,7 +28,6 @@ where
     type Event = wah_expr::Parameter;
 
     fn update(&mut self, _state: &mut Self::State, event: wah_expr::Parameter) -> Option<Message> {
-        use crate::jstation::data::ParameterSetter;
         self.wah_expr.set(event).map(Message::from)
     }
 

@@ -11,6 +11,7 @@ use smol::future::FutureExt;
 use crate::jstation::{
     self,
     data::{dsp, Program, ProgramId, ProgramNb, ProgramsBank},
+    prelude::*,
 };
 use crate::midi;
 use crate::ui::{self, style, widget};
@@ -217,8 +218,6 @@ impl Application for App {
 
         let content: Element<_> = match self.panel {
             Panel::Main => {
-                use jstation::data::BoolParameter;
-
                 let mut dspes = column![
                     ui::compressor::Panel::new(self.jstation.dsp().compressor),
                     ui::wah_expr::Panel::new(self.jstation.dsp().wah_expr),

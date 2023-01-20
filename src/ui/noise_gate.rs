@@ -4,9 +4,9 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::jstation::data::{
-    dsp::{noise_gate, NoiseGate},
-    ConstRangeParameter,
+use crate::jstation::{
+    data::dsp::{noise_gate, NoiseGate},
+    prelude::*,
 };
 use crate::ui;
 
@@ -32,7 +32,6 @@ where
         _state: &mut Self::State,
         event: noise_gate::Parameter,
     ) -> Option<Message> {
-        use crate::jstation::data::ParameterSetter;
         self.noise_gate.set(event).map(Message::from)
     }
 

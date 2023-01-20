@@ -4,9 +4,9 @@ use iced::{
 };
 use iced_lazy::{self, Component};
 
-use crate::jstation::data::{
-    dsp::{cabinet, Cabinet},
-    DiscreteParameter,
+use crate::jstation::{
+    data::dsp::{cabinet, Cabinet},
+    prelude::*,
 };
 use crate::ui;
 
@@ -48,8 +48,6 @@ where
         use Event::*;
         match event {
             Parameter(cabinet_param) => {
-                use crate::jstation::data::ParameterSetter;
-
                 return self.cabinet.set(cabinet_param).map(Message::from);
             }
             MustShowNicks(show_nick) => state.show_nick = show_nick,

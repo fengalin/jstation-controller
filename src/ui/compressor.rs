@@ -1,9 +1,9 @@
 use iced::{widget::row, Element};
 use iced_lazy::{self, Component};
 
-use crate::jstation::data::{
-    dsp::{compressor, Compressor},
-    ConstRangeParameter,
+use crate::jstation::{
+    data::dsp::{compressor, Compressor},
+    prelude::*,
 };
 use crate::ui;
 
@@ -29,7 +29,6 @@ where
         _state: &mut Self::State,
         event: compressor::Parameter,
     ) -> Option<Message> {
-        use crate::jstation::data::ParameterSetter;
         self.compressor.set(event).map(Message::from)
     }
 
