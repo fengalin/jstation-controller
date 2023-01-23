@@ -9,14 +9,14 @@ pub struct Amp {
     pub modeling: Modeling,
     #[const_range(max = 90, param_nb = 10, cc_nb = 35, display_cents)]
     pub gain: Gain,
+    #[const_range(max = 90, param_nb = 11, cc_nb = 39, default_center)]
+    pub treble: Treble,
+    #[const_range(max = 90, param_nb = 12, cc_nb = 38, default_center)]
+    pub middle: Middle,
+    #[const_range(max = 90, param_nb = 13, cc_nb = 37, default_center)]
+    pub bass: Bass,
     #[const_range(max = 90, param_nb = 14, cc_nb = 36, display_cents)]
     pub level: Level,
-    #[const_range(max = 90, default_center, param_nb = 13, cc_nb = 37)]
-    pub bass: Bass,
-    #[const_range(max = 90, default_center, param_nb = 12, cc_nb = 38)]
-    pub middle: Middle,
-    #[const_range(max = 90, default_center, param_nb = 11, cc_nb = 39)]
-    pub treble: Treble,
 }
 
 const MODELING_NAMES: [&str; 25] = [

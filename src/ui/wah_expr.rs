@@ -5,73 +5,117 @@ use iced::{
 use iced_lazy::{self, Component};
 
 use crate::jstation::{
-    data::dsp::{wah_expr, WahExpr},
+    data::dsp::{
+        self, {expression, pedal, wah, Expression, Pedal, Wah},
+    },
     prelude::*,
 };
 use crate::ui;
 
 pub struct Panel {
-    wah_expr: WahExpr,
+    expression: Expression,
+    pedal: Pedal,
+    wah: Wah,
 }
 
 impl Panel {
-    pub fn new(wah_expr: WahExpr) -> Self {
-        Self { wah_expr }
+    pub fn new(expression: Expression, pedal: Pedal, wah: Wah) -> Self {
+        Self {
+            expression,
+            pedal,
+            wah,
+        }
     }
 }
 
 impl<Message> Component<Message, iced::Renderer> for Panel
 where
-    Message: From<wah_expr::Parameter>,
+    Message: From<dsp::Parameter>,
 {
     type State = ();
-    type Event = wah_expr::Parameter;
+    type Event = dsp::Parameter;
 
-    fn update(&mut self, _state: &mut Self::State, event: wah_expr::Parameter) -> Option<Message> {
-        self.wah_expr.set(event).map(Message::from)
+    fn update(&mut self, _state: &mut Self::State, event: dsp::Parameter) -> Option<Message> {
+        use dsp::Parameter::*;
+        match event {
+            Expression(param) => self.expression.set(param).map(dsp::Parameter::from),
+            Pedal(param) => self.pedal.set(param).map(dsp::Parameter::from),
+            Wah(param) => self.wah.set(param).map(dsp::Parameter::from),
+            _ => unreachable!(),
+        }
+        .map(Message::from)
     }
 
-    fn view(&self, _state: &Self::State) -> Element<wah_expr::Parameter> {
-        use wah_expr::Parameter::*;
+    fn view(&self, _state: &Self::State) -> Element<dsp::Parameter> {
+        use dsp::Parameter::*;
 
-        let title_area = column![
-            text("Wah / Expression"),
-            vertical_space(Length::Units(10)),
-            row![
-                ui::toggler(self.wah_expr.switch.into(), |is_on| {
-                    wah_expr::Parameter::Switch(is_on.into())
-                }),
-                horizontal_space(Length::Units(15)),
-                ui::pick_list(
-                    wah_expr::Assignment::names(),
-                    Some(self.wah_expr.assignment.name()),
-                    |name| name.param().into(),
-                ),
-            ],
-        ];
+        let mut selection = row![column![
+            vertical_space(Length::Units(3)),
+            ui::radio(
+                "Expr.",
+                wah::Switch::FALSE,
+                Some(self.wah.switch),
+                |is_wah| Wah(is_wah.into())
+            ),
+            vertical_space(Length::Units(6)),
+            ui::radio("Wah", wah::Switch::TRUE, Some(self.wah.switch), |is_wah| {
+                Wah(is_wah.into())
+            }),
+        ]];
 
-        let content: Element<_> = ui::dsp(
-            title_area,
+        let mut pedal = if self.wah.switch.is_true() {
             row![
-                ui::knob(self.wah_expr.heel, |normal| Heel(
-                    wah_expr::Heel::from_normal(normal)
+                ui::knob(self.wah.heel, |normal| Wah(
+                    wah::Heel::from_normal(normal).into()
                 ))
                 .build(),
-                ui::knob(self.wah_expr.toe, |normal| {
-                    Toe(wah_expr::Toe::from_normal(normal))
-                })
-                .build(),
-                ui::knob(self.wah_expr.forward, |normal| Forward(
-                    wah_expr::Forward::from_normal(normal)
-                ))
-                .name("Fwd")
-                .build(),
-                ui::knob(self.wah_expr.back, |normal| {
-                    Back(wah_expr::Back::from_normal(normal))
+                ui::knob(self.wah.toe, |normal| {
+                    Wah(wah::Toe::from_normal(normal).into())
                 })
                 .build(),
             ]
-            .spacing(10),
+        } else {
+            selection = selection.push(horizontal_space(Length::Units(10)));
+            selection = selection.push(ui::pick_list(
+                expression::Assignment::names(),
+                Some(self.expression.assignment.name()),
+                |name| Expression(name.param().into()),
+            ));
+
+            row![
+                ui::knob(self.expression.back, |normal| {
+                    Expression(expression::Back::from_normal(normal).into())
+                })
+                .build(),
+                ui::knob(self.expression.forward, |normal| Expression(
+                    expression::Forward::from_normal(normal).into()
+                ))
+                .name("Fwd")
+                .build(),
+            ]
+        };
+
+        pedal = pedal.push(column![
+            ui::label(if self.wah.switch.is_true() {
+                "Wah"
+            } else {
+                "Expression"
+            }),
+            vertical_space(Length::Units(2)),
+            ui::hslider(self.pedal.expression, |normal| Pedal(
+                pedal::Expression::from_normal(normal).into()
+            )),
+            vertical_space(Length::Units(7)),
+            ui::label("Volume"),
+            vertical_space(Length::Units(2)),
+            ui::hslider(self.pedal.volume, |normal| Pedal(
+                pedal::Volume::from_normal(normal).into()
+            )),
+        ]);
+
+        let content: Element<_> = ui::dsp(
+            column![text("Pedal"), vertical_space(Length::Units(10)), selection],
+            pedal.spacing(10),
         )
         .into();
 
@@ -86,7 +130,7 @@ where
 
 impl<'a, Message> From<Panel> for Element<'a, Message, iced::Renderer>
 where
-    Message: 'a + From<wah_expr::Parameter>,
+    Message: 'a + From<dsp::Parameter>,
 {
     fn from(panel: Panel) -> Self {
         iced_lazy::component(panel)

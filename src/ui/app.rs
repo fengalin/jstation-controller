@@ -190,7 +190,6 @@ impl Application for App {
                 }
             }
             UtilitySettings(settings) => {
-                log::debug!("Got UtilitySettings UI update");
                 self.jstation.update_utility_settings(settings);
             }
             Midi(ui::midi::Selection { port_in, port_out }) => {
@@ -218,32 +217,36 @@ impl Application for App {
 
         let content: Element<_> = match self.panel {
             Panel::Main => {
-                let mut dspes = column![
+                let mut dsp = column![
                     ui::compressor::Panel::new(self.jstation.dsp().compressor),
-                    ui::wah_expr::Panel::new(self.jstation.dsp().wah_expr),
+                    ui::wah_expr::Panel::new(
+                        self.jstation.dsp().expression,
+                        self.jstation.dsp().pedal,
+                        self.jstation.dsp().wah,
+                    ),
                 ]
                 .spacing(11);
 
                 let effect_post = self.jstation.dsp().effect.post;
 
                 if !effect_post.is_true() {
-                    dspes = dspes.push(ui::effect::Panel::new(self.jstation.dsp().effect));
+                    dsp = dsp.push(ui::effect::Panel::new(self.jstation.dsp().effect));
                 }
 
-                dspes = dspes.push(ui::amp::Panel::new(self.jstation.dsp().amp));
+                dsp = dsp.push(ui::amp::Panel::new(self.jstation.dsp().amp));
 
-                dspes = dspes.push(row![
+                dsp = dsp.push(row![
                     ui::dsp_keep_width(ui::cabinet::Panel::new(self.jstation.dsp().cabinet)),
                     horizontal_space(Length::Units(10)),
                     ui::dsp_keep_width(ui::noise_gate::Panel::new(self.jstation.dsp().noise_gate)),
                 ]);
 
                 if effect_post.is_true() {
-                    dspes = dspes.push(ui::effect::Panel::new(self.jstation.dsp().effect));
+                    dsp = dsp.push(ui::effect::Panel::new(self.jstation.dsp().effect));
                 }
 
-                dspes = dspes.push(ui::delay::Panel::new(self.jstation.dsp().delay));
-                dspes = dspes.push(ui::reverb::Panel::new(self.jstation.dsp().reverb));
+                dsp = dsp.push(ui::delay::Panel::new(self.jstation.dsp().delay));
+                dsp = dsp.push(ui::reverb::Panel::new(self.jstation.dsp().reverb));
 
                 let progs = Column::with_children(
                     ProgramNb::enumerate()
@@ -325,7 +328,7 @@ impl Application for App {
                     ],
                     vertical_space(Length::Units(10)),
                     row![
-                        scrollable(dspes),
+                        scrollable(dsp),
                         horizontal_space(widget::DSP_PROGRAM_SPACING),
                         scrollable(progs),
                     ],
@@ -487,9 +490,9 @@ impl From<ui::utility_settings::Event> for Message {
     }
 }
 
-impl From<dsp::wah_expr::Parameter> for Message {
-    fn from(param: dsp::wah_expr::Parameter) -> Self {
-        Message::Parameter(param.into())
+impl From<dsp::Parameter> for Message {
+    fn from(param: dsp::Parameter) -> Self {
+        Message::Parameter(param)
     }
 }
 
