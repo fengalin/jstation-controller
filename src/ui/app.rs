@@ -152,35 +152,40 @@ impl Application for App {
 
     fn update(&mut self, event: Message) -> Command<Message> {
         use Message::*;
-        match event {
+        let res = match event {
             JStation(res) => match self.handle_device_evt(res) {
-                Ok(cmd) => return cmd,
-                Err(err) => self.show_error(&err),
-            },
-            Parameter(param) => self.jstation.update_param(param),
-            SelectProgram(prog_id) => {
-                if let Err(err) = self.jstation.change_program(prog_id) {
-                    self.show_error(&err);
+                Ok(cmd) => {
+                    self.output_text = "".to_string();
+                    return cmd;
                 }
+                Err(err) => Err(err),
+            },
+            Parameter(param) => {
+                self.jstation.update_param(param);
+                Ok(())
             }
+            SelectProgram(prog_id) => self.jstation.change_program(prog_id).map_err(Into::into),
             StoreTo(prog_nb) => {
                 self.panel = Panel::Main;
-
-                if let Err(err) = self.jstation.store_to(prog_nb) {
-                    self.show_error(&err);
-                }
+                self.jstation.store_to(prog_nb).map_err(Into::into)
             }
             ShowStoreTo => {
                 self.panel = Panel::StoreTo;
+                Ok(())
             }
-            Undo => {
-                if let Err(err) = self.jstation.undo() {
-                    self.show_error(&err);
-                }
+            Undo => self.jstation.undo().map_err(Into::into),
+            Rename(name) => {
+                self.jstation.rename(name);
+                Ok(())
             }
-            Rename(name) => self.jstation.rename(name),
-            HideModal => self.panel = Panel::Main,
-            SelectProgramsBank(bank) => self.jstation.select_bank(bank),
+            HideModal => {
+                self.panel = Panel::Main;
+                Ok(())
+            }
+            SelectProgramsBank(bank) => {
+                self.jstation.select_bank(bank);
+                Ok(())
+            }
             StartScan => {
                 log::debug!("Scanning Midi ports for J-Station");
                 self.scanner_ctx = self.jstation.start_scan();
@@ -188,21 +193,41 @@ impl Application for App {
                 if self.scanner_ctx.is_none() {
                     self.output_text = "Couldn't scan for J-Station".to_string();
                 }
+
+                return Command::none();
             }
             UtilitySettings(settings) => {
                 self.jstation.update_utility_settings(settings);
+                Ok(())
             }
             Midi(ui::midi::Selection { port_in, port_out }) => {
                 use midi::Scannable;
-                if let Err(err) = self.jstation.connect(port_in, port_out) {
-                    self.jstation.clear();
-                    self.ports.borrow_mut().set_disconnected();
-                    self.show_error(&err);
-                }
+                self.jstation
+                    .connect(port_in, port_out)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        self.jstation.clear();
+                        self.ports.borrow_mut().set_disconnected();
+                        err.into()
+                    })
             }
-            UseDarkTheme(use_dark) => self.use_dark_them = use_dark,
-            ShowMidiConnection => self.panel = Panel::MidiConnection,
-            ShowUtilitySettings => self.panel = Panel::UtilitySettings,
+            UseDarkTheme(use_dark) => {
+                self.use_dark_them = use_dark;
+                Ok(())
+            }
+            ShowMidiConnection => {
+                self.panel = Panel::MidiConnection;
+                Ok(())
+            }
+            ShowUtilitySettings => {
+                self.panel = Panel::UtilitySettings;
+                Ok(())
+            }
+        };
+
+        match res {
+            Ok(()) => self.output_text = "".to_string(),
+            Err(err) => self.show_error(&err),
         }
 
         Command::none()
@@ -399,8 +424,7 @@ impl Application for App {
             content,
             vertical_space(Length::Fill),
             row![
-                text(&self.output_text).size(18),
-                horizontal_space(Length::Fill),
+                text(&self.output_text).size(18).width(Length::Fill),
                 ui::checkbox(self.use_dark_them, "Dark Theme", UseDarkTheme),
             ],
         ])
