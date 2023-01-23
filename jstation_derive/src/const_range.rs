@@ -6,10 +6,18 @@ use syn::{self, Expr, Ident};
 
 use crate::param::{Arg, ParamBase};
 
+#[derive(Default)]
+enum DefaultPos {
+    Center,
+    Max,
+    #[default]
+    Min,
+}
+
 pub struct ConstRange<'a> {
     pub base: ParamBase<'a>,
     is_discr: bool,
-    default_center: bool,
+    default_pos: DefaultPos,
     displays: Vec<Display>,
     min: Option<u8>,
     max: Option<u8>,
@@ -20,7 +28,7 @@ impl<'a> ConstRange<'a> {
         let mut this = ConstRange {
             base,
             is_discr: false,
-            default_center: false,
+            default_pos: DefaultPos::default(),
             displays: Vec::new(),
             min: None,
             max: None,
@@ -40,7 +48,11 @@ impl<'a> ConstRange<'a> {
             "max" => self.max = Some(arg.u8_or_abort(self.base.field)),
             "default_center" => {
                 arg.no_value_or_abort(self.base.field);
-                self.default_center = true;
+                self.default_pos = DefaultPos::Center;
+            }
+            "default_max" => {
+                arg.no_value_or_abort(self.base.field);
+                self.default_pos = DefaultPos::Max;
             }
             "display_cents" => {
                 arg.no_value_or_abort(self.base.field);
@@ -106,13 +118,13 @@ impl<'a> ToTokens for ConstRange<'a> {
                 param.to_token_stream()
             );
         }
-        let (param_default, normal_default) = if self.default_center {
-            (
+        let (param_default, normal_default) = match self.default_pos {
+            DefaultPos::Center => (
                 ((param_max as u16 + param_min as u16) / 2) as u8,
                 quote! { CENTER },
-            )
-        } else {
-            (param_min, quote! { MIN })
+            ),
+            DefaultPos::Max => (param_max, quote! { MAX }),
+            DefaultPos::Min => (param_min, quote! { MIN }),
         };
 
         tokens.extend(quote! {

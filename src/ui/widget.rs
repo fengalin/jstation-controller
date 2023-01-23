@@ -187,6 +187,23 @@ pub fn toggler<'a, Message>(
         .style(style::Toggler)
 }
 
+pub fn hslider<'a, Field, Message, OnChange, Output, Renderer>(
+    field: Field,
+    on_change: OnChange,
+) -> iced_audio::HSlider<'a, Message, Renderer>
+where
+    Field: DiscreteParameter + fmt::Debug,
+    Message: 'a,
+    Output: Into<Message>,
+    OnChange: 'a + Fn(Normal) -> Output,
+    Renderer: iced_audio::h_slider::StyleSheet,
+{
+    iced_audio::HSlider::new(to_ui_param(field), move |normal| {
+        (on_change)(to_jstation_normal(normal)).into()
+    })
+    .width(Length::Fill)
+}
+
 #[track_caller]
 fn build_knob<'a, Field, Message, OnChange, OnRelease, Output>(
     field: Field,
