@@ -6,7 +6,7 @@ Pre-built packages are available for Linux, macOS and Windows from the
 [release page](https://github.com/fengalin/jstation-controller/releases).
 See the dedicated chapter below if you want to build the application from source.
 
-![jstation-controller UI](assets/screenshot_20230110.png "jstation-controller UI")
+![jstation-controller UI](assets/screenshot_20230123.png "jstation-controller UI")
 
 ## Features
 
