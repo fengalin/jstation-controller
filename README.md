@@ -6,7 +6,7 @@ Pre-built packages are available for Linux, macOS and Windows from the
 [release page](https://github.com/fengalin/jstation-controller/releases).
 See the dedicated chapter below if you want to build the application from source.
 
-![jstation-controller UI](assets/screenshot_20230123.png "jstation-controller UI")
+![jstation-controller UI](assets/screenshot_20230124.png "jstation-controller UI")
 
 ## Features
 
@@ -19,6 +19,7 @@ See the dedicated chapter below if you want to build the application from source
 - [X] Change Program from the UI.
 - [X] Rename a Program.
 - [X] Store / undo pending modifications.
+- [X] Turn tuner on / off.
 - [ ] Import a Program bank from a file.
 - [ ] Export a Program bank to a file.
 
@@ -26,17 +27,17 @@ See the dedicated chapter below if you want to build the application from source
 
 ### Could not connect to J-Station
 
-There are many reasons for not being able to connect to J-Station.
-This could range from a simple physical connection to conflicts
-with other MIDI devices.
+There are many reasons for not being able to connect to the J-Station.
+This could range from a simple physical connection to conflicts with
+other MIDI devices.
 
 #### Check the connection
 
-1. Make sure the MIDI OUT link from the computer is connected to
-the MIDI IN port on the J-Station and vice versa.
-2. Make sure the MIDI/J8 switch of the J-Station is switched to
-the right when looking at the back of the J-Station. The switch must
-be vertically aligned with the top mark next to the MIDI IN label.
+1. Make sure the MIDI OUT link from the computer is connected to the
+   MIDI IN port on the J-Station and vice versa.
+2. Make sure the MIDI/J8 switch of the J-Station is switched to the right
+   when looking at the back of the J-Station. The switch must be vertically
+   aligned with the top mark next to the MIDI IN label.
 
 #### Check that the MIDI interface is detected
 
