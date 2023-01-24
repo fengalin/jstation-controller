@@ -29,10 +29,10 @@ impl From<Background> for iced::theme::Container {
 #[derive(Clone, Copy)]
 pub enum Button {
     Default,
+    Active,
     ModalClose,
     ListItem,
     ListItemSelected,
-    Store,
 }
 
 impl button::StyleSheet for Button {
@@ -73,7 +73,7 @@ impl button::StyleSheet for Button {
                 },
                 ..appearance
             },
-            ListItemSelected | Store => button::Appearance {
+            ListItemSelected | Active => button::Appearance {
                 background: Some(iced::Background::Color(Color::from_rgb(0.55, 0.0, 0.0))),
                 text_color: Color::from_rgb(0.9, 0.9, 0.95),
                 ..appearance
@@ -125,7 +125,7 @@ impl button::StyleSheet for Button {
                 },
                 ..appearance
             },
-            ListItemSelected | Store => button::Appearance {
+            ListItemSelected | Active => button::Appearance {
                 background: Some(iced::Background::Color(Color::from_rgb(0.75, 0.0, 0.0))),
                 text_color: Color::WHITE,
                 ..appearance

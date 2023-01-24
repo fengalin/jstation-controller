@@ -23,6 +23,10 @@ pub struct Interface {
 
 /// General Interface behaviour.
 impl Interface {
+    const FOOT_SWITCH_CC: midi::CCNumber = midi::CCNumber::new(16);
+    const TUNER_ON_VALUE: midi::CCValue = midi::CCValue::new_clipped(10);
+    const TUNER_OFF_VALUE: midi::CCValue = midi::CCValue::new_clipped(0);
+
     pub fn new(app_name: Arc<str>) -> Self {
         Interface {
             ins: midi::PortsIn::new(app_name.clone()),
@@ -63,6 +67,18 @@ impl Interface {
             self.cc_chan = chan;
             self.sysex_chan = chan;
         }
+    }
+
+    pub fn tuner_on(&mut self) -> Result<(), Error> {
+        self.send(
+            &midi::CC::new(Self::FOOT_SWITCH_CC, Self::TUNER_ON_VALUE).build_for(self.cc_chan),
+        )
+    }
+
+    pub fn tuner_off(&mut self) -> Result<(), Error> {
+        self.send(
+            &midi::CC::new(Self::FOOT_SWITCH_CC, Self::TUNER_OFF_VALUE).build_for(self.cc_chan),
+        )
     }
 
     pub fn have_who_am_i_resp(&mut self, resp: procedure::WhoAmIResp) -> Result<(), Error> {

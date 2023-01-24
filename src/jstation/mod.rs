@@ -107,10 +107,6 @@ impl JStationImpl for JStation {
         self.has_changed
     }
 
-    fn refresh(&mut self) -> Result<(), Error> {
-        self.iface.refresh()
-    }
-
     fn clear(&mut self) {
         self.iface.clear();
         self.bank = ProgramsBank::default();
@@ -347,11 +343,19 @@ pub trait JStationImpl {
     }
 
     fn refresh(&mut self) -> Result<(), Error> {
-        self.inner_mut().refresh()
+        self.iface_mut().refresh()
     }
 
     fn clear(&mut self) {
         self.inner_mut().clear();
+    }
+
+    fn tuner_on(&mut self) -> Result<(), Error> {
+        self.iface_mut().tuner_on()
+    }
+
+    fn tuner_off(&mut self) -> Result<(), Error> {
+        self.iface_mut().tuner_off()
     }
 
     fn handle_device(&mut self, msg: Message) -> Result<(), Error> {

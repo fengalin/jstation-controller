@@ -179,6 +179,10 @@ impl Application for App {
                 Ok(())
             }
             HideModal => {
+                if self.panel.is_tuner() {
+                    let _ = self.jstation.tuner_off();
+                }
+
                 self.panel = Panel::Main;
                 Ok(())
             }
@@ -219,6 +223,13 @@ impl Application for App {
                 self.panel = Panel::MidiConnection;
                 Ok(())
             }
+            ShowTuner => match self.jstation.tuner_on() {
+                Ok(()) => {
+                    self.panel = Panel::Tuner;
+                    Ok(())
+                }
+                Err(err) => Err(err.into()),
+            },
             ShowUtilitySettings => {
                 self.panel = Panel::UtilitySettings;
                 Ok(())
@@ -307,14 +318,18 @@ impl Application for App {
                 );
 
                 let mut left_header = row![
-                    ui::button("Utility Settings...")
+                    ui::button("Settings...")
                         .on_press(ShowUtilitySettings)
                         .style(style::Button::Default.into()),
                     horizontal_space(Length::Units(10)),
                     ui::button("MIDI...")
                         .on_press(ShowMidiConnection)
                         .style(style::Button::Default.into()),
-                    horizontal_space(Length::Units(50)),
+                    horizontal_space(Length::Units(10)),
+                    ui::button("Tuner...")
+                        .on_press(ShowTuner)
+                        .style(style::Button::Default.into()),
+                    horizontal_space(Length::Units(20)),
                     ui::text_input("program name", self.jstation.dsp().name.as_str(), Rename)
                         .width(Length::Units(200)),
                     horizontal_space(Length::Fill),
@@ -334,7 +349,7 @@ impl Application for App {
                     left_header = left_header.push(
                         ui::button("Store...")
                             .on_press(ShowStoreTo)
-                            .style(style::Button::Store.into()),
+                            .style(style::Button::Active.into()),
                     );
                 }
 
@@ -409,6 +424,14 @@ impl Application for App {
                 HideModal,
             )
             .into(),
+            Panel::Tuner => ui::modal(
+                "Tuner On",
+                ui::button("Done")
+                    .on_press(HideModal)
+                    .style(style::Button::Active.into()),
+                HideModal,
+            )
+            .into(),
             Panel::UtilitySettings => ui::modal(
                 "Utility Settings",
                 ui::utility_settings::Panel::new(
@@ -454,6 +477,7 @@ pub enum Message {
     ShowUtilitySettings,
     ShowMidiConnection,
     ShowStoreTo,
+    ShowTuner,
     StartScan,
     StoreTo(ProgramNb),
     Undo,
@@ -520,13 +544,20 @@ impl From<dsp::Parameter> for Message {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 enum Panel {
     #[default]
     Main,
     StoreTo,
     MidiConnection,
+    Tuner,
     UtilitySettings,
+}
+
+impl Panel {
+    fn is_tuner(self) -> bool {
+        matches!(self, Panel::Tuner)
+    }
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
