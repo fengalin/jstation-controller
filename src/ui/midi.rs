@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::RefCell, rc::Rc, sync::Arc};
 
 use iced::{
     widget::{column, row, text},
@@ -16,16 +16,13 @@ static DISCONNECTED: Lazy<Arc<str>> = Lazy::new(|| "Disconnected".into());
 
 #[derive(Debug)]
 pub struct DirectionalPorts {
-    // use a Cow
-    pub list: Vec<Arc<str>>,
+    pub list: Cow<'static, [Arc<str>]>,
     pub cur: Arc<str>,
 }
 
 impl DirectionalPorts {
     fn update_from<IO: midir::MidiIO>(&mut self, ports: &midi::DirectionalPorts<IO>) {
-        self.list.clear();
-        self.list.extend(ports.list());
-
+        self.list = Cow::from_iter(ports.list());
         self.cur = ports.cur().unwrap_or_else(|| DISCONNECTED.clone());
     }
 }
@@ -33,7 +30,7 @@ impl DirectionalPorts {
 impl Default for DirectionalPorts {
     fn default() -> Self {
         Self {
-            list: vec![],
+            list: vec![].into(),
             cur: DISCONNECTED.clone(),
         }
     }
