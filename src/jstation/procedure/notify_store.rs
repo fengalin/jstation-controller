@@ -1,6 +1,6 @@
 use crate::jstation::{
     data::ProgramNb,
-    take_split_bytes_u8, BufferBuilder, ProcedureBuilder
+    take_split_bytes_u8, BufferBuilder, ProcedureBuilder, ProcedureId,
 };
 
 #[derive(Debug)]
@@ -8,10 +8,12 @@ pub struct NotifyStore {
     pub nb: ProgramNb,
 }
 
-impl ProcedureBuilder for NotifyStore {
+impl ProcedureId for NotifyStore {
     const ID: u8 = 0x22;
     const VERSION: u8 = 1;
+}
 
+impl ProcedureBuilder for NotifyStore {
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_fixed_size_data(std::iter::once(self.nb.into()));
     }

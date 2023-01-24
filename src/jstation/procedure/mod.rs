@@ -9,10 +9,12 @@ use crate::{
     midi,
 };
 
-pub trait ProcedureBuilder {
+pub trait ProcedureId {
     const ID: u8;
     const VERSION: u8;
+}
 
+pub trait ProcedureBuilder: ProcedureId {
     // FIXME these are error-prone because the user must use the proper
     // BufferBuilder method in the functions.
     fn push_fixed_size_data(&self, _buffer: &mut sysex::BufferBuilder) {}

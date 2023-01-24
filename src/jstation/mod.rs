@@ -11,7 +11,7 @@ mod midi;
 pub use midi::*;
 
 pub mod procedure;
-pub use procedure::{Procedure, ProcedureBuilder};
+pub use procedure::{Procedure, ProcedureBuilder, ProcedureId};
 
 pub mod prelude {
     pub use super::data::{

@@ -1,14 +1,16 @@
 use nom::IResult;
 
-use crate::jstation::{split_bytes, take_split_bytes_u16, BufferBuilder, ProcedureBuilder};
+use crate::jstation::{split_bytes, take_split_bytes_u16, BufferBuilder, ProcedureBuilder, ProcedureId};
 
 #[derive(Debug)]
 pub struct BankDumpReq;
 
-impl ProcedureBuilder for BankDumpReq {
+impl ProcedureId for BankDumpReq {
     const ID: u8 = 0x24;
     const VERSION: u8 = 1;
 }
+
+impl ProcedureBuilder for BankDumpReq {}
 
 impl BankDumpReq {
     pub fn parse<'i>(input: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], BankDumpReq> {
@@ -21,10 +23,12 @@ pub struct StartBankDumpResp {
     pub total_len: u16,
 }
 
-impl ProcedureBuilder for StartBankDumpResp {
+impl ProcedureId for StartBankDumpResp {
     const ID: u8 = 0x25;
     const VERSION: u8 = 1;
+}
 
+impl ProcedureBuilder for StartBankDumpResp {
     fn push_variable_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_variable_size_data(split_bytes::from_u16(self.total_len).into_iter());
     }
@@ -50,10 +54,12 @@ impl StartBankDumpResp {
 #[derive(Debug, Default)]
 pub struct EndBankDumpResp;
 
-impl ProcedureBuilder for EndBankDumpResp {
+impl ProcedureId for EndBankDumpResp {
     const ID: u8 = 0x26;
     const VERSION: u8 = 1;
 }
+
+impl ProcedureBuilder for EndBankDumpResp {}
 
 impl EndBankDumpResp {
     pub fn parse<'i>(input: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], EndBankDumpResp> {
