@@ -1,9 +1,3 @@
-use crate::midi::Channel;
-
-pub fn from_bool(val: bool) -> [u8; 2] {
-    [0, val.into()]
-}
-
 #[track_caller]
 pub fn to_bool(sb: &[u8]) -> bool {
     sb[1] != 0
@@ -16,10 +10,6 @@ pub fn from_u8(val: u8) -> [u8; 2] {
 #[track_caller]
 pub fn to_u8(sb: &[u8]) -> u8 {
     (sb[0] << 7) + sb[1]
-}
-
-pub fn from_chan(chan: Channel) -> [u8; 2] {
-    from_u8(chan.into())
 }
 
 pub fn from_u16(val: u16) -> [u8; 4] {

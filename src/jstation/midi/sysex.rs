@@ -4,13 +4,11 @@ use nom::{
     IResult,
 };
 
-use crate::{
-    jstation::{
-        procedure::{self, Procedure},
-        split_bytes,
-    },
-    midi::{self, Channel},
+use crate::jstation::{
+    procedure::{self, Procedure},
+    split_bytes,
 };
+use crate::midi;
 
 const MANUFACTURER_ID: [u8; 3] = [0x0, 0x0, 0x10];
 const CHECKSUM_INIT: u8 = MANUFACTURER_ID[0] ^ MANUFACTURER_ID[1] ^ MANUFACTURER_ID[2];
@@ -26,7 +24,7 @@ fn write_checksum(checksum: &mut u8) -> impl FnMut(&u8) + '_ {
 }
 
 impl BufferBuilder {
-    pub fn new(chan: Channel, proc_id: u8, version: u8) -> Self {
+    pub fn new(chan: midi::Channel, proc_id: u8, version: u8) -> Self {
         let mut buf = vec![
             midi::sysex::TAG,
             MANUFACTURER_ID[0],
@@ -73,7 +71,7 @@ impl BufferBuilder {
         // Set to true to dump buffers
         if false {
             println!(
-                "Buffer {:?}\n",
+                "Out Buffer {:?}\n",
                 self.buf
                     .iter()
                     .map(|byte| format!("x{byte:02x}"))
@@ -87,7 +85,7 @@ impl BufferBuilder {
 
 #[derive(Debug)]
 pub struct Message {
-    pub chan: Channel,
+    pub chan: midi::Channel,
     pub proc: Procedure,
 }
 
@@ -149,8 +147,17 @@ pub fn take_split_bytes_u8<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u
     Ok((i, split_bytes::to_u8(bytes)))
 }
 
-pub fn take_split_bytes_chan<'i>(i: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], Channel> {
-    take_split_bytes_u8(i, checksum).map(|(i, tag_chan)| (i, midi::TagChannel::from(tag_chan).chan))
+pub fn take_split_bytes_chan<'i>(
+    i: &'i [u8],
+    checksum: &mut u8,
+) -> IResult<&'i [u8], midi::Channel> {
+    let (i, chan) = take_split_bytes_u8(i, checksum)?;
+
+    if chan > 0x0f {
+        return Ok((i, midi::Channel::ALL));
+    }
+
+    Ok((i, chan.into()))
 }
 
 #[track_caller]

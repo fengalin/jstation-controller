@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     jstation::{
-        self, parse_raw_midi_msg, procedure, sysex, Error, Message, Procedure, ProcedureBuilder,
-        Program,
+        self, dsp, parse_raw_midi_msg, procedure, sysex, Error, Message, Procedure,
+        ProcedureBuilder, Program,
     },
     midi,
 };
@@ -18,6 +18,7 @@ pub struct Interface {
     midi_out: Option<midir::MidiOutputConnection>,
     cc_chan: midi::Channel,
     sysex_chan: midi::Channel,
+    chan_tx: Option<flume::Sender<midi::Channel>>,
 }
 
 /// General Interface behaviour.
@@ -29,6 +30,7 @@ impl Interface {
             midi_out: None,
             cc_chan: midi::Channel::ALL,
             sysex_chan: midi::Channel::ALL,
+            chan_tx: None,
         }
     }
 
@@ -49,11 +51,21 @@ impl Interface {
         self.outs.disconnect();
         if let Some(midi_out) = self.midi_out.take() {
             midi_out.close();
+            self.chan_tx = None;
+        }
+    }
+
+    pub fn change_chan(&mut self, chan: midi::Channel) {
+        // Note: I couldn't find the expected behaviour when changing the channel to All
+        // in Utility Settings on the J-Station.
+        if let Some(chan_tx) = self.chan_tx.as_mut() {
+            chan_tx.send(chan).expect("Broken chan channel");
+            self.cc_chan = chan;
+            self.sysex_chan = chan;
         }
     }
 
     pub fn have_who_am_i_resp(&mut self, resp: procedure::WhoAmIResp) -> Result<(), Error> {
-        // FIXME check that this is the right channel to send cc
         self.cc_chan = resp.receive_chan;
         self.sysex_chan = resp.sysex_chan;
 
@@ -95,8 +107,15 @@ impl Interface {
         // result seems to be the same with only OneProgramResp.
         // Or is it needed to change program's name?
 
+        // FIXME there's also StoreProgram procedure with id 0x21
+        // And NotifyStore is described as: Store Terminated
         self.send_sysex(procedure::OneProgramResp::from(prog))
             .map_err(|err| Error::with_context("Store One Program resp.", err))
+    }
+
+    pub fn update_utility_settings(&mut self, settings: dsp::UtilitySettings) -> Result<(), Error> {
+        let resp: procedure::UtilitySettingsResp = settings.into();
+        self.send_sysex(resp)
     }
 
     fn send_sysex<'a>(&mut self, proc: impl 'a + ProcedureBuilder) -> Result<(), Error> {
@@ -153,7 +172,10 @@ impl midi::Scannable for Interface {
 
     fn connect(&mut self, port_in: Arc<str>, port_out: Arc<str>) -> Result<(Listener, ()), Error> {
         let mut midi_out = self.outs.connect(port_out)?;
-        let listener = Listener::try_new(self, port_in)?;
+
+        let (chan_tx, chan_rx) = flume::bounded(1);
+        let listener = Listener::try_new(self, port_in, chan_rx)?;
+        self.chan_tx = Some(chan_tx);
 
         self.start_handshake(&mut midi_out)?;
 
@@ -163,7 +185,9 @@ impl midi::Scannable for Interface {
     }
 
     fn connect_in(&mut self, port_name: Arc<str>) -> Result<Listener, Error> {
-        let listener = Listener::try_new(self, port_name)?;
+        let (chan_tx, chan_rx) = flume::bounded(1);
+        let listener = Listener::try_new(self, port_name, chan_rx)?;
+        self.chan_tx = Some(chan_tx);
 
         self.cc_chan = midi::Channel::ALL;
         self.sysex_chan = midi::Channel::ALL;
@@ -198,10 +222,15 @@ pub struct Listener {
     sysex_chan: midi::Channel,
     msg_rx: flume::Receiver<Vec<u8>>,
     midi_in: Option<midir::MidiInputConnection<flume::Sender<Vec<u8>>>>,
+    chan_rx: flume::Receiver<midi::Channel>,
 }
 
 impl Listener {
-    fn try_new(iface: &mut Interface, port_in: Arc<str>) -> Result<Self, Error> {
+    fn try_new(
+        iface: &mut Interface,
+        port_in: Arc<str>,
+        chan_rx: flume::Receiver<midi::Channel>,
+    ) -> Result<Self, Error> {
         let (msg_tx, msg_rx) = flume::bounded(10);
         let midi_in = iface.ins.connect(port_in, msg_tx, |_ts, msg, msg_tx| {
             let _ = msg_tx.send(msg.to_owned());
@@ -213,6 +242,7 @@ impl Listener {
             sysex_chan: midi::Channel::default(),
             msg_rx,
             midi_in: Some(midi_in),
+            chan_rx,
         })
     }
 
@@ -240,34 +270,16 @@ impl Listener {
                         return Ok(msg);
                     }
 
-                    log::trace!("Ignoring channel voice on {:?}: {:?}", cv.chan, cv.msg);
+                    log::trace!("Ignoring channel voice on {}: {:?}", cv.chan, cv.msg);
                 }
                 SysEx(sysex) => {
-                    // FIXME check whether this is emited when the chans change
-                    // e.g. when user changes Chan within Utility Settings
-                    // Hint: it seems that with produces Proc 0x23
-                    if let Procedure::WhoAmIResp(resp) = sysex.proc {
-                        // FIXME is this the one to listen to?
-                        self.cc_chan = resp.transmit_chan;
-                        self.sysex_chan = resp.sysex_chan;
-
-                        log::info!(
-                            "Found device. Using cc rx {:?} tx {:?} & sysex {:?}",
-                            resp.receive_chan,
-                            resp.transmit_chan,
-                            resp.sysex_chan,
-                        );
-
-                        return Ok(msg);
-                    }
-
                     if sysex.chan == self.sysex_chan {
                         log::trace!("Received {:?}", sysex.proc);
 
                         return Ok(msg);
                     }
 
-                    log::trace!("Ignoring sysex on {:?}: {:?}", sysex.chan, sysex.proc);
+                    log::trace!("Ignoring sysex on {}: {:?}", sysex.chan, sysex.proc);
                 }
             }
         }
@@ -290,13 +302,12 @@ impl Listener {
                     ..
                 } = sysex.as_ref()
                 {
-                    // FIXME is this the one to listen to?
                     self.cc_chan = resp.transmit_chan;
                     self.sysex_chan = resp.sysex_chan;
                     self.state = ListenerState::FoundDevice;
 
                     log::info!(
-                        "Found device. Using cc rx {:?} tx {:?} & sysex {:?}",
+                        "Found device. Got cc rx {} tx {} & sysex {}",
                         resp.receive_chan,
                         resp.transmit_chan,
                         resp.sysex_chan,
@@ -311,11 +322,28 @@ impl Listener {
     }
 
     async fn receive(&mut self) -> Result<Message, Error> {
-        let midi_msg = self
-            .msg_rx
-            .recv_async()
-            .await
-            .expect("Broken internal channel");
+        let midi_msg = loop {
+            futures::select_biased! {
+                chan_res = self.chan_rx.recv_async() => {
+                    let chan = chan_res.expect("Broken chan channel");
+                    log::info!("Changing chan to {chan}");
+                    self.cc_chan = chan;
+                    self.sysex_chan = chan;
+                }
+                msg_res = self.msg_rx.recv_async() => break msg_res.expect("Broken message channel"),
+            }
+        };
+
+        // Set to true to dump buffers
+        if false {
+            println!(
+                "In Buffer {:?}\n",
+                midi_msg
+                    .iter()
+                    .map(|byte| format!("x{byte:02x}"))
+                    .collect::<Vec<String>>(),
+            );
+        }
 
         let (_, proc) = parse_raw_midi_msg(&midi_msg).map_err(|err| {
             log::error!("{}", err.to_string());
@@ -332,7 +360,7 @@ impl Listener {
         let mut timeout = smol::Timer::after(HANDSHAKE_TIMEOUT).fuse();
 
         let midi_msg = futures::select_biased! {
-            res = self.msg_rx.recv_async() => res.expect("Broken internal channel"),
+            res = self.msg_rx.recv_async() => res.expect("Broken message channel"),
             _ = timeout => {
                 log::debug!("timeout");
                 return Err(Error::HandshakeTimeout);
