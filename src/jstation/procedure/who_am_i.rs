@@ -1,7 +1,7 @@
 use nom::IResult;
 
 use crate::{
-    jstation::{take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len, BufferBuilder, ProcedureBuilder},
+    jstation::{take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len, BufferBuilder, ProcedureBuilder, ProcedureId},
     midi,
 };
 
@@ -16,10 +16,12 @@ impl Default for WhoAmIReq {
     }
 }
 
-impl ProcedureBuilder for WhoAmIReq {
+impl ProcedureId for WhoAmIReq {
     const ID: u8 = 0x40;
     const VERSION: u8 = 1;
+}
 
+impl ProcedureBuilder for WhoAmIReq {
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_fixed_size_data(std::iter::once(self.resp_on_all_chans.into()));
     }
@@ -40,10 +42,12 @@ pub struct WhoAmIResp {
     pub sysex_chan: midi::Channel,
 }
 
-impl WhoAmIResp {
-    pub const ID: u8 = 0x41;
-    pub const VERSION: u8 = 1;
+impl ProcedureId for WhoAmIResp {
+    const ID: u8 = 0x41;
+    const VERSION: u8 = 1;
+}
 
+impl WhoAmIResp {
     pub fn parse<'i>(input: &'i [u8], checksum: &mut u8) -> IResult<&'i [u8], WhoAmIResp> {
         let (i, _) = take_split_bytes_len(input, checksum, 3)?;
 

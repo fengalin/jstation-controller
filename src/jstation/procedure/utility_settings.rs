@@ -1,17 +1,19 @@
 use nom::IResult;
 
 use crate::{
-    jstation::{data::RawValue, take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len, take_split_bytes_u8, BufferBuilder, ProcedureBuilder},
+    jstation::{data::RawValue, take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len, take_split_bytes_u8, BufferBuilder, ProcedureBuilder, ProcedureId},
     midi,
 };
 
 #[derive(Debug)]
 pub struct UtilitySettingsReq;
 
-impl ProcedureBuilder for UtilitySettingsReq {
+impl ProcedureId for UtilitySettingsReq {
     const ID: u8 = 0x11;
     const VERSION: u8 = 1;
 }
+
+impl ProcedureBuilder for UtilitySettingsReq {}
 
 impl UtilitySettingsReq {
     pub fn parse<'i>(input: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], UtilitySettingsReq> {
@@ -29,10 +31,12 @@ pub struct UtilitySettingsResp {
     pub midi_channel: midi::Channel,
 }
 
-impl ProcedureBuilder for UtilitySettingsResp {
+impl ProcedureId for UtilitySettingsResp {
     const ID: u8 = 0x12;
     const VERSION: u8 = 1;
+}
 
+impl ProcedureBuilder for UtilitySettingsResp {
     fn push_variable_size_data(&self, buffer: &mut BufferBuilder) {
         let buf = [
             self.stereo_mono.into(),

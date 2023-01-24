@@ -1,15 +1,17 @@
 use nom::IResult;
 use smallvec::SmallVec;
 
-use crate::jstation::{split_bytes, take_split_bytes_u16, take_split_bytes_u8, BufferBuilder, ProcedureBuilder, ProgramNb};
+use crate::jstation::{split_bytes, take_split_bytes_u16, take_split_bytes_u8, BufferBuilder, ProcedureBuilder, ProcedureId, ProgramNb};
 
 #[derive(Debug)]
 pub struct ProgramIndicesReq;
 
-impl ProcedureBuilder for ProgramIndicesReq {
+impl ProcedureId for ProgramIndicesReq {
     const ID: u8 = 0x13;
     const VERSION: u8 = 1;
 }
+
+impl ProcedureBuilder for ProgramIndicesReq {}
 
 impl ProgramIndicesReq {
     pub fn parse<'i>(input: &'i [u8], _checksum: &mut u8) -> IResult<&'i [u8], ProgramIndicesReq> {
@@ -24,10 +26,12 @@ pub struct ProgramIndicesResp {
     pub numbers: SmallVec::<[ProgramNb; DEFAULT_INDICES_LEN]>,
 }
 
-impl ProcedureBuilder for ProgramIndicesResp {
+impl ProcedureId for ProgramIndicesResp {
     const ID: u8 = 0x14;
     const VERSION: u8 = 1;
+}
 
+impl ProcedureBuilder for ProgramIndicesResp {
     fn push_variable_size_data(&self, buffer: &mut BufferBuilder) {
         let buf = Vec::from_iter(
             self.numbers.iter().cloned().flat_map(|nb| split_bytes::from_u8(nb.into()))

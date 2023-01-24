@@ -2,7 +2,7 @@ use nom::{error::{self, Error}, IResult};
 
 use crate::jstation::{
     data::{Program, ProgramData, ProgramId},
-    take_split_bytes_u16, take_split_bytes_u8, take_u8, BufferBuilder, ProcedureBuilder
+    take_split_bytes_u16, take_split_bytes_u8, take_u8, BufferBuilder, ProcedureBuilder, ProcedureId,
 };
 
 #[derive(Debug)]
@@ -10,10 +10,12 @@ pub struct OneProgramReq {
     pub id: ProgramId,
 }
 
-impl ProcedureBuilder for OneProgramReq {
+impl ProcedureId for OneProgramReq {
     const ID: u8 = 0x01;
     const VERSION: u8 = 1;
+}
 
+impl ProcedureBuilder for OneProgramReq {
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_fixed_size_data([
             self.id.bank().into(),
@@ -51,10 +53,12 @@ impl OneProgramResp {
     }
 }
 
-impl ProcedureBuilder for OneProgramResp {
+impl ProcedureId for OneProgramResp {
     const ID: u8 = 0x02;
     const VERSION: u8 = 1;
+}
 
+impl ProcedureBuilder for OneProgramResp {
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         OneProgramRefResp(&self.prog).push_fixed_size_data(buffer)
     }
@@ -67,10 +71,12 @@ impl ProcedureBuilder for OneProgramResp {
 #[derive(Debug)]
 pub struct OneProgramRefResp<'a>(pub &'a Program);
 
-impl<'a> ProcedureBuilder for OneProgramRefResp<'a> {
+impl<'a> ProcedureId for OneProgramRefResp<'a> {
     const ID: u8 = OneProgramResp::ID;
     const VERSION: u8 = OneProgramResp::VERSION;
+}
 
+impl<'a> ProcedureBuilder for OneProgramRefResp<'a> {
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         buffer.push_fixed_size_data([
             self.0.id().bank().into(),

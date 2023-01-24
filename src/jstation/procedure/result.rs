@@ -1,15 +1,17 @@
-use crate::jstation::{take_split_bytes_u8, BufferBuilder, ProcedureBuilder};
+use crate::jstation::{take_split_bytes_u8, BufferBuilder, ProcedureBuilder, ProcedureId};
 
 #[derive(Debug)]
 pub struct ToMessageResp {
     pub res: Result<u8, Error>,
 }
 
-// FIXME remove if not needed
-impl ProcedureBuilder for ToMessageResp {
+impl ProcedureId for ToMessageResp {
     const ID: u8 = 0x7f;
     const VERSION: u8 = 1;
+}
 
+// FIXME remove if not needed
+impl ProcedureBuilder for ToMessageResp {
     fn push_fixed_size_data(&self, buffer: &mut BufferBuilder) {
         let (req_proc, code) = match self.res {
             Ok(req_proc) => (req_proc, 0),
