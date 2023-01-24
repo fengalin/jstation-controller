@@ -151,6 +151,9 @@ impl JStationImpl for JStation {
                         if self.programs.is_empty() {
                             self.iface.bank_dump()?;
                         }
+                        // When changing channel from the J-Station,
+                        // `NotifyUtility` is sent on the new channel.
+                        // Better change the channel from the application instead.
                     }
                     ProgramIndicesResp(_) => (),
                     OneProgramResp(resp) => {
@@ -198,7 +201,7 @@ impl JStationImpl for JStation {
                 match cv.msg {
                     CC(cc) => match self.dsp.set_cc(cc) {
                         Ok(Some(_)) => self.update_has_changed(),
-                        Ok(None) => (),
+                        Ok(None) => log::debug!("Unhandled {cc:?}"),
                         Err(err) => log::warn!("{err}"),
                     },
                     ProgramChange(prog_id) => {
@@ -291,8 +294,15 @@ impl JStationImpl for JStation {
     }
 
     fn update_utility_settings(&mut self, settings: dsp::UtilitySettings) {
+        if let Err(err) = self.iface.update_utility_settings(settings) {
+            log::debug!("Failed to update device utility settings: {err}");
+        }
+
+        if self.dsp.utility_settings.midi_channel != settings.midi_channel {
+            self.iface.change_chan(settings.midi_channel.into())
+        }
+
         self.dsp.utility_settings = settings;
-        // FIXME send message to device
     }
 }
 

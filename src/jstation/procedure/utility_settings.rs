@@ -1,8 +1,7 @@
 use nom::IResult;
-use smallvec::SmallVec;
 
 use crate::{
-    jstation::{data::RawValue, split_bytes, take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len, take_split_bytes_u8, BufferBuilder, ProcedureBuilder},
+    jstation::{data::RawValue, take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len, take_split_bytes_u8, BufferBuilder, ProcedureBuilder},
     midi,
 };
 
@@ -35,13 +34,14 @@ impl ProcedureBuilder for UtilitySettingsResp {
     const VERSION: u8 = 1;
 
     fn push_variable_size_data(&self, buffer: &mut BufferBuilder) {
-        let mut buf = SmallVec::<[u8; 2 * 6]>::new();
-        buf.extend_from_slice(&split_bytes::from_bool(self.stereo_mono));
-        buf.extend_from_slice(&split_bytes::from_bool(self.dry_track));
-        buf.extend_from_slice(&split_bytes::from_u8(self.digital_out_level.as_u8()));
-        buf.extend_from_slice(&split_bytes::from_bool(self.global_cabinet));
-        buf.extend_from_slice(&split_bytes::from_bool(self.midi_merge));
-        buf.extend_from_slice(&split_bytes::from_chan(self.midi_channel));
+        let buf = [
+            self.stereo_mono.into(),
+            self.dry_track.into(),
+            self.digital_out_level.as_u8(),
+            self.global_cabinet.into(),
+            self.midi_merge.into(),
+            self.midi_channel.as_u8(),
+        ];
 
         buffer.push_variable_size_data(buf.into_iter());
     }

@@ -44,6 +44,9 @@ pub enum Error {
     #[error("No MIDI connection")]
     MidiNotConnected,
 
+    #[error("MIDI Channel {} out of range", .0)]
+    MidiChannelOutOfRange(u8),
+
     #[error("An error occured sending a MIDI message")]
     MidiSend,
 

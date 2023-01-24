@@ -58,6 +58,10 @@ impl From<Channel> for u8 {
 
 impl fmt::Display for Channel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if *self == Self::ALL {
+            return f.write_str("All");
+        }
+
         fmt::Display::fmt(&(self.0 + 1), f)
     }
 }

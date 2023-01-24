@@ -132,7 +132,7 @@ impl ParameterSetter for Dsp {
             Reverb(param) => self.reverb.set(param).map(Parameter::from),
             Wah(param) => self.wah.set(param).map(Parameter::from),
             Pedal(param) => self.pedal.set(param).map(Parameter::from),
-            _ => None,
+            UtilitySettings(param) => self.utility_settings.set(param).map(Parameter::from),
         }
     }
 }
