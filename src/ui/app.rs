@@ -1,7 +1,7 @@
 use std::{borrow::Cow, cell::RefCell, future, rc::Rc, sync::Arc};
 
 use iced::{
-    widget::{column, container, horizontal_space, row, scrollable, text, vertical_space, Column},
+    widget::{column, container, horizontal_space, row, scrollable, vertical_space, Column, Text},
     Alignment, Application, Command, Element, Length, Theme,
 };
 use iced_native::command::Action;
@@ -29,16 +29,10 @@ pub struct App {
 
     panel: Panel,
     use_dark_them: bool,
-    output_text: String,
+    status_text: Cow<'static, str>,
 }
 
 impl App {
-    fn show_error(&mut self, err: impl ToString) {
-        let err = err.to_string();
-        log::error!("{err}");
-        self.output_text = err;
-    }
-
     fn handle_device_evt(
         &mut self,
         res: Result<jstation::Message, jstation::Error>,
@@ -55,7 +49,7 @@ impl App {
                             err
                         })?;
 
-                        self.output_text = "Found J-Station".to_string();
+                        self.set_status("Found J-Station");
 
                         let (port_in, port_out) = self
                             .jstation
@@ -97,6 +91,27 @@ impl App {
 
         Ok(Command::none())
     }
+
+    fn set_status(&mut self, status: impl Into<Cow<'static, str>>) {
+        self.status_text = status.into();
+    }
+
+    fn clear_status(&mut self) {
+        self.status_text = Default::default();
+    }
+
+    fn show_error(&mut self, err: impl ToString) {
+        let err = err.to_string();
+        log::error!("{err}");
+        self.status_text = err.into();
+    }
+
+    fn refres_ports(&mut self) {
+        match self.jstation.refresh() {
+            Ok(()) => self.ports.borrow_mut().update_from(self.jstation.iface()),
+            Err(err) => self.show_error(format!("Midi ports not found: {err}")),
+        }
+    }
 }
 
 impl Application for App {
@@ -106,31 +121,18 @@ impl Application for App {
     type Flags = ();
 
     fn new(_flags: ()) -> (App, Command<Message>) {
-        let mut output_text = " ".to_string();
+        let mut app = App {
+            jstation: ui::JStation::new(),
 
-        let mut jstation = ui::JStation::new();
-        let mut ports = ui::midi::Ports::default();
-
-        match jstation.refresh() {
-            Ok(()) => ports.update_from(jstation.iface()),
-            Err(err) => {
-                // FIXME set a flag to indicate the application can't be used as is
-                let msg = format!("Midi ports not found: {err}");
-                log::error!("{msg}");
-                output_text = msg;
-            }
-        }
-
-        let app = App {
-            jstation,
-
-            ports: RefCell::new(ports).into(),
+            ports: RefCell::new(ui::midi::Ports::default()).into(),
             scanner_ctx: None,
 
             panel: Panel::default(),
             use_dark_them: true,
-            output_text,
+            status_text: Default::default(),
         };
+
+        app.refres_ports();
 
         (
             app,
@@ -155,7 +157,7 @@ impl Application for App {
         let res = match event {
             JStation(res) => match self.handle_device_evt(res) {
                 Ok(cmd) => {
-                    self.output_text = "".to_string();
+                    self.clear_status();
                     return cmd;
                 }
                 Err(err) => Err(err),
@@ -195,7 +197,7 @@ impl Application for App {
                 self.scanner_ctx = self.jstation.start_scan();
 
                 if self.scanner_ctx.is_none() {
-                    self.output_text = "Couldn't scan for J-Station".to_string();
+                    self.set_status("Couldn't scan for J-Station");
                 }
 
                 return Command::none();
@@ -237,8 +239,8 @@ impl Application for App {
         };
 
         match res {
-            Ok(()) => self.output_text = "".to_string(),
-            Err(err) => self.show_error(&err),
+            Ok(()) => self.clear_status(),
+            Err(err) => self.show_error(err),
         }
 
         Command::none()
@@ -447,7 +449,9 @@ impl Application for App {
             content,
             vertical_space(Length::Fill),
             row![
-                text(&self.output_text).size(18).width(Length::Fill),
+                Text::new(self.status_text.clone())
+                    .size(18)
+                    .width(Length::Fill),
                 ui::checkbox(self.use_dark_them, "Dark Theme", UseDarkTheme),
             ],
         ])
