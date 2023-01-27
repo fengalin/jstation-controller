@@ -1,6 +1,6 @@
 [package]
 name = "jstation-controller"
-version = "0.2.99"
+version = "0.3.0"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["Multimedia"]
 keywords = ["guitar", "jstation"]
@@ -34,9 +34,9 @@ thiserror = "1.0"
 lto = true
 
 [patch.crates-io]
-iced = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
-iced_core = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
-iced_graphics = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
-iced_lazy = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
-iced_native = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
-iced_wgpu = { git = "https://github.com/fengalin/iced", branch = "subscription-unfold-none-handling" }
+iced = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
+iced_core = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
+iced_graphics = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
+iced_lazy = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
+iced_native = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
+iced_wgpu = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
