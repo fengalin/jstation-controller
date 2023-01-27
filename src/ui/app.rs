@@ -452,7 +452,7 @@ impl Application for App {
                 Text::new(self.status_text.clone())
                     .size(18)
                     .width(Length::Fill),
-                ui::checkbox(self.use_dark_them, "Dark Theme", UseDarkTheme),
+                ui::checkbox("Dark Theme", self.use_dark_them, UseDarkTheme),
             ],
         ])
         .padding(10)
