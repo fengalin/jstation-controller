@@ -92,19 +92,19 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         let content: Element<_> = column![
             row![
                 column![
-                    ui::settings_checkbox(self.settings.stereo_mono, "Stereo", Stereo),
+                    ui::settings_checkbox("Stereo", self.settings.stereo_mono, Stereo),
                     vertical_space(Length::Units(10)),
-                    ui::settings_checkbox(self.settings.dry_track, "Dry Track", DryTrack),
+                    ui::settings_checkbox("Dry Track", self.settings.dry_track, DryTrack),
                 ],
                 horizontal_space(Length::Units(10)),
                 column![
                     ui::settings_checkbox(
-                        self.settings.global_cabinet,
                         "Global Cabinet",
+                        self.settings.global_cabinet,
                         GlobalCabinet,
                     ),
                     vertical_space(Length::Units(10)),
-                    ui::settings_checkbox(self.settings.midi_merge, "Midi Merge", MidiMerge),
+                    ui::settings_checkbox("Midi Merge", self.settings.midi_merge, MidiMerge),
                 ],
             ],
             vertical_space(Length::Units(30)),

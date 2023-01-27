@@ -20,8 +20,8 @@ pub fn button<'a, Message>(title: &str) -> Button<'a, Message, iced::Renderer> {
 }
 
 pub fn checkbox<'a, Message, F>(
-    is_checked: bool,
     title: impl Into<String>,
+    is_checked: bool,
     f: F,
 ) -> Checkbox<'a, Message, iced::Renderer>
 where
@@ -36,8 +36,8 @@ where
 }
 
 pub fn settings_checkbox<'a, Message, F>(
-    is_checked: bool,
     title: impl Into<String>,
+    is_checked: bool,
     f: F,
 ) -> Checkbox<'a, Message, iced::Renderer>
 where
