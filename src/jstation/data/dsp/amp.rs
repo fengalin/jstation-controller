@@ -78,7 +78,7 @@ const MODELING_NICKS: [&str; 25] = [
 fn fmt_bipolar_normal(param: impl DiscreteParameter, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     if let Some(normal) = param.normal() {
         let bipolar = 20.0 * normal.as_ratio() - 10.0;
-        f.write_fmt(format_args!("{:0.1}", bipolar))
+        f.write_fmt(format_args!("{bipolar:0.1}"))
     } else {
         f.write_str("n/a")
     }
