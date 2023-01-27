@@ -106,7 +106,7 @@ impl App {
         self.status_text = err.into();
     }
 
-    fn refres_ports(&mut self) {
+    fn refresh_ports(&mut self) {
         match self.jstation.refresh() {
             Ok(()) => self.ports.borrow_mut().update_from(self.jstation.iface()),
             Err(err) => self.show_error(format!("Midi ports not found: {err}")),
@@ -132,7 +132,7 @@ impl Application for App {
             status_text: Default::default(),
         };
 
-        app.refres_ports();
+        app.refresh_ports();
 
         (
             app,
