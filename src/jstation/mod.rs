@@ -197,7 +197,7 @@ impl JStationImpl for JStation {
                 match cv.msg {
                     CC(cc) => match self.dsp.set_cc(cc) {
                         Ok(Some(_)) => self.update_has_changed(),
-                        Ok(None) => log::debug!("Unhandled {cc:?}"),
+                        Ok(None) => log::trace!("Unchanged value for {cc:?}"),
                         Err(err) => log::warn!("{err}"),
                     },
                     ProgramChange(prog_id) => {
