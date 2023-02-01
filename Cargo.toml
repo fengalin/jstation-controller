@@ -15,12 +15,12 @@ bitflags = "1.3.2"
 env_logger = "0.10"
 flume = "0.10.13"
 futures = "0.3.25"
-iced = { version = "0.6", features = [ "default_system_font", "smol" ] }
-iced_audio = "0.9"
-iced_core = "0.6"
-iced_lazy = "0.3.0"
-iced_native = "0.7"
-iced_wgpu = "0.7"
+iced = { version = "0.7", features = [ "default_system_font", "smol" ] }
+iced_audio = "0.10"
+iced_core = "0.7"
+iced_lazy = "0.4"
+iced_native = "0.8"
+iced_wgpu = "0.8"
 jstation_derive = { path = "jstation_derive" }
 log = { version = "0.4", features = ["release_max_level_info"] }
 midir = "0.9"
@@ -34,9 +34,9 @@ thiserror = "1.0"
 lto = true
 
 [patch.crates-io]
-iced = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
-iced_core = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
-iced_graphics = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
-iced_lazy = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
-iced_native = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
-iced_wgpu = { git = "https://github.com/fengalin/iced", tag = "0.7.0-subscription-unfold-none-handling" }
+iced = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
+iced_core = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
+iced_graphics = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
+iced_lazy = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
+iced_native = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
+iced_wgpu = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
