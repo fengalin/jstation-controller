@@ -93,21 +93,21 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             row![
                 column![
                     ui::settings_checkbox("Stereo", self.settings.stereo_mono, Stereo),
-                    vertical_space(Length::Units(10)),
+                    vertical_space(Length::Fixed(10f32)),
                     ui::settings_checkbox("Dry Track", self.settings.dry_track, DryTrack),
                 ],
-                horizontal_space(Length::Units(10)),
+                horizontal_space(Length::Fixed(10f32)),
                 column![
                     ui::settings_checkbox(
                         "Global Cabinet",
                         self.settings.global_cabinet,
                         GlobalCabinet,
                     ),
-                    vertical_space(Length::Units(10)),
+                    vertical_space(Length::Fixed(10f32)),
                     ui::settings_checkbox("Midi Merge", self.settings.midi_merge, MidiMerge),
                 ],
             ],
-            vertical_space(Length::Units(30)),
+            vertical_space(Length::Fixed(30f32)),
             column![row![
                 ui::knob(self.settings.midi_channel, |normal| {
                     MidiChannel(utility_settings::MidiChannel::from_normal(normal))
@@ -115,7 +115,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
                 .name("Midi chan")
                 .on_release(|| Some(MidiChannelReleased))
                 .build(),
-                horizontal_space(Length::Units(30)),
+                horizontal_space(Length::Fixed(30f32)),
                 ui::knob(self.settings.digital_out_level, |normal| {
                     DigitalOutLevel(utility_settings::DigitalOutLevel::from_normal(normal))
                 })
@@ -125,7 +125,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
             ]]
             .align_items(Alignment::Center),
         ]
-        .align_items(Alignment::Fill)
+        .width(Length::Fill)
         .into();
 
         // Set to true to debug layout

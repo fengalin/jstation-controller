@@ -2,7 +2,6 @@ pub mod channel_voice;
 pub use channel_voice::ChannelVoice;
 
 pub mod split_bytes;
-pub use split_bytes::*;
 
 pub mod sysex;
 pub use sysex::{
@@ -36,14 +35,7 @@ impl From<sysex::Message> for Message {
 fn parse_midi_channel_voice(input: &[u8]) -> IResult<&[u8], Message> {
     let (i, cv) = midi::channel_voice::parse(input)?;
 
-    let cv = ChannelVoice::try_from(cv).map_err(|err| {
-        use nom::error::{self, Error};
-
-        log::debug!("{err}");
-        nom::Err::Error(Error::new(input, error::ErrorKind::NoneOf))
-    })?;
-
-    Ok((i, cv.into()))
+    Ok((i, ChannelVoice::from(cv).into()))
 }
 
 fn parse_sysex(i: &[u8]) -> IResult<&[u8], Message> {

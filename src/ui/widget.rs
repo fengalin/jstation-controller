@@ -12,8 +12,8 @@ use iced::{
 use crate::jstation::{data::Normal, prelude::*};
 use crate::ui::style;
 
-pub const DEFAULT_DSP_WIDTH: Length = Length::Units(622);
-pub const DSP_PROGRAM_SPACING: Length = Length::Units(10);
+pub const DEFAULT_DSP_WIDTH: Length = Length::Fixed(622f32);
+pub const DSP_PROGRAM_SPACING: Length = Length::Fixed(10f32);
 
 pub fn button<'a, Message>(title: &str) -> Button<'a, Message, iced::Renderer> {
     Button::new(text(title).size(15))
@@ -57,7 +57,7 @@ pub fn dsp<'a, Message>(
 where
     Message: 'a,
 {
-    container(row![title_area.width(Length::Units(270)), element.into()].padding(8))
+    container(row![title_area.width(Length::Fixed(270f32)), element.into()].padding(8))
         .width(DEFAULT_DSP_WIDTH)
         .style(style::DspContainer)
 }
@@ -76,11 +76,11 @@ pub fn label<'a>(text: impl Into<Cow<'a, str>>) -> Text<'a, iced::Renderer> {
 }
 
 pub fn amp_cabinet_label<'a>(text: impl Into<Cow<'a, str>>) -> Text<'a, iced::Renderer> {
-    label(text).width(Length::Units(85))
+    label(text).width(Length::Fixed(85f32))
 }
 
 pub fn param_label<'a>(text: impl Into<Cow<'a, str>>) -> Text<'a, iced::Renderer> {
-    label(text).width(Length::Units(55))
+    label(text).width(Length::Fixed(55f32))
 }
 
 pub fn value_label(text: impl ToString) -> Text<'static, iced::Renderer> {
@@ -95,7 +95,7 @@ pub fn modal<'a, Message>(
 where
     Message: 'a + Clone,
 {
-    const CLOSE_BTN_WIDTH: u16 = 25;
+    const CLOSE_BTN_WIDTH: f32 = 25.0;
 
     container(
         column![
@@ -103,14 +103,14 @@ where
                 container(text(title)).width(Length::Fill).center_x(),
                 Button::new(text("X").size(15).horizontal_alignment(Horizontal::Center))
                     .on_press(on_hide)
-                    .width(Length::Units(CLOSE_BTN_WIDTH))
+                    .width(Length::Fixed(CLOSE_BTN_WIDTH))
                     .style(style::Button::ModalClose.into()),
             ]
             .align_items(Alignment::Center),
-            vertical_space(Length::Units(30)),
+            vertical_space(Length::Fixed(30f32)),
             container(element.into()).width(Length::Fill).center_x(),
         ]
-        .width(Length::Units(350)),
+        .width(Length::Fixed(350f32)),
     )
     .width(Length::Fill)
     .center_x()
@@ -132,7 +132,7 @@ where
 }
 
 pub fn radio<V, Message>(
-    label: &str,
+    label: impl Into<String>,
     value: V,
     selected: Option<V>,
     f: impl Fn(V) -> Message,
@@ -141,7 +141,7 @@ where
     Message: Clone,
     V: Eq + Copy,
 {
-    Radio::new(value, label, selected, f)
+    Radio::new(label, value, selected, f)
         .size(16)
         .text_size(18)
         .spacing(5)
@@ -161,7 +161,7 @@ where
 {
     column![
         label(name),
-        vertical_space(iced::Length::Units(10)),
+        vertical_space(iced::Length::Fixed(10f32)),
         toggler(field.is_true(), move |is_true| (on_change)(is_true).into())
     ]
     .align_items(Alignment::Start)
@@ -170,12 +170,11 @@ where
 pub fn text_input<'a, Message>(
     placeholder: &str,
     value: &str,
-    on_change: impl Fn(String) -> Message + 'a,
 ) -> TextInput<'a, Message, iced::Renderer>
 where
     Message: 'a + Clone,
 {
-    TextInput::new(placeholder, value, on_change).size(15)
+    iced::widget::text_input(placeholder, value).size(15)
 }
 
 pub fn toggler<'a, Message>(
@@ -221,7 +220,7 @@ where
     let mut knob = iced_audio::Knob::new(to_ui_param(field), move |normal| {
         (on_change)(to_jstation_normal(normal)).into()
     })
-    .size(Length::Units(35));
+    .size(Length::Fixed(35f32));
 
     if let Some(on_release) = on_release {
         knob = knob.on_release(move || on_release().map(Into::into));

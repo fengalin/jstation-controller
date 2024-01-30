@@ -36,7 +36,7 @@ where
 
         let title_area = column![
             text("Reverb"),
-            vertical_space(Length::Units(10)),
+            vertical_space(Length::Fixed(10f32)),
             row![
                 ui::toggler(self.reverb.switch.into(), |is_on| {
                     reverb::Parameter::Switch(is_on.into())

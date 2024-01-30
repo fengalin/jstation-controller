@@ -3,7 +3,7 @@ pub mod style;
 pub mod widget;
 pub use widget::{
     amp_cabinet_label, button, checkbox, dsp, dsp_keep_width, hslider, knob, label, modal,
-    param_label, pick_list, radio, settings_checkbox, switch, text_input, toggler, value_label,
+    pick_list, radio, settings_checkbox, switch, text_input, toggler, value_label,
 };
 
 pub mod amp;

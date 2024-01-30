@@ -34,7 +34,7 @@ where
     fn view(&self, _state: &Self::State) -> Element<effect::Parameter> {
         let title_area = column![
             text("Effect"),
-            vertical_space(Length::Units(10)),
+            vertical_space(Length::Fixed(10f32)),
             row![
                 ui::toggler(self.effect.switch.into(), |is_on| {
                     effect::Parameter::Switch(is_on.into())
@@ -48,7 +48,7 @@ where
                     ui::radio("Pre", effect::Post::FALSE, Some(self.effect.post), |post| {
                         post.into()
                     }),
-                    vertical_space(Length::Units(6)),
+                    vertical_space(Length::Fixed(6f32)),
                     ui::radio("Post", effect::Post::TRUE, Some(self.effect.post), |post| {
                         post.into()
                     }),

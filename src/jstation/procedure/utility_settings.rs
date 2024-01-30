@@ -1,7 +1,10 @@
 use nom::IResult;
 
 use crate::{
-    jstation::{data::RawValue, take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len, take_split_bytes_u8, BufferBuilder, ProcedureBuilder, ProcedureId},
+    jstation::{
+        data::RawValue, take_split_bytes_bool, take_split_bytes_chan, take_split_bytes_len,
+        take_split_bytes_u8, BufferBuilder, ProcedureBuilder, ProcedureId,
+    },
     midi,
 };
 
@@ -62,13 +65,16 @@ impl UtilitySettingsResp {
         let (i, midi_merge) = take_split_bytes_bool(i, checksum)?;
         let (i, midi_channel) = take_split_bytes_chan(i, checksum)?;
 
-        Ok((i, UtilitySettingsResp {
-            stereo_mono,
-            dry_track,
-            digital_out_level: RawValue::try_from(digital_out_level).unwrap(),
-            global_cabinet,
-            midi_merge,
-            midi_channel,
-        }))
+        Ok((
+            i,
+            UtilitySettingsResp {
+                stereo_mono,
+                dry_track,
+                digital_out_level: RawValue::from(digital_out_level),
+                global_cabinet,
+                midi_merge,
+                midi_channel,
+            },
+        ))
     }
 }

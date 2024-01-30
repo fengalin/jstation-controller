@@ -61,7 +61,7 @@ where
                 ui::amp_cabinet_label(self.amp.modeling.param_name()),
                 ui::checkbox("nick", state.show_nick, Event::MustShowNicks),
             ],
-            vertical_space(Length::Units(5)),
+            vertical_space(Length::Fixed(5f32)),
         ];
 
         if state.show_nick {
@@ -78,26 +78,26 @@ where
             ));
         }
 
-        let title_area = column![text("Amp"), vertical_space(Length::Units(10)), modeling];
+        let title_area = column![text("Amp"), vertical_space(Length::Fixed(10f32)), modeling];
 
         use amp::Parameter::*;
         let content: Element<_> = ui::dsp(
             title_area,
             row![
                 ui::knob(self.amp.gain, |normal| Gain(amp::Gain::from_normal(normal))).build(),
-                horizontal_space(Length::Units(15)),
+                horizontal_space(Length::Fixed(15f32)),
                 ui::knob(self.amp.bass, |normal| Bass(amp::Bass::from_normal(normal))).build(),
-                horizontal_space(Length::Units(10)),
+                horizontal_space(Length::Fixed(10f32)),
                 ui::knob(self.amp.middle, |normal| Middle(amp::Middle::from_normal(
                     normal
                 )))
                 .build(),
-                horizontal_space(Length::Units(10)),
+                horizontal_space(Length::Fixed(10f32)),
                 ui::knob(self.amp.treble, |normal| Treble(amp::Treble::from_normal(
                     normal
                 )))
                 .build(),
-                horizontal_space(Length::Units(15)),
+                horizontal_space(Length::Fixed(15f32)),
                 ui::knob(self.amp.level, |normal| Level(amp::Level::from_normal(
                     normal
                 )))

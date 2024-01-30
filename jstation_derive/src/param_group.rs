@@ -1,5 +1,4 @@
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort, abort_call_site};
 use quote::{quote, ToTokens};
 use syn::{Data, DataStruct, DeriveInput, Fields, Ident};
 
@@ -18,7 +17,10 @@ pub fn derive_struct(input: &DeriveInput) -> TokenStream {
 
             param_group.into_token_stream()
         }
-        _ => abort_call_site!("`#[derive(ParamGroup)]` only supports structs with named fields"),
+        _ => panic!(
+            "{}: `#[derive(ParamGroup)]` only supports structs with named fields",
+            input.to_token_stream(),
+        ),
     }
 }
 
@@ -47,7 +49,7 @@ impl<'a> ParamGroup<'a> {
             return None;
         }
 
-        params.sort_by(|p1, p2| p1.param_nb().unwrap().cmp(&p2.param_nb().unwrap()));
+        params.sort_by_key(|p| p.param_nb().unwrap());
 
         Some(params.into_iter())
     }
@@ -108,7 +110,11 @@ impl<'a> ToTokens for ParamGroup<'a> {
 
                 if p.is_discriminant() {
                     if found_discriminant {
-                        abort!(field, "Multiple discriminants for {}", group_name);
+                        panic!(
+                            "Field {}: multiple discriminants for {}",
+                            field.to_token_stream(),
+                            group_name,
+                        );
                     }
                     found_discriminant = true;
 
