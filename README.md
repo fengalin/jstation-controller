@@ -4,6 +4,10 @@
 
 Pre-built packages are available for Linux, macOS and Windows from the
 [release page](https://github.com/fengalin/jstation-controller/releases).
+
+Note: the default packages use the `wgpu` backend. If you run into errors, try
+the alternative: `glow`.
+
 See the dedicated chapter below if you want to build the application from source.
 
 ![jstation-controller UI](assets/screenshot_20230124.png "jstation-controller UI")
@@ -79,10 +83,18 @@ Minimum dependencies include development libraries for:
 #### macOS
 
 If you can test the application on this OS, please open a PR with instructions.
+See also the CI workflow.
 
 #### Windows
 
 If you can test the application on this OS, please open a PR with instructions.
+See also the CI workflow.
+
+### Features
+
+* `wgpu` (default): use the `wgpu` graphics backend.
+* `glow`: use the `glow` graphics backend. Use this backend if you run into
+  errors using `wgpu`.
 
 ### Build
 
