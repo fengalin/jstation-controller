@@ -46,7 +46,7 @@ impl ProgramData {
     // Safety: the link between `ParameterNumber::MAX` and `PARAM_COUNT`
     // is used as an invariant for optimizations in some operations.
     pub const PARAM_COUNT: usize = (ParameterNumber::MAX.as_u8() + 1) as usize;
-    const NAME_MAX_LEN: usize = 20;
+    const NAME_MAX_LEN: usize = 40;
 
     fn try_new(buf: Box<[RawValue; Self::PARAM_COUNT]>, name: String) -> Result<Self, Error> {
         if name.len() > Self::NAME_MAX_LEN {
