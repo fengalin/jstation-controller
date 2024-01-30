@@ -13,7 +13,7 @@ edition = "2021"
 [dependencies]
 env_logger = "0.11"
 iced = { version = "0.9", features = [ "smol" ] }
-iced_audio = "0.12"
+iced_audio = { version = "0.12", default-features = false }
 iced_lazy = "0.6.1"
 iced_native = "0.10.3"
 jstation_derive = { path = "jstation_derive" }
@@ -24,6 +24,11 @@ once_cell = "1.0"
 smallvec = { version = "1.10", features = [ "const_generics", "union" ] }
 smol = "1.3"
 thiserror = "1.0"
+
+[features]
+default = ["wgpu"]
+wgpu = ["iced/wgpu", "iced_audio/wgpu"]
+glow = ["iced/glow", "iced_audio/glow"]
 
 [profile.release]
 lto = true

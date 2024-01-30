@@ -102,7 +102,10 @@ jobs:
       shell: bash
 
     - name: Build for x86_64
-      run: cargo build --release
+      run: |
+        cargo build --release --no-default-features --features glow
+        mv target/release/${APP_NAME} target/release/${APP_NAME}-glow
+        cargo build --release
 
     - name: Build for aarch64
       run: |
@@ -110,6 +113,8 @@ jobs:
         echo "SDKROOT=$SDKROOT"
         export MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.1 --show-sdk-platform-version)
         echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
+        cargo build --release --target=aarch64-apple-darwin --no-default-features --features glow
+        mv target/aarch64-apple-darwin/release/${APP_NAME} target/aarch64-apple-darwin/release/${APP_NAME}-glow
         cargo build --release --target=aarch64-apple-darwin
       env:
         DEVELOPER_DIR: /Applications/Xcode_12.4.app/Contents/Developer
@@ -121,9 +126,11 @@ jobs:
     - name: Package
       run: |
         mkdir -p temp/${{ env.app_variant }}
-        cp README.md temp/${{ env.app_variant }}/
+        cp README.md temp/${{ env.app_variant }}
         cargo-about generate -o temp/${{ env.app_variant }}/LICENSES.html about.hbs
-        lipo target/release/${APP_NAME} target/aarch64-apple-darwin/release/${APP_NAME} -output temp/${{ env.app_variant }}/${APP_NAME} -create
+        for BACKEND in "" "-glow"; do \
+          lipo target/release/${APP_NAME}${BACKEND} target/aarch64-apple-darwin/release/${APP_NAME}${BACKEND} -output temp/${{ env.app_variant }}/${APP_NAME}${BACKEND} -create; \
+        done
         mkdir -p packages
         cd packages
         TAR=${{ env.app_variant }}.tar.gz
