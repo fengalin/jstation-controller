@@ -96,6 +96,3 @@ declare_procs!(
     who_am_i: WhoAmIReq, WhoAmIResp;
     result: ToMessageResp;
 );
-
-pub use one_program::OneProgramRefResp;
-pub use program_update::ProgramUpdateRefResp;

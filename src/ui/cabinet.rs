@@ -59,14 +59,14 @@ where
     fn view(&self, state: &Self::State) -> Element<Event> {
         let mut cabinet_types = column![
             text("Cabinet"),
-            vertical_space(Length::Units(10)),
+            vertical_space(Length::Fixed(10f32)),
             row![
                 ui::amp_cabinet_label(self.cabinet.typ.param_name()),
                 ui::checkbox("nick", state.show_nick, Event::MustShowNicks),
             ],
-            vertical_space(Length::Units(5)),
+            vertical_space(Length::Fixed(5f32)),
         ]
-        .width(Length::Units(350));
+        .width(Length::Fixed(350f32));
 
         if state.show_nick {
             cabinet_types = cabinet_types.push(ui::pick_list(

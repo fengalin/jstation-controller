@@ -36,7 +36,7 @@ where
 
         let title_area = column![
             text("Delay"),
-            vertical_space(Length::Units(10)),
+            vertical_space(Length::Fixed(10f32)),
             row![
                 ui::toggler(self.delay.switch.into(), |is_on| {
                     delay::Parameter::Switch(is_on.into())

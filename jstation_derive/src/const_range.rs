@@ -1,5 +1,4 @@
 use proc_macro2::TokenStream;
-use proc_macro_error::abort;
 use quote::{quote, ToTokens};
 use syn::spanned::Spanned;
 use syn::{self, Expr, Ident};
@@ -66,9 +65,8 @@ impl<'a> ConstRange<'a> {
                 let list_expr = arg.value_or_abort(self.base.field);
                 let path = match list_expr {
                     Expr::Path(expr_path) => expr_path.path,
-                    _ => abort!(
-                        self.base.field,
-                        "Unexpected `display_map` expression for {}",
+                    _ => panic!(
+                        "Field {}: unexpected `display_map` expression",
                         self.base.field.to_token_stream(),
                     ),
                 };
@@ -76,10 +74,9 @@ impl<'a> ConstRange<'a> {
                 let name = match path.get_ident() {
                     Some(name) => name,
                     None => {
-                        abort!(
-                            self.base.field,
-                            "Expecting ident for `display_map`, got {}",
-                            self.base.field.to_token_stream()
+                        panic!(
+                            "Field {}: expecting ident for `display_map`",
+                            self.base.field.to_token_stream(),
                         )
                     }
                 };
@@ -105,17 +102,17 @@ impl<'a> ToTokens for ConstRange<'a> {
         let param_name = self.base.name();
         let param_min = self.min.unwrap_or(0);
         let param_max = self.max.unwrap_or_else(|| {
-            abort!(
-                self.base.field,
-                "Undefined `max` attribute for {}",
-                param.to_token_stream()
+            panic!(
+                "Field {}: undefined `max` attribute for {}",
+                self.base.field.to_token_stream(),
+                param.to_token_stream(),
             )
         });
         if param_max < param_min {
-            abort!(
-                self.base.field,
-                "`max` is less then `min` for {}",
-                param.to_token_stream()
+            panic!(
+                "Field {}: `max` is less then `min` for {}",
+                self.base.field.to_token_stream(),
+                param.to_token_stream(),
             );
         }
         let (param_default, normal_default) = match self.default_pos {

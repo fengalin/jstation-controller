@@ -172,9 +172,9 @@ impl checkbox::StyleSheet for Checkbox {
         checkbox::Appearance {
             background: iced::Background::Color(Color::TRANSPARENT),
             border_color: Self::BORDER_COLOR,
-            checkmark_color: match style {
+            icon_color: match style {
                 iced::Theme::Light => Color::from_rgb(0.5, 0.5, 0.55),
-                _ => appearance.checkmark_color,
+                _ => appearance.icon_color,
             },
             ..appearance
         }

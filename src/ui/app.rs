@@ -4,7 +4,7 @@ use iced::{
     widget::{column, container, horizontal_space, row, scrollable, vertical_space, Column, Text},
     Alignment, Application, Command, Element, Length, Theme,
 };
-use iced_native::command::Action;
+use iced_native::command;
 use once_cell::sync::Lazy;
 use smol::future::FutureExt;
 
@@ -58,7 +58,7 @@ impl App {
                             .expect("Not connected");
                         self.ports.borrow_mut().set_ports(port_in, port_out);
 
-                        return Ok(Command::single(Action::Future(
+                        return Ok(Command::single(command::Action::Future(
                             future::ready(Message::HideModal).boxed(),
                         )));
                     }
@@ -136,7 +136,9 @@ impl Application for App {
 
         (
             app,
-            Command::single(Action::Future(future::ready(Message::StartScan).boxed())),
+            Command::single(command::Action::Future(
+                future::ready(Message::StartScan).boxed(),
+            )),
         )
     }
 
@@ -275,7 +277,7 @@ impl Application for App {
 
                 dsp = dsp.push(row![
                     ui::dsp_keep_width(ui::cabinet::Panel::new(self.jstation.dsp().cabinet)),
-                    horizontal_space(Length::Units(10)),
+                    horizontal_space(Length::Fixed(10f32)),
                     ui::dsp_keep_width(ui::noise_gate::Panel::new(self.jstation.dsp().noise_gate)),
                 ]);
 
@@ -303,7 +305,7 @@ impl Application for App {
 
                             iced::widget::Button::new(row![
                                 ui::value_label(prog_id.nb().to_string()),
-                                horizontal_space(Length::Units(5)),
+                                horizontal_space(Length::Fixed(5f32)),
                                 ui::value_label(
                                     self.jstation
                                         .get_program(prog_id)
@@ -323,17 +325,18 @@ impl Application for App {
                     ui::button("Settings...")
                         .on_press(ShowUtilitySettings)
                         .style(style::Button::Default.into()),
-                    horizontal_space(Length::Units(10)),
+                    horizontal_space(Length::Fixed(10f32)),
                     ui::button("MIDI...")
                         .on_press(ShowMidiConnection)
                         .style(style::Button::Default.into()),
-                    horizontal_space(Length::Units(10)),
+                    horizontal_space(Length::Fixed(10f32)),
                     ui::button("Tuner...")
                         .on_press(ShowTuner)
                         .style(style::Button::Default.into()),
-                    horizontal_space(Length::Units(20)),
-                    ui::text_input("program name", self.jstation.dsp().name.as_str(), Rename)
-                        .width(Length::Units(200)),
+                    horizontal_space(Length::Fixed(20f32)),
+                    ui::text_input("program name", self.jstation.dsp().name.as_str())
+                        .on_input(Rename)
+                        .width(Length::Fixed(200f32)),
                     horizontal_space(Length::Fill),
                 ]
                 .width(widget::DEFAULT_DSP_WIDTH);
@@ -345,7 +348,7 @@ impl Application for App {
                                 .on_press(Undo)
                                 .style(style::Button::Default.into()),
                         );
-                        left_header = left_header.push(horizontal_space(Length::Units(10)));
+                        left_header = left_header.push(horizontal_space(Length::Fixed(10f32)));
                     }
 
                     left_header = left_header.push(
@@ -368,7 +371,7 @@ impl Application for App {
                         horizontal_space(widget::DSP_PROGRAM_SPACING),
                         right_header
                     ],
-                    vertical_space(Length::Units(10)),
+                    vertical_space(Length::Fixed(10f32)),
                     row![
                         scrollable(dsp),
                         horizontal_space(widget::DSP_PROGRAM_SPACING),
@@ -395,7 +398,7 @@ impl Application for App {
 
                             iced::widget::Button::new(row![
                                 ui::value_label(prog_id.nb().to_string()),
-                                horizontal_space(Length::Units(5)),
+                                horizontal_space(Length::Fixed(5f32)),
                                 ui::value_label(
                                     self.jstation
                                         .get_program(prog_id)
@@ -417,7 +420,7 @@ impl Application for App {
                 "MIDI Connection",
                 column![
                     ui::midi::Panel::new(self.ports.clone(), Midi),
-                    vertical_space(Length::Units(20)),
+                    vertical_space(Length::Fixed(20f32)),
                     ui::button("Scan")
                         .on_press(StartScan)
                         .style(style::Button::Default.into()),
@@ -581,5 +584,5 @@ pub enum Error {
 
 #[derive(Debug, Copy, Clone, Hash)]
 pub enum Subscription {
-    JStation(usize),
+    JStation,
 }

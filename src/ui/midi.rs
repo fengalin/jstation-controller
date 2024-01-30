@@ -140,7 +140,7 @@ impl<'a, Message> Component<Message, iced::Renderer> for Panel<'a, Message> {
         // This is to force the labels to occupy the same column
         // whatever the length of the labels. We would need
         // a grid layout here.
-        let label_width = Length::Units(40);
+        let label_width = Length::Fixed(40f32);
         let in_label = text("In:").width(label_width).size(18);
         let out_label = text("Out:").width(label_width).size(18);
 

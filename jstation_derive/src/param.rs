@@ -1,6 +1,7 @@
+use core::panic;
+
 use heck::ToTitleCase;
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort, ResultExt};
 use quote::ToTokens;
 use syn::{
     self,
@@ -24,8 +25,7 @@ impl<'a> Param<'a> {
         }
 
         if field.attrs.len() > 1 {
-            abort!(
-                field,
+            panic!(
                 "Expected only one param attribute for {}, found {}",
                 field.ty.to_token_stream(),
                 field.attrs.len()
@@ -35,23 +35,28 @@ impl<'a> Param<'a> {
         let attr = &field.attrs[0];
         let args = attr
             .parse_args_with(Punctuated::<Arg, Token![,]>::parse_terminated)
-            .unwrap_or_abort()
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Failed to parse attribute {} for {}: {err}",
+                    attr.to_token_stream(),
+                    field.ty.to_token_stream(),
+                )
+            })
             .into_iter();
 
         let param = ParamBase::new(field);
 
-        if attr.path.is_ident("const_range") {
+        if attr.path().is_ident("const_range") {
             Some(Param::ConstRange(ConstRange::new(param, args)))
-        } else if attr.path.is_ident("boolean") {
+        } else if attr.path().is_ident("boolean") {
             Some(Param::Boolean(Boolean::new(param, args)))
-        } else if attr.path.is_ident("variable_range") {
+        } else if attr.path().is_ident("variable_range") {
             Some(Param::VariableRange(VariableRange::new(param, args)))
         } else {
-            abort!(
-                field,
+            panic!(
                 "Unknown param attribute {} for {}",
-                attr.path.to_token_stream(),
-                param.field.ty.to_token_stream(),
+                attr.to_token_stream(),
+                field.ty.to_token_stream(),
             );
         }
     }
@@ -111,8 +116,7 @@ impl<'a> ParamBase<'a> {
             "param_nb" => self.param_nb = Some(arg.u8_or_abort(self.field)),
             "cc_nb" => self.cc_nb = Some(arg.u8_or_abort(self.field)),
             other => {
-                abort!(
-                    self.field,
+                panic!(
                     "Incompatible arg `{}` for param {}",
                     other,
                     self.field.ty.to_token_stream(),
@@ -144,34 +148,39 @@ pub struct Arg {
 
 impl Arg {
     pub fn value_or_abort(&self, field: &Field) -> Expr {
-        self.value
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| abort!(field, "attribute `{}` requires a value", self.name))
+        self.value.as_ref().cloned().unwrap_or_else(|| {
+            panic!(
+                "Field {}: attribute `{}` requires a value",
+                field.ty.to_token_stream(),
+                self.name
+            )
+        })
     }
 
     pub fn u8_or_abort(&self, field: &Field) -> u8 {
-        let value = self
-            .value
-            .as_ref()
-            .unwrap_or_else(|| abort!(field, "attribute `{}` requires a value", self.name));
+        let value = self.value.as_ref().unwrap_or_else(|| {
+            panic!(
+                "Field {}: attribute `{}` requires a value",
+                field.ty.to_token_stream(),
+                self.name,
+            )
+        });
 
         match value {
             Expr::Lit(syn::ExprLit {
                 lit: syn::Lit::Int(lit_int),
                 ..
             }) => lit_int.base10_parse::<u8>().unwrap_or_else(|err| {
-                abort!(
-                    field,
-                    "Expected a literal `u8` for `{}`: {:?}",
+                panic!(
+                    "Field {}: expected a literal `u8` for `{}`: {err:#}",
+                    field.ty.to_token_stream(),
                     self.name,
-                    err
                 );
             }),
             other => {
-                abort!(
-                    field,
-                    "Expected a literal `u8` for `{}` found {}",
+                panic!(
+                    "Filed {}: expected a literal `u8` for `{}`, found {}",
+                    field.ty.to_token_stream(),
                     self.name,
                     other.to_token_stream(),
                 )
@@ -181,7 +190,11 @@ impl Arg {
 
     pub fn no_value_or_abort(&self, field: &Field) {
         if self.value.is_some() {
-            abort!(field, "attribute `{}` doesn't accept any value", self.name);
+            panic!(
+                "Filed {}: attribute `{}` doesn't accept any value",
+                field.ty.to_token_stream(),
+                self.name,
+            );
         }
     }
 }
@@ -192,13 +205,10 @@ impl Parse for Arg {
 
         let value = if input.peek(Token![=]) {
             // `name = value` attributes.
-            let assign_token = input.parse::<Token![=]>()?; // skip '='
+            let _assign_token = input.parse::<Token![=]>()?; // skip '='
             let value = input.parse::<Expr>().ok();
             if value.is_none() {
-                abort! {
-                    assign_token,
-                    "expected `string literal` or `expression` after `=`"
-                }
+                panic!("{name}: expected `string literal` or `expression` after `=`");
             }
 
             value

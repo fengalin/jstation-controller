@@ -41,14 +41,14 @@ where
             ui::switch("Noise Gate", self.noise_gate.switch, |is_on| {
                 noise_gate::Switch::from(is_on)
             }),
-            horizontal_space(Length::Units(25)),
+            horizontal_space(Length::Fixed(25f32)),
             row![
                 ui::knob(self.noise_gate.attack_time, |normal| AttackTime(
                     noise_gate::AttackTime::from_normal(normal)
                 ))
                 .name("Attack")
                 .build(),
-                horizontal_space(Length::Units(10)),
+                horizontal_space(Length::Fixed(10f32)),
                 ui::knob(self.noise_gate.threshold, |normal| Threshold(
                     noise_gate::Threshold::from_normal(normal)
                 ))
@@ -57,8 +57,8 @@ where
             ]
             .align_items(Alignment::End),
         ]
-        .height(Length::Units(78))
-        .align_items(Alignment::Fill)
+        .width(Length::Fixed(230f32))
+        .height(Length::Fixed(78f32))
         .into();
 
         // Set to true to debug layout

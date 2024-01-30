@@ -50,14 +50,14 @@ where
         use dsp::Parameter::*;
 
         let mut selection = row![column![
-            vertical_space(Length::Units(3)),
+            vertical_space(Length::Fixed(3f32)),
             ui::radio(
                 "Expr.",
                 wah::Switch::FALSE,
                 Some(self.wah.switch),
                 |is_wah| Wah(is_wah.into())
             ),
-            vertical_space(Length::Units(6)),
+            vertical_space(Length::Fixed(6f32)),
             ui::radio("Wah", wah::Switch::TRUE, Some(self.wah.switch), |is_wah| {
                 Wah(is_wah.into())
             }),
@@ -75,7 +75,7 @@ where
                 .build(),
             ]
         } else {
-            selection = selection.push(horizontal_space(Length::Units(10)));
+            selection = selection.push(horizontal_space(Length::Fixed(10f32)));
             selection = selection.push(ui::pick_list(
                 expression::Assignment::names(),
                 Some(self.expression.assignment.name()),
@@ -101,20 +101,24 @@ where
             } else {
                 "Expression"
             }),
-            vertical_space(Length::Units(2)),
+            vertical_space(Length::Fixed(2f32)),
             ui::hslider(self.pedal.expression, |normal| Pedal(
                 pedal::Expression::from_normal(normal).into()
             )),
-            vertical_space(Length::Units(7)),
+            vertical_space(Length::Fixed(7f32)),
             ui::label("Volume"),
-            vertical_space(Length::Units(2)),
+            vertical_space(Length::Fixed(2f32)),
             ui::hslider(self.pedal.volume, |normal| Pedal(
                 pedal::Volume::from_normal(normal).into()
             )),
         ]);
 
         let content: Element<_> = ui::dsp(
-            column![text("Pedal"), vertical_space(Length::Units(10)), selection],
+            column![
+                text("Pedal"),
+                vertical_space(Length::Fixed(10f32)),
+                selection
+            ],
             pedal.spacing(10),
         )
         .into();

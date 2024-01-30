@@ -18,7 +18,7 @@ pub enum Error {
     PortConnection,
 
     #[error("Couldn't retrieve a MIDI port name")]
-    PortInfoError(#[from] midir::PortInfoError),
+    PortInfo(#[from] midir::PortInfoError),
 
     #[error("Invalid MIDI port name {}", .0)]
     PortNotFound(Arc<str>),

@@ -1,6 +1,6 @@
 [package]
 name = "jstation-controller"
-version = "0.3.1"
+version = "0.3.1-99"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["Multimedia"]
 keywords = ["guitar", "jstation"]
@@ -11,32 +11,21 @@ repository = "https://github.com/fengalin/jstation-controller"
 edition = "2021"
 
 [dependencies]
-bitflags = "1.3.2"
-env_logger = "0.10"
-flume = "0.10.13"
-futures = "0.3.25"
-iced = { version = "0.7", features = [ "default_system_font", "smol" ] }
-iced_audio = "0.10"
-iced_core = "0.7"
-iced_lazy = "0.4"
-iced_native = "0.8"
-iced_wgpu = "0.8"
+bitflags = "2.4"
+env_logger = "0.11"
+flume = "0.11"
+iced = { version = "0.9", features = [ "smol" ] }
+iced_audio = "0.12"
+iced_lazy = "0.6.1"
+iced_native = "0.10.3"
 jstation_derive = { path = "jstation_derive" }
 log = { version = "0.4", features = ["release_max_level_info"] }
 midir = "0.9"
 nom = "7.1.1"
 once_cell = "1.0"
-smallvec = { version = "1.10", features = [ "union" ] }
-smol = "1.2.5"
+smallvec = { version = "1.10", features = [ "const_generics", "union" ] }
+smol = "1.3"
 thiserror = "1.0"
 
 [profile.release]
 lto = true
-
-[patch.crates-io]
-iced = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
-iced_core = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
-iced_graphics = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
-iced_lazy = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
-iced_native = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
-iced_wgpu = { git = "https://github.com/fengalin/iced", tag = "0.7.9-subscription-unfold-none-handling" }
