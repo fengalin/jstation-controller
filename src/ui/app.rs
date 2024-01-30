@@ -336,7 +336,7 @@ impl Application for App {
                     horizontal_space(Length::Fixed(20f32)),
                     ui::text_input("program name", self.jstation.dsp().name.as_str())
                         .on_input(Rename)
-                        .width(Length::Fixed(200f32)),
+                        .width(Length::Fixed(300f32)),
                     horizontal_space(Length::Fill),
                 ]
                 .width(widget::DEFAULT_DSP_WIDTH);
