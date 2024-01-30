@@ -1,6 +1,6 @@
 [package]
 name = "jstation-controller"
-version = "0.3.1-99"
+version = "0.3.2"
 authors = ["François Laignel <fengalin@free.fr>"]
 categories = ["Multimedia"]
 keywords = ["guitar", "jstation"]
