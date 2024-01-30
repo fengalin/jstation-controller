@@ -49,7 +49,7 @@ impl ProgramData {
     const NAME_MAX_LEN: usize = 40;
 
     fn try_new(buf: Box<[RawValue; Self::PARAM_COUNT]>, name: String) -> Result<Self, Error> {
-        if name.len() > Self::NAME_MAX_LEN {
+        if name.as_bytes().len() > Self::NAME_MAX_LEN {
             return Err(Error::ProgramNameOutOfRange(name.len()));
         }
 
