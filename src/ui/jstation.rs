@@ -1,4 +1,4 @@
-use iced::futures;
+use iced::futures::{self, channel::mpsc, StreamExt};
 use std::{cell::Cell, sync::Arc};
 
 use crate::{
@@ -11,16 +11,16 @@ use crate::{
 /// It mostly adds `iced` subscriptions handling.
 pub struct JStation {
     inner: jstation::JStation,
-    listener_tx: flume::Sender<Listener>,
+    listener_tx: mpsc::Sender<Listener>,
     // Needs interior mutability because of subscription(&self)
-    listener_rx: Cell<Option<flume::Receiver<Listener>>>,
+    listener_rx: Cell<Option<mpsc::Receiver<Listener>>>,
     /// The listener to use once both MIDI channels are connected
     pending_listener: Option<Listener>,
 }
 
 impl JStation {
     pub fn new() -> Self {
-        let (listener_tx, listener_rx) = flume::bounded(1);
+        let (listener_tx, listener_rx) = mpsc::channel(1);
 
         JStation {
             inner: jstation::JStation::new(crate::APP_NAME.clone()),
@@ -43,7 +43,7 @@ impl JStation {
                 log::debug!("sending listener to subscription");
 
                 self.listener_tx
-                    .send(listener)
+                    .try_send(listener)
                     .expect("failed to send listener");
             }
         }
@@ -119,21 +119,21 @@ impl JStation {
 
         struct SubscriptionToken {
             listener: Option<Listener>,
-            listener_rx: flume::Receiver<Listener>,
+            listener_rx: mpsc::Receiver<Listener>,
         }
 
         async fn iface_subscription(
             mut token: Option<SubscriptionToken>,
         ) -> (Result<Message, Error>, Option<SubscriptionToken>) {
             let SubscriptionToken {
-                ref listener_rx,
+                ref mut listener_rx,
                 ref mut listener,
             } = token
                 .as_mut()
                 .expect("token available while subscription is unfolded");
 
             let msg_res = loop {
-                let listener_rx_res = {
+                let listener_rx_opt = {
                     let listener_fut = async {
                         if let Some(listener) = listener.as_mut() {
                             log::trace!("Awaiting device message");
@@ -147,12 +147,12 @@ impl JStation {
                     smol::pin!(listener_fut);
 
                     futures::select_biased! {
-                        listener_rx_res = listener_rx.recv_async() => listener_rx_res,
+                        listener_rx_opt = listener_rx.next() => listener_rx_opt,
                         msg_res = listener_fut => break msg_res,
                     }
                 };
 
-                if let Ok(new_listener) = listener_rx_res {
+                if let Some(new_listener) = listener_rx_opt {
                     log::debug!("Got new listener");
                     *listener = Some(new_listener);
                 } else {

@@ -1,4 +1,4 @@
-use iced::futures;
+use iced::futures::{self, channel::mpsc, StreamExt};
 use std::sync::Arc;
 
 use crate::{
@@ -19,7 +19,7 @@ pub struct Interface {
     midi_out: Option<midir::MidiOutputConnection>,
     cc_chan: midi::Channel,
     sysex_chan: midi::Channel,
-    chan_tx: Option<flume::Sender<midi::Channel>>,
+    chan_tx: Option<mpsc::Sender<midi::Channel>>,
 }
 
 /// General Interface behaviour.
@@ -64,7 +64,7 @@ impl Interface {
         // Note: I couldn't find the expected behaviour when changing the channel to All
         // in Utility Settings on the J-Station.
         if let Some(chan_tx) = self.chan_tx.as_mut() {
-            chan_tx.send(chan).expect("Broken chan channel");
+            chan_tx.try_send(chan).expect("Broken chan channel");
             self.cc_chan = chan;
             self.sysex_chan = chan;
         }
@@ -190,7 +190,7 @@ impl midi::Scannable for Interface {
     fn connect(&mut self, port_in: Arc<str>, port_out: Arc<str>) -> Result<(Listener, ()), Error> {
         let mut midi_out = self.outs.connect(port_out)?;
 
-        let (chan_tx, chan_rx) = flume::bounded(1);
+        let (chan_tx, chan_rx) = mpsc::channel(1);
         let listener = Listener::try_new(self, port_in, chan_rx)?;
         self.chan_tx = Some(chan_tx);
 
@@ -202,7 +202,7 @@ impl midi::Scannable for Interface {
     }
 
     fn connect_in(&mut self, port_name: Arc<str>) -> Result<Listener, Error> {
-        let (chan_tx, chan_rx) = flume::bounded(1);
+        let (chan_tx, chan_rx) = mpsc::channel(1);
         let listener = Listener::try_new(self, port_name, chan_rx)?;
         self.chan_tx = Some(chan_tx);
 
@@ -237,20 +237,20 @@ pub struct Listener {
     state: ListenerState,
     cc_chan: midi::Channel,
     sysex_chan: midi::Channel,
-    msg_rx: flume::Receiver<Vec<u8>>,
-    midi_in: Option<midir::MidiInputConnection<flume::Sender<Vec<u8>>>>,
-    chan_rx: flume::Receiver<midi::Channel>,
+    msg_rx: mpsc::Receiver<Vec<u8>>,
+    midi_in: Option<midir::MidiInputConnection<mpsc::Sender<Vec<u8>>>>,
+    chan_rx: mpsc::Receiver<midi::Channel>,
 }
 
 impl Listener {
     fn try_new(
         iface: &mut Interface,
         port_in: Arc<str>,
-        chan_rx: flume::Receiver<midi::Channel>,
+        chan_rx: mpsc::Receiver<midi::Channel>,
     ) -> Result<Self, Error> {
-        let (msg_tx, msg_rx) = flume::bounded(10);
+        let (msg_tx, msg_rx) = mpsc::channel(10);
         let midi_in = iface.ins.connect(port_in, msg_tx, |_ts, msg, msg_tx| {
-            let _ = msg_tx.send(msg.to_owned());
+            let _ = msg_tx.try_send(msg.to_owned());
         })?;
 
         Ok(Listener {
@@ -341,13 +341,14 @@ impl Listener {
     async fn receive(&mut self) -> Result<Message, Error> {
         let midi_msg = loop {
             futures::select_biased! {
-                chan_res = self.chan_rx.recv_async() => {
-                    let chan = chan_res.expect("Broken chan channel");
-                    log::info!("Changing chan to {chan}");
-                    self.cc_chan = chan;
-                    self.sysex_chan = chan;
+                chan_res = self.chan_rx.next() => {
+                    if let Some(chan) = chan_res {
+                        log::info!("Changing chan to {chan}");
+                        self.cc_chan = chan;
+                        self.sysex_chan = chan;
+                    }
                 }
-                msg_res = self.msg_rx.recv_async() => break msg_res.expect("Broken message channel"),
+                msg_res = self.msg_rx.next() => break msg_res.expect("Broken message channel"),
             }
         };
 
@@ -372,12 +373,10 @@ impl Listener {
     }
 
     async fn handshake_receive(&mut self) -> Result<Message, Error> {
-        use futures::FutureExt;
-
-        let mut timeout = smol::Timer::after(HANDSHAKE_TIMEOUT).fuse();
+        let mut timeout = futures::FutureExt::fuse(smol::Timer::after(HANDSHAKE_TIMEOUT));
 
         let midi_msg = futures::select_biased! {
-            res = self.msg_rx.recv_async() => res.expect("Broken message channel"),
+            res = self.msg_rx.next() => res.expect("Broken message channel"),
             _ = timeout => {
                 log::debug!("timeout");
                 return Err(Error::HandshakeTimeout);
